@@ -4,27 +4,22 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
+return new class extends Migration {
     public function up(): void
     {
         Schema::create('projects', function (Blueprint $table) {
-            $table->id();
+            $table->id('projectid'); // المفتاح الأساسي
             $table->string('title');
             $table->text('description')->nullable();
-            $table->date('start_date');
-            $table->date('end_date');
+            $table->date('startdate');
+            $table->date('enddate');
             $table->enum('status', ['pending', 'in_progress', 'completed'])->default('pending');
-            $table->timestamps();
+            $table->unsignedBigInteger('headid');
+            $table->foreign('headid')->references('id')->on('users')->onDelete('cascade');
+            $table->timestamps(); // لازم هدول عشان created_at, updated_at
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('projects');

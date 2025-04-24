@@ -12,22 +12,23 @@ class DashboardController extends Controller
         $completedProjects = Project::where('status', 'completed')->count();
         $completionPercentage = $totalProjects > 0 ? round(($completedProjects / $totalProjects) * 100) : 0;
 
-        // بيانات للرسوم البيانية
+        // توزيع حسب الحالة
         $projectsByStatus = Project::groupBy('status')
-            ->selectRaw('status, count(*) as count')
+            ->selectRaw('status, COUNT(*) as count')
             ->pluck('count', 'status');
 
-        $monthlyProjects = Project::selectRaw('MONTH(created_at) as month, count(*) as count')
+        // المشاريع حسب الأشهر
+        $monthlyProjects = Project::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
             ->groupBy('month')
             ->orderBy('month')
             ->pluck('count', 'month');
 
-        return view('dashboard', compact(
-            'totalProjects',
-            'completedProjects',
-            'completionPercentage',
-            'projectsByStatus',
-            'monthlyProjects'
-        ));
+        return response()->json([
+            'totalProjects' => $totalProjects,
+            'completedProjects' => $completedProjects,
+            'completionPercentage' => $completionPercentage,
+            'projectsByStatus' => $projectsByStatus,
+            'monthlyProjects' => $monthlyProjects,
+        ]);
     }
 }
