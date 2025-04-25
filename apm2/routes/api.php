@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProjectProposalController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiscussionScheduleController;
 use Illuminate\Support\Facades\Route;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;
@@ -18,6 +20,10 @@ Route::middleware('auth:api')->group(function () {
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/profile/restore/{id?}', [AuthController::class, 'restoreAccount']);
+    Route::get('/dashboard', [DashboardController::class, 'index']); 
+    Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
+    Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
+
     
     // مسارات المنسق
     Route::get('/admin/trash', [AuthController::class, 'viewTrash']);
