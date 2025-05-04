@@ -9,13 +9,14 @@ class Project extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'projectid'; // تعريف المفتاح الأساسي المخصص
+    protected $primaryKey = 'projectid'; // إذا اسم الـ ID مو "id"
 
-    public $incrementing = true; // تأكيد أنه auto-increment
-    protected $keyType = 'int'; // نوع المفتاح الأساسي
+    // Laravel بيفترض أن المفتاح الأساسي auto-increment وهو BigInt
+    // فلا داعي لتعريف شيء إضافي هنا
 
     protected $fillable = [
-        'title', // تم إزالة projectid من هنا لأنه auto-increment
+        'projectid',
+        'title',
         'description',
         'startdate',
         'enddate',
@@ -23,15 +24,5 @@ class Project extends Model
         'headid'
     ];
 
-    // العلاقة مع جدول لوحة الشرف
-    public function honorBoard()
-    {
-        return $this->hasOne(HonorBoardProject::class, 'project_id', 'projectid');
-    }
-
-    // العلاقة مع المستخدم (رئيس المشروع)
-    public function head()
-    {
-        return $this->belongsTo(User::class, 'headid', 'userId');
-    }
+    // تأكدي أن اسماء الحقول هون مطابقة تماماً للموديل والمهاجرشن
 }
