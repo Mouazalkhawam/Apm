@@ -64,4 +64,14 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->trashed_at !== null;
     }
+    // أضف هذه الدوال إلى نموذج User
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'receiver_id');
+    }
 }
