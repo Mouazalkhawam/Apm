@@ -30,14 +30,12 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
     Route::post('/projects/create', [ProjectController::class, 'createProject']);
-    Route::get('/messages/unread', [MessageController::class, 'unreadCount']);
     Route::delete('/messages/{messageId}', [MessageController::class, 'destroy']);
     Route::get('/messages/conversation/{userId}', [MessageController::class, 'chatMessages']);
     Route::post('/messages', [MessageController::class, 'send']);
     Route::get('/messages/conversations', [MessageController::class, 'conversations']);
-    Route::get('/messages/chat/{user}', [MessageController::class, 'chatMessages']);
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead']);
-    Route::delete('/messages/{message}', [MessageController::class, 'destroy']);
+    Route::patch('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)

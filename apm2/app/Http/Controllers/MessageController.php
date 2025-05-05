@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Log;
 
 class MessageController extends Controller
 {
-    /**
-     * إرسال رسالة جديدة
-     */
     public function send(Request $request)
     {
         $request->validate([
@@ -25,11 +22,8 @@ class MessageController extends Controller
                 'sender_id' => Auth::id(),
                 'receiver_id' => $request->receiver_id,
                 'content' => $request->content,
+                'created_at' => now(), 
             ]);
-
-            // يمكنك إضافة إرسال إشعار هنا إذا كنت تستخدم نظام الإشعارات
-            // $receiver = User::find($request->receiver_id);
-            // $receiver->notify(new NewMessageNotification($message));
 
             return response()->json([
                 'success' => true,
@@ -47,95 +41,99 @@ class MessageController extends Controller
         }
     }
 
-    /**
-     * الحصول على جميع المحادثات
-     */
-    public function conversations(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $searchTerm = $request->query('search');
-            
-            $query = Message::with(['sender', 'receiver'])
-                ->where(function($q) use ($user) {
-                    $q->where('sender_id', $user->id)
-                      ->orWhere('receiver_id', $user->id);
-                });
+    public function conversations()
+{
+    try {
+        $user = Auth::user();
 
-            // فلترة المحادثات حسب البحث
-            if ($searchTerm) {
-                $query->whereHas('sender', function($q) use ($searchTerm) {
-                    $q->where('name', 'like', "%{$searchTerm}%");
-                })->orWhereHas('receiver', function($q) use ($searchTerm) {
-                    $q->where('name', 'like', "%{$searchTerm}%");
-                });
+        // جلب الرسائل المتعلقة بالمستخدم
+        $messages = Message::with(['sender', 'receiver'])
+            ->where(function ($query) use ($user) {
+                $query->where('sender_id', $user->userId)
+                    ->orWhere('receiver_id', $user->userId);
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // تجميع الرسائل بحسب المرسل (userId الآخر)
+        $conversations = [];
+
+        foreach ($messages as $message) {
+            // تحديد المستخدم الآخر بناءً على المرسل أو المستقبل
+            $otherUserId = $message->sender_id === $user->userId
+                ? $message->receiver_id
+                : $message->sender_id;
+
+            // التحقق من إذا كان المستخدم الآخر موجود ضمن المحادثات
+            if (!isset($conversations[$otherUserId])) {
+                // استرجاع بيانات المستخدم الآخر
+                $otherUser = $message->sender_id === $user->userId
+                    ? $message->receiver
+                    : $message->sender;
+
+                // إضافة المستخدم إلى المحادثات
+                $conversations[$otherUserId] = [
+                    'conversation_id' => $otherUserId,
+                    'other_user' => $otherUser,
+                    'messages' => [],
+                    'unread_count' => 0
+                ];
             }
 
-            $messages = $query->latest()->get();
+            // إضافة الرسالة إلى محادثة المستخدم الآخر
+            $conversations[$otherUserId]['messages'][] = [
+                'id' => $message->message_id,
+                'sender_id' => $message->sender_id,
+                'receiver_id' => $message->receiver_id,
+                'content' => $message->content,
+                'created_at' => $message->created_at,
+                'is_read' => $message->is_read
+            ];
 
-            $conversations = $messages->groupBy(function($message) use ($user) {
-                    return $message->sender_id == $user->id 
-                        ? $message->receiver_id 
-                        : $message->sender_id;
-                })
-                ->map(function($messages) use ($user) {
-                    $otherUser = $messages->first()->sender_id == $user->id 
-                        ? $messages->first()->receiver 
-                        : $messages->first()->sender;
-
-                    return [
-                        'conversation_id' => $otherUser->userId,
-                        'user' => $otherUser,
-                        'last_message' => $messages->first(),
-                        'unread_count' => $messages->where('receiver_id', $user->id)
-                                                  ->where('is_read', false)
-                                                  ->count(),
-                        'updated_at' => $messages->first()->created_at
-                    ];
-                })
-                ->sortByDesc('updated_at')
-                ->values();
-
-            return response()->json([
-                'success' => true,
-                'data' => $conversations
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get conversations: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في جلب المحادثات'
-            ], 500);
+            // زيادة عداد الرسائل غير المقروءة إذا كانت الرسالة مستلمة للمستخدم
+            if ($message->receiver_id === $user->userId && !$message->is_read) {
+                $conversations[$otherUserId]['unread_count']++;
+            }
         }
-    }
 
-    /**
-     * الحصول على رسائل محادثة معينة
-     */
+        // إرجاع البيانات بشكل منظم
+        return response()->json([
+            'success' => true,
+            'data' => array_values($conversations)
+        ]);
+    } catch (\Exception $e) {
+        Log::error('Conversations error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب المحادثات',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+
     public function chatMessages($userId, Request $request)
     {
         try {
             $currentUser = Auth::user();
             $otherUser = User::findOrFail($userId);
             $perPage = $request->query('per_page', 20);
-            
-            // الحصول على الرسائل مع التقسيم للصفحات
+
             $messages = Message::where(function($query) use ($currentUser, $otherUser) {
-                    $query->where('sender_id', $currentUser->id)
+                    $query->where('sender_id', $currentUser->userId)
                           ->where('receiver_id', $otherUser->userId);
                 })
                 ->orWhere(function($query) use ($currentUser, $otherUser) {
                     $query->where('sender_id', $otherUser->userId)
-                          ->where('receiver_id', $currentUser->id);
+                          ->where('receiver_id', $currentUser->userId);
                 })
                 ->with(['sender', 'receiver'])
                 ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
-            // تحديث الرسائل المستلمة كمقروءة
+            // تحديث كقراءة
             Message::where('sender_id', $otherUser->userId)
-                ->where('receiver_id', $currentUser->id)
+                ->where('receiver_id', $currentUser->userId)
                 ->where('is_read', false)
                 ->update(['is_read' => true]);
 
@@ -160,156 +158,13 @@ class MessageController extends Controller
         }
     }
 
-    /**
-     * الحصول على الرسائل المستلمة فقط
-     */
-    public function receivedMessages(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $perPage = $request->query('per_page', 20);
-            $unreadOnly = $request->query('unread', false);
-            
-            $query = Message::with(['sender'])
-                ->where('receiver_id', $user->id);
-
-            if ($unreadOnly) {
-                $query->where('is_read', false);
-            }
-
-            $messages = $query->orderBy('created_at', 'desc')
-                            ->paginate($perPage);
-
-            return response()->json([
-                'success' => true,
-                'messages' => $messages->items(),
-                'unread_count' => Message::where('receiver_id', $user->id)
-                                       ->where('is_read', false)
-                                       ->count(),
-                'pagination' => [
-                    'total' => $messages->total(),
-                    'per_page' => $messages->perPage(),
-                    'current_page' => $messages->currentPage(),
-                    'last_page' => $messages->lastPage()
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get received messages: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في جلب الرسائل المستلمة'
-            ], 500);
-        }
-    }
-
-    /**
-     * الحصول على الرسائل المرسلة فقط
-     */
-    public function sentMessages(Request $request)
-    {
-        try {
-            $user = Auth::user();
-            $perPage = $request->query('per_page', 20);
-            
-            $messages = Message::with(['receiver'])
-                ->where('sender_id', $user->id)
-                ->orderBy('created_at', 'desc')
-                ->paginate($perPage);
-
-            return response()->json([
-                'success' => true,
-                'messages' => $messages->items(),
-                'pagination' => [
-                    'total' => $messages->total(),
-                    'per_page' => $messages->perPage(),
-                    'current_page' => $messages->currentPage(),
-                    'last_page' => $messages->lastPage()
-                ]
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to get sent messages: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في جلب الرسائل المرسلة'
-            ], 500);
-        }
-    }
-
-    /**
-     * تحديث حالة الرسالة كمقروءة
-     */
-    public function markAsRead($messageId)
-    {
-        try {
-            $message = Message::findOrFail($messageId);
-
-            if ($message->receiver_id !== Auth::id()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'غير مصرح لك بهذا الإجراء'
-                ], 403);
-            }
-            
-            $message->update(['is_read' => true]);
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تحديث حالة الرسالة كمقروءة'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to mark message as read: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في تحديث حالة الرسالة'
-            ], 500);
-        }
-    }
-
-    /**
-     * حذف رسالة
-     */
-    public function destroy($messageId)
-    {
-        try {
-            $message = Message::findOrFail($messageId);
-            $user = Auth::user();
-            
-            if ($message->sender_id !== $user->id && $message->receiver_id !== $user->id) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'غير مصرح لك بهذا الإجراء'
-                ], 403);
-            }
-            
-            $message->delete();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم حذف الرسالة بنجاح'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to delete message: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في حذف الرسالة'
-            ], 500);
-        }
-    }
-
-    /**
-     * الحصول على عدد الرسائل غير المقروءة
-     */
     public function unreadCount()
     {
         try {
-            $count = Message::where('receiver_id', Auth::id())
+            $count = Message::where('receiver_id', Auth::user()->userId)
                           ->where('is_read', false)
                           ->count();
-                          
+
             return response()->json([
                 'success' => true,
                 'unread_count' => $count
@@ -324,27 +179,85 @@ class MessageController extends Controller
         }
     }
 
-    /**
-     * حذف جميع الرسائل المستلمة
-     */
-    public function deleteAllReceived()
+    public function markAsRead($messageId)
     {
         try {
-            $user = Auth::user();
-            
-            Message::where('receiver_id', $user->id)->delete();
-            
+            $message = Message::findOrFail($messageId);
+
+            if ($message->receiver_id !== Auth::user()->userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بقراءة هذه الرسالة'
+                ], 403);
+            }
+
+            $message->update(['is_read' => true]);
+
             return response()->json([
                 'success' => true,
-                'message' => 'تم حذف جميع الرسائل المستلمة'
+                'message' => 'تم تعليم الرسالة كمقروءة'
             ]);
 
         } catch (\Exception $e) {
-            Log::error('Failed to delete all received messages: ' . $e->getMessage());
+            Log::error('Mark as read error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'فشل في حذف الرسائل'
+                'message' => 'فشل في تحديث حالة الرسالة'
+            ], 500);
+        }
+    }
+    public function markAllAsRead()
+{
+    try {
+        $userId = Auth::user()->userId;
+
+        // تحديث جميع الرسائل التي لم تُقرأ للمستخدم
+        Message::where('receiver_id', $userId)
+            ->where('is_read', false)
+            ->update(['is_read' => true]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تحديد جميع الرسائل كمقروءة'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Mark all as read error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في تحديث جميع الرسائل كمقروءة'
+        ], 500);
+    }
+}
+
+
+    public function destroy($messageId)
+    {
+        try {
+            $message = Message::findOrFail($messageId);
+            $userId = Auth::user()->userId;
+
+            if ($message->sender_id !== $userId && $message->receiver_id !== $userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بحذف هذه الرسالة'
+                ], 403);
+            }
+
+            $message->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف الرسالة بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Delete message error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في حذف الرسالة'
             ], 500);
         }
     }
 }
+ 

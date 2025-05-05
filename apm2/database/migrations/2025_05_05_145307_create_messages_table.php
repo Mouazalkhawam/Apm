@@ -46,9 +46,9 @@ return new class extends Migration
     public function down()
     {
         Schema::table('messages', function (Blueprint $table) {
-            // حذف القيود الخارجية بأسمائها الصحيحة
-            $table->dropForeign(['messages_sender_id_foreign']);
-            $table->dropForeign(['messages_receiver_id_foreign']);
+            $table->dropForeign(['sender_id']);
+            $table->dropForeign(['receiver_id']);
+            
         });
         
         Schema::dropIfExists('messages');

@@ -67,11 +67,11 @@ class User extends Authenticatable implements JWTSubject
     // أضف هذه الدوال إلى نموذج User
     public function sentMessages()
     {
-        return $this->hasMany(Message::class, 'sender_id');
+        return $this->hasMany(Message::class, 'sender_id', 'userId');
     }
 
     public function receivedMessages()
     {
-        return $this->hasMany(Message::class, 'receiver_id');
+        return $this->hasMany(Message::class, 'receiver_id', 'userId');
     }
 }

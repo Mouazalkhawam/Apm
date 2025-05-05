@@ -2,36 +2,38 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Message extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory;
 
+    protected $table = 'messages';
     protected $primaryKey = 'message_id';
-    public $timestamps = false;
+
+    public $timestamps = false; // ✅ هذا السطر يحل مشكلتك
 
     protected $fillable = [
         'sender_id',
         'receiver_id',
         'content',
         'is_read',
-        'sent_at'
+        'created_at', // تأكد أنه ضمن fillable لأنك تضيفه يدويًا
+        'sent_at',
     ];
 
-    protected $dates = ['created_at', 'sent_at', 'deleted_at'];
+    protected $casts = [
+        'is_read' => 'boolean',
+    ];
 
-    // العلاقة مع المرسل
     public function sender()
     {
-        return $this->belongsTo(User::class, 'sender_id');
+        return $this->belongsTo(User::class, 'sender_id', 'userId');
     }
 
-    // العلاقة مع المستقبل
     public function receiver()
     {
-        return $this->belongsTo(User::class, 'receiver_id');
+        return $this->belongsTo(User::class, 'receiver_id', 'userId');
     }
 }
