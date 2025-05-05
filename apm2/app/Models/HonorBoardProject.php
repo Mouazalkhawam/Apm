@@ -4,22 +4,24 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class HonorBoardProject extends Model
+class Project extends Model
 {
-    protected $table = 'honor_board_project';
-    
+    protected $primaryKey = 'projectid'; // تحديد المفتاح الأساسي
+    public $incrementing = true; // تأكيد أنه تلقائي الزيادة
+    protected $keyType = 'int'; // نوع المفتاح
+
     protected $fillable = [
-        'project_id',
-        'featured_at',
-        'notes'
+        'projectid',
+        'title',
+        'description',
+        'startdate',
+        'enddate',
+        'status',
+        'headid'
     ];
 
-    protected $casts = [
-        'featured_at' => 'datetime',
-    ];
-
-    public function project()
+    public function honorBoard()
     {
-        return $this->belongsTo(Project::class, 'project_id', 'projectid');
+        return $this->hasOne(HonorBoardProject::class, 'project_id', 'projectid');
     }
 }

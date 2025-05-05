@@ -28,7 +28,19 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']); 
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
-
+    Route::prefix('honor-board')->group(function () {
+        // عرض جميع المشاريع المميزة (GET)
+        Route::get('/', [HonorBoardController::class, 'indexApi']);
+        
+        // عرض المشاريع المتاحة للإضافة (GET)
+        Route::get('/available-projects', [HonorBoardController::class, 'availableProjects']);
+        
+        // إضافة مشروع جديد (POST)
+        Route::post('/', [HonorBoardController::class, 'storeApi']);
+        
+        // حذف مشروع (DELETE)
+        Route::delete('/{id}', [HonorBoardController::class, 'destroyApi']);
+    });
     
     // مسارات المنسق
     Route::get('/admin/trash', [AuthController::class, 'viewTrash']);
