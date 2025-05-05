@@ -35,7 +35,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/', [HonorBoardController::class, 'indexApi']);
         
         // عرض المشاريع المتاحة للإضافة (GET)
-        Route::get('/available-projects', [HonorBoardController::class, 'availableProjects']);
+        Route::get('/available-projects', [HonorBoardController::class, 'availableApi']);
         
         // إضافة مشروع جديد (POST)
         Route::post('/', [HonorBoardController::class, 'storeApi']);

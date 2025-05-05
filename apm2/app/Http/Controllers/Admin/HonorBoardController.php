@@ -80,6 +80,10 @@ class HonorBoardController extends Controller
             'message' => 'المشاريع المتاحة للإضافة'
         ]);
     }
+    public function availableProjects()
+{
+    return $this->availableApi();
+}
 
     // API: إضافة مشروع مميز
     public function store(Request $request)

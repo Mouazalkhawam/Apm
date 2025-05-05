@@ -4,24 +4,18 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
-class Project extends Model
+class HonorBoardProject extends Model
 {
-    protected $primaryKey = 'projectid'; // تحديد المفتاح الأساسي
-    public $incrementing = true; // تأكيد أنه تلقائي الزيادة
-    protected $keyType = 'int'; // نوع المفتاح
-
+    protected $table = 'honor_board_project'; // تحديد اسم الجدول بدون s
+    
     protected $fillable = [
-        'projectid',
-        'title',
-        'description',
-        'startdate',
-        'enddate',
-        'status',
-        'headid'
+        'project_id', // يجب أن يكون نفس اسم الحقل في الجدول
+        'notes',
+        'featured_at'
     ];
-
-    public function honorBoard()
+    
+    public function project()
     {
-        return $this->hasOne(HonorBoardProject::class, 'project_id', 'projectid');
+        return $this->belongsTo(Project::class, 'project_id', 'projectid');
     }
 }
