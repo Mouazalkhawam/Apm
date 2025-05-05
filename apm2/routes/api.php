@@ -28,6 +28,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']); 
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
+    Route::post('/projects/create', [ProjectController::class, 'createProject']);
+    Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)
         Route::get('/', [HonorBoardController::class, 'indexApi']);

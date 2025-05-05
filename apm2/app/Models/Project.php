@@ -9,13 +9,9 @@ class Project extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'projectid'; // إذا اسم الـ ID مو "id"
-
-    // Laravel بيفترض أن المفتاح الأساسي auto-increment وهو BigInt
-    // فلا داعي لتعريف شيء إضافي هنا
+    protected $primaryKey = 'projectid';
 
     protected $fillable = [
-        'projectid',
         'title',
         'description',
         'startdate',
@@ -24,5 +20,31 @@ class Project extends Model
         'headid'
     ];
 
-    // تأكدي أن اسماء الحقول هون مطابقة تماماً للموديل والمهاجرشن
+    // قائد الفريق (الطالب المسؤول عن المشروع)
+    public function leader()
+    {
+        return $this->belongsTo(User::class, 'headid', 'userId');
+    }
+
+    // علاقة المشروع مع الفريق
+    public function group()
+    {
+        return $this->hasOne(Group::class, 'project_id', 'projectid');
+    }
+
+    // المشرفين المقترحين (بانتظار الموافقة)
+    public function supervisors()
+    {
+        return $this->belongsToMany(Supervisor::class, 'project_supervisor')
+                    ->withPivot('status') // pending, approved, rejected
+                    ->withTimestamps();
+    }
+
+    // الطلاب المقترحين (بانتظار الموافقة)
+    public function students()
+    {
+        return $this->belongsToMany(Student::class, 'group_student', 'project_id', 'student_id')
+                    ->withPivot('status') // pending, approved, rejected
+                    ->withTimestamps();
+    }
 }
