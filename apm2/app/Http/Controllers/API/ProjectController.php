@@ -10,6 +10,7 @@ use App\Models\Supervisor;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 
 class ProjectController extends Controller
 {
@@ -81,4 +82,30 @@ class ProjectController extends Controller
             'message' => 'تمت الموافقة بنجاح'
         ]);
     }
+    public function getRecommendations(Request $request)
+    {
+        $validated = $request->validate([
+            'query' => 'nullable|string',
+            'top_n' => 'nullable|integer|min:1|max:20'
+        ]);
+    
+        $students = Student::with(['skills', 'user'])->get()->map(function ($student) {
+            return [
+                'student_id' => $student->studentId,
+                'name' => $student->user->name,
+                'skills' => $student->skills->pluck('name')->join(','),
+                'experience' => $student->experience,
+                'gpa' => $student->gpa
+            ];
+        });
+    
+        $response = Http::post('http://localhost:5001/recommend', [
+            'students' => $students,
+            'query' => $validated['query'] ?? null,
+            'top_n' => $validated['top_n'] ?? 10
+        ]);
+    
+        return $response->json();
+    }
+    
 }
