@@ -4,9 +4,11 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProjectController;
 use App\Http\Controllers\ProjectProposalController;
-use App\Http\Controllers\API\ProjectStageController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
+use App\Http\Controllers\Admin\HonorBoardController;
+use App\Http\Controllers\MessageController;
+
 use Illuminate\Support\Facades\Route;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;
@@ -28,16 +30,31 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
     Route::post('/projects/create', [ProjectController::class, 'createProject']);
+    Route::delete('/messages/{messageId}', [MessageController::class, 'destroy']);
+    Route::get('/messages/conversation/{userId}', [MessageController::class, 'chatMessages']);
+    Route::post('/messages', [MessageController::class, 'send']);
+    Route::get('/messages/conversations', [MessageController::class, 'conversations']);
+    Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead']);
+    Route::patch('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
-    Route::post('/projects/recommendations', [ProjectController::class, 'getRecommendations']);
-    Route::post('/project-stages', [ProjectStageController::class, 'store']); // إنشاء مرحلة
-    Route::get('/project-stages/{project_id}', [ProjectStageController::class, 'getByProject']); // عرض مراحل مشروع
-    Route::delete('/project-stages/{id}', [ProjectStageController::class, 'destroy']); // حذف مرحلة
+    Route::prefix('honor-board')->group(function () {
+        // عرض جميع المشاريع المميزة (GET)
+        Route::get('/', [HonorBoardController::class, 'indexApi']);
+        
+        // عرض المشاريع المتاحة للإضافة (GET)
+        Route::get('/available-projects', [HonorBoardController::class, 'availableApi']);
+        
+        // إضافة مشروع جديد (POST)
+        Route::post('/', [HonorBoardController::class, 'storeApi']);
+        
+        // حذف مشروع (DELETE)
+        Route::delete('/{id}', [HonorBoardController::class, 'destroyApi']);
+    });
     
     // مسارات المنسق
     Route::get('/admin/trash', [AuthController::class, 'viewTrash']);
     Route::delete('/admin/trash/{id}', [AuthController::class, 'forceDeleteAccount']);
-    Route::put('/admin/user/role/{id}', [AuthController::class, 'changeRole']); 
+    Route::put('/admin/user/role/{id}', [AuthController::class, 'changeRole']);
 
     // مسارات مقترحات المشاريع
     Route::prefix('proposals')->group(function () {
