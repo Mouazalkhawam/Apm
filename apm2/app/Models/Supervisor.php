@@ -23,4 +23,15 @@ class Supervisor extends Model
     {
         return $this->belongsToMany(ProjectProposal::class, 'proposal_supervisors', 'supervisor_id', 'proposal_id');
     }
+
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_supervisor', 'supervisorId', 'groupid')
+                    ->withPivot('status', 'updated_at');
+    }
+    public function groupMemberships()
+    {
+        return $this->hasMany(GroupSupervisor::class, 'supervisorId', 'supervisorId');
+    }
+
 }

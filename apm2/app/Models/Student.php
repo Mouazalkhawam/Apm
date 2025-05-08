@@ -29,4 +29,21 @@ class Student extends Model
     {
         return $this->belongsToMany(ProjectProposal::class, 'proposal_team_members', 'student_id', 'proposal_id');
     }
+
+    // علاقة العديد إلى العديد مع المهارات (Skills)
+    public function skills()
+    {
+        return $this->belongsToMany(Skill::class, 'skill_student', 'student_id', 'skill_id');
+    }
+    
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_student', 'studentId', 'groupid')
+                    ->withPivot('status', 'updated_at');
+    }
+    public function groupMemberships()
+    {
+        return $this->hasMany(GroupStudent::class, 'studentId', 'studentId');
+    }
+
 }

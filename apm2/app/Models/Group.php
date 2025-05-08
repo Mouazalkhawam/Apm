@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Group extends Model
 {
     use HasFactory;
+    protected $primaryKey = 'groupId';
 
     protected $fillable = [
         'projectid',
@@ -20,19 +21,27 @@ class Group extends Model
         return $this->belongsTo(Project::class, 'projectid', 'projectid');
     }
 
-    // العلاقة مع الطلاب
-    public function students()
+    // العلاقة مع الطلاب (معدلة)
+// في App\Models\Group
+    public function students() 
     {
         return $this->belongsToMany(Student::class, 'group_student', 'groupid', 'studentId')
-                    ->withPivot('status')
-                    ->withTimestamps();
+                    ->withPivot('status');
     }
 
-    // العلاقة مع المشرفين
-    public function supervisors()
+    public function supervisors() 
     {
         return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
-                    ->withPivot('status')
-                    ->withTimestamps();
+                    ->withPivot('status');
+    }
+
+    public function groupStudents()
+    {
+        return $this->hasMany(GroupStudent::class, 'groupid', 'groupid');
+    }
+
+    public function groupSupervisors()
+    {
+        return $this->hasMany(GroupSupervisor::class, 'groupid', 'groupid');
     }
 }

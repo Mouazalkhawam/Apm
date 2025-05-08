@@ -7,6 +7,9 @@ use App\Models\Project;
 use App\Models\Group;
 use App\Models\Student;
 use App\Models\Supervisor;
+use App\Models\GroupSupervisor;
+use App\Models\GroupStudent;
+use App\Models\User;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -61,26 +64,31 @@ class ProjectController extends Controller
             'message' => 'تم إنشاء المشروع بنجاح وإرسال الإشعارات'
         ]);
     }
-
     public function approveMembership(Request $request)
     {
         $request->validate([
             'user_id' => 'required|exists:users,userId',
             'group_id' => 'required|exists:groups,groupid',
         ]);
-
+    
         $group = Group::findOrFail($request->group_id);
-
+        $user = User::findOrFail($request->user_id);
+    
         // تحديث حالة الطالب
-        $group->students()->updateExistingPivot($request->user_id, ['status' => 'approved']);
-
+        if ($student = Student::where('userId', $user->userId)->first()) {
+            GroupStudent::where('groupid', $group->groupid)
+                ->where('studentId', $student->studentId)
+                ->update(['status' => 'approved']);
+        }
+    
         // تحديث حالة المشرف
-        $group->supervisors()->updateExistingPivot($request->user_id, ['status' => 'approved']);
-
-        return response()->json([
-            'success' => true,
-            'message' => 'تمت الموافقة بنجاح'
-        ]);
+        if ($supervisor = Supervisor::where('userId', $user->userId)->first()) {
+            GroupSupervisor::where('groupid', $group->groupid)
+                ->where('supervisorId', $supervisor->supervisorId)
+                ->update(['status' => 'approved']);
+        }
+    
+        return response()->json(['success' => true]);
     }
     public function getRecommendations(Request $request)
     {
