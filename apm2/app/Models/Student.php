@@ -21,29 +21,45 @@ class Student extends Model
     // المقترحات التي يقودها الطالب
     public function ledProposals()
     {
-        return $this->hasMany(ProjectProposal::class, 'leader_id');
+        return $this->hasMany(ProjectProposal::class, 'leader_id', 'studentId');
     }
 
     // المقترحات التي يشارك فيها كعضو فريق
     public function teamProposals()
     {
-        return $this->belongsToMany(ProjectProposal::class, 'proposal_team_members', 'student_id', 'proposal_id');
+        return $this->belongsToMany(
+            ProjectProposal::class,
+            'proposal_team_members',
+            'student_id',
+            'proposal_id'
+        )->withTimestamps();
     }
 
     // علاقة العديد إلى العديد مع المهارات (Skills)
     public function skills()
     {
-        return $this->belongsToMany(Skill::class, 'skill_student', 'student_id', 'skill_id');
+        return $this->belongsToMany(
+            Skill::class,
+            'skill_student',
+            'student_id',
+            'skill_id'
+        )->withTimestamps();
     }
     
     public function groups()
     {
-        return $this->belongsToMany(Group::class, 'group_student', 'studentId', 'groupid')
-                    ->withPivot('status', 'updated_at');
-    }
-    public function groupMemberships()
-    {
-        return $this->hasMany(GroupStudent::class, 'studentId', 'studentId');
+        return $this->belongsToMany(
+            Group::class,
+            'group_student',
+            'studentId',
+            'groupid'
+        )->withPivot('status', 'is_leader', 'created_at', 'updated_at'); // التعديل هنا
     }
 
+    public function isTeamLeader()
+    {
+        return $this->groups()
+            ->wherePivot('is_leader', true)
+            ->exists();
+    }
 }

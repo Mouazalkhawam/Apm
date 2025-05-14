@@ -3,6 +3,8 @@
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProjectController;
+use App\Http\Controllers\API\ProjectStageController;
+use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\ProjectProposalController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
@@ -37,6 +39,11 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead']);
     Route::patch('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
+    Route::post('/tasks', [TaskController::class, 'store']);
+    Route::get('/stages/{stage}/tasks', [TaskController::class, 'getStageTasks']);
+    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
+    Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask']);
+    Route::patch('/submissions/{submission}/grade', [TaskController::class, 'gradeTask']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)
         Route::get('/', [HonorBoardController::class, 'indexApi']);

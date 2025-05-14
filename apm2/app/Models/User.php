@@ -5,10 +5,11 @@ namespace App\Models;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Notifications\Notifiable;
 
 class User extends Authenticatable implements JWTSubject
 {
-    use SoftDeletes;
+    use SoftDeletes, Notifiable;
     protected $primaryKey = 'userId';
 
     protected $fillable = [
@@ -33,6 +34,11 @@ class User extends Authenticatable implements JWTSubject
     public function student()
     {
         return $this->hasOne(Student::class, 'userId', 'userId');
+    }
+
+        public function supervisor()
+    {
+        return $this->hasOne(Supervisor::class, 'userId', 'userId');
     }
     
         public function coordinator()
@@ -64,14 +70,21 @@ class User extends Authenticatable implements JWTSubject
     {
         return $this->trashed_at !== null;
     }
-    // أضف هذه الدوال إلى نموذج User
-    public function sentMessages()
+
+    // app/Models/User.php
+    public function isSupervisor()
     {
-        return $this->hasMany(Message::class, 'sender_id', 'userId');
+        return $this->role === 'supervisor';
     }
 
-    public function receivedMessages()
+    public function isTeamLeader()
     {
-        return $this->hasMany(Message::class, 'receiver_id', 'userId');
+        // إذا كان الطالب قائدًا لمجموعة ما
+        if ($this->role === 'student') {
+            return $this->student->groups()
+                ->wherePivot('is_leader', true)
+                ->exists();
+        }
+        return false;
     }
 }

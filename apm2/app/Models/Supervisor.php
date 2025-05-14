@@ -21,17 +21,29 @@ class Supervisor extends Model
     // المقترحات التي يشرف عليها
     public function proposals()
     {
-        return $this->belongsToMany(ProjectProposal::class, 'proposal_supervisors', 'supervisor_id', 'proposal_id');
+        return $this->belongsToMany(
+            ProjectProposal::class,
+            'proposal_supervisors',
+            'supervisor_id',
+            'proposal_id'
+        )->withTimestamps();
     }
 
     public function groups()
     {
-        return $this->belongsToMany(Group::class, 'group_supervisor', 'supervisorId', 'groupid')
-                    ->withPivot('status', 'updated_at');
-    }
-    public function groupMemberships()
-    {
-        return $this->hasMany(GroupSupervisor::class, 'supervisorId', 'supervisorId');
+        return $this->belongsToMany(
+            Group::class,
+            'group_supervisor',
+            'supervisorId',
+            'groupid'
+        )->withPivot('status', 'created_at', 'updated_at');
     }
 
+    public function isApprovedForGroup($groupId)
+    {
+        return $this->groups()
+            ->where('groupid', $groupId)
+            ->wherePivot('status', 'approved')
+            ->exists();
+    }
 }
