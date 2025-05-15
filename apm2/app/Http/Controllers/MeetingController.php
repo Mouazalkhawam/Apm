@@ -7,12 +7,10 @@ use App\Models\Supervisor;
 use App\Models\Student;
 use Illuminate\Http\Request;
 
-class MeetingController extends Controller
-{
-    // عرض جميع الاجتماعات للمشرف (API)
+class MeetingController extends Controller{
     public function supervisorIndex(Supervisor $supervisor)
     {
-        $meetings = Meeting::where('supervisor_id', $supervisor->id)
+        $meetings = $supervisor->meetings()
             ->with(['group', 'leader'])
             ->orderBy('meeting_time')
             ->get();
@@ -20,22 +18,23 @@ class MeetingController extends Controller
         return response()->json($meetings);
     }
 
-    // حفظ المواعيد المقترحة (API)
     public function storeProposed(Request $request, Supervisor $supervisor)
     {
         $request->validate([
-            'group_id' => 'required|exists:groups,id',
+            'group_id' => 'required|exists:groups,groupId',
             'proposed_times' => 'required|array|min:1',
             'proposed_times.*' => 'required|date',
             'description' => 'nullable|string'
         ]);
 
+        $group = Group::findOrFail($request->group_id);
         $meetings = [];
+        
         foreach ($request->proposed_times as $time) {
             $meetings[] = Meeting::create([
-                'group_id' => $request->group_id,
-                'leader_id' => Group::find($request->group_id)->leader_id,
-                'supervisor_id' => $supervisor->id,
+                'group_id' => $group->groupId,
+                'leader_id' => $group->leader_id,
+                'supervisor_id' => $supervisor->supervisorId,
                 'description' => $request->description,
                 'meeting_time' => $time,
                 'status' => 'proposed'
@@ -48,10 +47,12 @@ class MeetingController extends Controller
         ], 201);
     }
 
-    // اختيار موعد من قبل قائد الفريق (API)
-    public function chooseTime(Meeting $meeting)
+    public function chooseTime(Meeting $meeting, Student $leader)
     {
-        // إلغاء جميع المواعيد الأخرى للمجموعة
+        if (!$leader->isTeamLeader()) {
+            return response()->json(['message' => 'غير مصرح بهذا الإجراء'], 403);
+        }
+
         Meeting::where('group_id', $meeting->group_id)
             ->where('id', '!=', $meeting->id)
             ->update(['status' => 'canceled']);
@@ -64,9 +65,12 @@ class MeetingController extends Controller
         ]);
     }
 
-    // تأكيد الموعد من قبل المشرف (API)
-    public function confirm(Meeting $meeting)
+    public function confirm(Meeting $meeting, Supervisor $supervisor)
     {
+        if (!$supervisor->isApprovedForGroup($meeting->group_id)) {
+            return response()->json(['message' => 'غير مصرح بهذا الإجراء'], 403);
+        }
+
         $meeting->update(['status' => 'confirmed']);
         
         return response()->json([
@@ -75,9 +79,12 @@ class MeetingController extends Controller
         ]);
     }
 
-    // رفض الموعد من قبل المشرف (API)
-    public function reject(Meeting $meeting)
+    public function reject(Meeting $meeting, Supervisor $supervisor)
     {
+        if (!$supervisor->isApprovedForGroup($meeting->group_id)) {
+            return response()->json(['message' => 'غير مصرح بهذا الإجراء'], 403);
+        }
+
         $meeting->update(['status' => 'canceled']);
         
         return response()->json([
@@ -85,11 +92,10 @@ class MeetingController extends Controller
             'data' => $meeting->fresh()
         ]);
     }
-
-    // عرض الاجتماعات المتاحة لقائد الفريق (API)
+ 
     public function leaderIndex(Student $leader)
     {
-        $meetings = Meeting::where('leader_id', $leader->id)
+        $meetings = $leader->ledMeetings()
             ->with(['group', 'supervisor'])
             ->orderBy('meeting_time')
             ->get();
