@@ -44,4 +44,14 @@ class Group extends Model
     {
         return $this->hasMany(GroupSupervisor::class, 'groupid', 'groupid');
     }
+    public function leader()
+    {
+        return $this->belongsTo(Student::class, 'leader_id', 'studentId');
+    }
+
+    // إضافة العلاقة مع الاجتماعات
+    public function meetings()
+    {
+        return $this->hasMany(Meeting::class, 'group_id', 'groupId');
+    }
 }

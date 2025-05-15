@@ -62,4 +62,8 @@ class Student extends Model
             ->wherePivot('is_leader', true)
             ->exists();
     }
+     public function ledMeetings()
+    {
+        return $this->hasMany(Meeting::class, 'leader_id', 'studentId');
+    }
 }
