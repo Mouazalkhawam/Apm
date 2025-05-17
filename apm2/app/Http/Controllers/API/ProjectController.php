@@ -153,7 +153,10 @@ class ProjectController extends Controller
                 ];
             });
 
-        $response = Http::post('http://localhost:5001/recommend', [
+        // في الدالة getRecommendations
+        $response = Http::withOptions([
+            'verify' => false // ⚠️ لا تستخدم هذا في الإنتاج!
+        ])->post('http://localhost:5001/recommend', [
             'students' => $students,
             'query' => $validated['query'] ?? '',
             'top_n' => $validated['top_n'] ?? 10
