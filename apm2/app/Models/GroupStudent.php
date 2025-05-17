@@ -15,6 +15,7 @@ class GroupStudent extends Pivot
         'studentId',
         'groupid',
         'status',
+        'is_leader'
     ];
 
     public $timestamps = true;

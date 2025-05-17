@@ -44,14 +44,17 @@ class Group extends Model
     {
         return $this->hasMany(GroupSupervisor::class, 'groupid', 'groupid');
     }
-    public function leader()
+    
+
+    // app/Models/Group.php
+    public function peerEvaluations()
     {
-        return $this->belongsTo(Student::class, 'leader_id', 'studentId');
+        return $this->hasMany(PeerEvaluation::class, 'group_id');
     }
 
-    // إضافة العلاقة مع الاجتماعات
-    public function meetings()
+    public function evaluationCriteria()
     {
-        return $this->hasMany(Meeting::class, 'group_id', 'groupId');
+        return $this->hasMany(EvaluationCriterion::class);
     }
+    
 }

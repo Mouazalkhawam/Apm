@@ -56,14 +56,15 @@ class Student extends Model
         )->withPivot('status', 'is_leader', 'created_at', 'updated_at'); // التعديل هنا
     }
 
-    public function isTeamLeader()
+    // استبدال دالة isTeamLeader
+    public function isTeamLeader($groupId = null)
     {
-        return $this->groups()
-            ->wherePivot('is_leader', true)
-            ->exists();
-    }
-     public function ledMeetings()
-    {
-        return $this->hasMany(Meeting::class, 'leader_id', 'studentId');
+        $query = $this->groups();
+        
+        if($groupId){
+            $query->where('groupid', $groupId);
+        }
+        
+        return $query->wherePivot('is_leader', true)->exists();
     }
 }
