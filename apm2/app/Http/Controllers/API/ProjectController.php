@@ -153,7 +153,7 @@ class ProjectController extends Controller
                 ];
             });
 
-        // في الدالة getRecommendations
+        // في الدالة getRecommendations for rranim
         $response = Http::withOptions([
             'verify' => false // ⚠️ لا تستخدم هذا في الإنتاج!
         ])->post('http://localhost:5001/recommend', [
