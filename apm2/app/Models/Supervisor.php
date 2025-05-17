@@ -46,8 +46,8 @@ class Supervisor extends Model
             ->wherePivot('status', 'approved')
             ->exists();
     }
-    public function meetings()
+   public function meetings()
 {
-    return $this->hasMany(Meeting::class);
+    return $this->hasMany(Meeting::class, 'supervisor_id', 'supervisorId');
 }
 }

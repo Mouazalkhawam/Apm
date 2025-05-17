@@ -8,6 +8,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
 use App\Http\Controllers\Admin\HonorBoardController;
 use App\Http\Controllers\MessageController;
+use App\Http\Controllers\MeetingController;
+
 
 use Illuminate\Support\Facades\Route;
 use OpenAI\Laravel\Facades\OpenAI;

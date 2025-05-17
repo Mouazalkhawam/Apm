@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Meeting;
 use App\Models\Supervisor;
 use App\Models\Student;
+use App\Models\Group;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MeetingController extends Controller{
     public function supervisorIndex(Supervisor $supervisor)
@@ -20,32 +22,90 @@ class MeetingController extends Controller{
 
     public function storeProposed(Request $request, Supervisor $supervisor)
     {
-        $request->validate([
-            'group_id' => 'required|exists:groups,groupId',
+        // 1. التحقق من صحة البيانات
+        $validated = $request->validate([
+            'group_id' => 'required|integer|exists:groups,groupId',
             'proposed_times' => 'required|array|min:1',
-            'proposed_times.*' => 'required|date',
-            'description' => 'nullable|string'
+            'proposed_times.*' => 'required|date_format:Y-m-d H:i:s',
+            'description' => 'nullable|string|max:500'
         ]);
 
-        $group = Group::findOrFail($request->group_id);
-        $meetings = [];
+        // 2. البحث عن المجموعة مع أعضائها
+        $group = Group::findOrFail($validated['group_id']);
         
-        foreach ($request->proposed_times as $time) {
+        // 3. الحصول على قائد المجموعة أو تعيينه تلقائياً
+        $leader = $this->resolveGroupLeader($group);
+        
+        if (!$leader) {
+            return response()->json([
+                'message' => 'لا يمكن إنشاء اجتماع لمجموعة بدون أعضاء',
+                'solution' => 'يجب إضافة أعضاء للمجموعة أولاً'
+            ], 422);
+        }
+
+        // 4. إنشاء الاجتماعات
+        $meetings = [];
+        foreach ($validated['proposed_times'] as $time) {
             $meetings[] = Meeting::create([
                 'group_id' => $group->groupId,
-                'leader_id' => $group->leader_id,
+                'leader_id' => $leader->studentId,
                 'supervisor_id' => $supervisor->supervisorId,
-                'description' => $request->description,
+                'description' => $validated['description'],
                 'meeting_time' => $time,
                 'status' => 'proposed'
             ]);
         }
 
         return response()->json([
-            'message' => 'تم اقتراح المواعيد بنجاح',
-            'data' => $meetings
+            'message' => 'تم إنشاء الاجتماعات بنجاح',
+            'data' => $meetings,
+            'auto_leader_assigned' => $group->wasChanged('leader_id')
         ], 201);
     }
+
+    /**
+     * حل مشكلة عدم وجود قائد للمجموعة
+     */
+    private function resolveGroupLeader(Group $group)
+    {
+        // إذا كان هناك قائد محدد، نرجعه
+        if ($group->leader_id) {
+            return Student::find($group->leader_id);
+        }
+
+        // البحث عن قائد في جدول العلاقة
+        $leader = DB::table('group_student')
+            ->where('groupId', $group->groupId)
+            ->where('is_leader', true)
+            ->first();
+
+        if ($leader) {
+            $group->leader_id = $leader->studentId;
+            $group->save();
+            return Student::find($leader->studentId);
+        }
+
+        // إذا لم يوجد قائد، نأخذ أول عضو
+        $member = DB::table('group_student')
+            ->where('groupId', $group->groupId)
+            ->first();
+
+        if ($member) {
+            // تحديث القائد في المجموعة وجدول العلاقة
+            DB::table('group_student')
+                ->where('groupId', $group->groupId)
+                ->where('studentId', $member->studentId)
+                ->update(['is_leader' => true]);
+
+            $group->leader_id = $member->studentId;
+            $group->save();
+
+            return Student::find($member->studentId);
+        }
+
+        return null;
+    }
+
 
     public function chooseTime(Meeting $meeting, Student $leader)
     {
