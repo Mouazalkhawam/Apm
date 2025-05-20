@@ -1,0 +1,461 @@
+/* src/styles.css */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+/* الأساسيات */
+body {
+  font-family: 'Tajawal', sans-serif;
+  background-color: #f8fafc;
+  margin: 0;
+  padding: 0;
+  direction: rtl;
+  text-align: right;
+}
+
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+}
+
+/* بطاقة الدخول */
+.login-card {
+  max-width: 1000px;
+  width: 100%;
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  margin: 2rem 0;
+}
+
+@media (min-width: 768px) {
+  .login-card {
+    flex-direction: row;
+  }
+}
+
+/* القسم البنفسجي */
+.header-section {
+  background-color: #221f51;
+  padding: 2rem;
+  color: white;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border-radius: 1rem 0 0 1rem;
+}
+
+.logo-container {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background-color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.graduation-icon {
+  color: #221f51;
+  font-size: 2.5rem;
+}
+
+.system-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.system-description {
+  color: #c4b5fd;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.features-section {
+  width: 100%;
+}
+
+.features-title {
+  font-size: 1.1rem;
+  margin-bottom: 1rem;
+}
+
+.features-list {
+  list-style: none;
+  padding: 0;
+}
+
+.features-list li {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.feature-icon {
+  margin-left: 0.5rem;
+  color: #c4b5fd;
+}
+
+/* قسم النموذج */
+.form-section {
+  flex: 1.5;
+  padding: 2rem;
+}
+
+.form-header {
+  margin-bottom: 2rem;
+}
+
+.form-title {
+  font-size: 1.5rem;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.form-subtitle {
+  color: #64748b;
+}
+
+.input-group {
+  margin-bottom: 1.5rem;
+}
+
+.input-label {
+  display: block;
+  color: #1e293b;
+  margin-bottom: 0.5rem;
+}
+
+.input-container {
+  position: relative;
+}
+
+.input-field {
+  width: 100%;
+  padding: 0.8rem 2.5rem 0.8rem 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+.input-field:focus {
+  outline: none;
+  border-color: #221f51;
+  box-shadow: 0 0 0 2px rgba(34, 31, 81, 0.2);
+}
+
+.input-icon {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 1rem;
+  color: #94a3b8;
+}
+
+.password-toggle {
+  position: absolute;
+  left: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #94a3b8;
+}
+
+.form-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.remember-me {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.forgot-password {
+  color: #221f51;
+  text-decoration: none;
+}
+
+.forgot-password:hover {
+  text-decoration: underline;
+}
+
+.btn-login {
+  background-color: #221f51;
+  color: white;
+  width: 100%;
+  padding: 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+  background-color: #1a173f;
+  transform: translateY(-2px);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  color: #64748b;
+  margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.divider::before {
+  margin-left: 1rem;
+}
+
+.divider::after {
+  margin-right: 1rem;
+}
+
+.btn-google {
+  width: 100%;
+  padding: 1rem;
+  background-color: #facc15;
+  color: #1e293b;
+  border: none;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-google:hover {
+  background-color: #eab308;
+}
+
+.google-icon {
+  font-size: 1.2rem;
+}
+
+.register-link {
+  text-align: center;
+  margin-top: 1.5rem;
+}
+
+.register-link a {
+  color: #eab308;
+  text-decoration: none;
+}
+
+.register-link a:hover {
+  text-decoration: underline;
+}
+
+/* التذييل */
+.footer-section {
+  background-color: #fef08a;
+  width: 100%;
+  padding: 1rem;
+  margin-top: auto;
+}
+
+.footer-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.footer-links {
+  display: flex;
+  gap: 1.5rem;
+}
+
+.footer-links a {
+  color: #1e293b;
+  text-decoration: none;
+}
+
+.footer-links a:hover {
+  text-decoration: underline;
+}
+
+/* تعديلات إضافية */
+.login-card {
+    transition: all 0.3s ease;
+}
+  
+  .login-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+  
+  .text-purple-200 {
+    color: #c4b5fd;
+}
+  
+  .text-purple-300 {
+    color: #c4b5fd;
+ 
+}
+  
+  .focus\:ring-pantone-526:focus {
+    box-shadow: 0 0 0 2px rgba(34, 31, 81, 0.2);
+}
+  
+  .btn-secondary {
+    background-color: #facc15;
+}
+  
+  .btn-secondary:hover {
+    background-color: #eab308;
+}
+
+/* تحسينات الظل والتأثيرات */
+.login-card {
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    border-radius: 1rem; /* بدلًا من rounded-2xl */
+  }
+  
+  .login-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+  }
+  
+  /* تعديلات الهيدر */
+  .header-section {
+    padding: 2rem; /* مطابق لـ p-8 */
+  }
+  
+  .logo-container {
+    width: 5rem; /* مطابق لـ w-20 */
+    height: 5rem; /* مطابق لـ h-20 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* مطابق لـ shadow-lg */
+  }
+  
+  .system-title {
+    font-size: 1.5rem; /* مطابق لـ text-2xl */
+    margin-bottom: 0.5rem; /* مطابق لـ mb-2 */
+  }
+  
+  .system-description {
+    font-size: 0.875rem; /* مطابق لـ text-purple-200 */
+  }
+  
+  /* تعديلات الفورم */
+  .form-section {
+    padding: 2rem; /* مطابق لـ p-8 */
+  }
+  
+  .form-title {
+    font-size: 1.5rem; /* مطابق لـ text-2xl */
+    margin-bottom: 0.5rem; /* مطابق لـ mb-2 */
+  }
+  
+  .form-subtitle {
+    font-size: 0.875rem; /* مطابق لـ text-gray-600 */
+  }
+  
+  .input-field {
+    padding: 0.5rem 2.5rem 0.5rem 1rem; /* مطابق لـ py-2 px-4 */
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+  }
+  
+  .input-icon {
+    right: 1rem; /* تعديل ليتناسب مع الاتجاه RTL */
+  }
+  
+  .password-toggle {
+    left: 1rem; /* تعديل ليتناسب مع الاتجاه RTL */
+  }
+  
+  /* تعديلات الأزرار */
+  .btn-login {
+    padding: 0.5rem 1rem; /* مطابق لـ py-2 px-4 */
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1); /* مطابق لـ shadow-sm */
+  }
+  
+  .btn-login:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #221f51; /* مطابق لـ focus:ring-2 */
+  }
+  
+  .btn-google {
+    padding: 0.5rem 1rem; /* مطابق لـ py-2 px-4 */
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+  }
+  
+  /* تعديلات الروابط */
+  .forgot-password {
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+  }
+  
+  .register-link a {
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+  }
+  
+  /* تعديلات التذييل */
+  .footer-section {
+    padding: 0.75rem 1rem; /* مطابق لـ py-3 px-4 */
+    font-size: 0.875rem; /* مطابق لـ text-sm */
+  }
+  /* تأثيرات التركيز للحقول */
+.input-field:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 2px #221f51;
+  }
+  
+  /* تعديلات الظل للأيقونات */
+  .logo-container {
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  }
+  
+  /* تعديلات الـ checkbox */
+  .remember-me input[type="checkbox"] {
+    width: 1rem;
+    height: 1rem;
+    border-color: #e2e8f0;
+    border-radius: 0.25rem;
+  }
+  
+  .remember-me input[type="checkbox"]:checked {
+    background-color: #221f51;
+  }
+  
+  .remember-me input[type="checkbox"]:focus {
+    box-shadow: 0 0 0 2px rgba(34, 31, 81, 0.2);
+  }
+
+  @media (min-width: 768px) {
+    .header-section {
+      width: 40%; /* مطابق لـ md:w-2/5 */
+    }
+    
+    .form-section {
+      width: 60%; /* مطابق لـ md:w-3/5 */
+    }
+    
+    .login-card {
+      margin: 0; /* إزالة الهوامش في النسخة الكبيرة */
+    }
+  }
