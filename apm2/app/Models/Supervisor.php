@@ -28,6 +28,13 @@ class Supervisor extends Model
             'proposal_id'
         )->withTimestamps();
     }
+    public function isApprovedForGroup($groupId)
+    {
+        return $this->groups()
+            ->where('group_supervisor.groupid', $groupId) // تحديد الجدول
+            ->where('group_supervisor.status', 'approved')
+            ->exists();
+    }
 
     public function groups()
     {
@@ -36,18 +43,12 @@ class Supervisor extends Model
             'group_supervisor',
             'supervisorId',
             'groupid'
-        )->withPivot('status', 'created_at', 'updated_at');
+        )->withPivot('status');
     }
 
-    public function isApprovedForGroup($groupId)
+    public function meetings()
     {
-        return $this->groups()
-            ->where('groupid', $groupId)
-            ->wherePivot('status', 'approved')
-            ->exists();
+        return $this->hasMany(Meeting::class, 'supervisor_id', 'supervisorId');
     }
-   public function meetings()
-{
-    return $this->hasMany(Meeting::class, 'supervisor_id', 'supervisorId');
-}
+
 }

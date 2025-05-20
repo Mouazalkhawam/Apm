@@ -72,17 +72,16 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
     });
-     Route::prefix('supervisors/{supervisor}')->group(function () {
-        Route::get('/meetings', [MeetingController::class, 'supervisorIndex']); // عرض الاجتماعات
-        Route::post('/meetings/propose', [MeetingController::class, 'storeProposed']); // اقتراح مواعيد
-        Route::post('/meetings/{meeting}/confirm', [MeetingController::class, 'confirm']); // تأكيد موعد
-        Route::post('/meetings/{meeting}/reject', [MeetingController::class, 'reject']); // رفض موعد
+    Route::prefix('supervisors/{supervisor}')->group(function () {
+        Route::get('/meetings', [MeetingController::class, 'supervisorIndex']);
+        Route::post('/meetings/propose', [MeetingController::class, 'storeProposed']);
+        Route::post('/meetings/{meeting}/confirm', [MeetingController::class, 'confirm']);
+        Route::post('/meetings/{meeting}/reject', [MeetingController::class, 'reject']);
     });
 
-    // لقادة الفرق
-    Route::prefix('leaders/{leader}')->group(function () {
-        Route::get('/meetings', [MeetingController::class, 'leaderIndex']); // عرض الاجتماعات
-        Route::post('/meetings/{meeting}/choose', [MeetingController::class, 'chooseTime']); // اختيار موعد
+    Route::prefix('students/{leader}')->group(function () {
+        Route::get('/meetings', [MeetingController::class, 'leaderIndex']);
+        Route::post('/meetings/{meeting}/choose', [MeetingController::class, 'chooseTime']);
     });
   
 });

@@ -11,7 +11,8 @@ class Student extends Model
 
     protected $primaryKey = 'studentId';
     
-    protected $fillable = ['userId'];
+    protected $fillable = ['userId','experience', 
+    'gpa'];
 
     public function user()
     {
