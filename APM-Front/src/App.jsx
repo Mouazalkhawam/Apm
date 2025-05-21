@@ -1,8 +1,8 @@
-import { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import LoginPage from './pages/Auth/LoginPage';
-import Footer from './components/Footer';
+import RegistrationForm from './pages/Auth/RegistrationForm';
+import StudentProfile from './pages/StudentProfile';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -12,9 +12,18 @@ function App() {
         <div className="app">
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-           <Route path="/" element={<Navigate to="/login" />} />
+            <Route path="/register" element={<RegistrationForm />} />
+            <Route 
+              path="/profile" 
+              element={
+                <ProtectedRoute>
+                  <StudentProfile />
+                </ProtectedRoute>
+              } 
+            />
+            <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
-          <Footer />
+    
         </div>
       </AuthProvider>
     </Router>
