@@ -1,216 +1,138 @@
-import React, { useState, useContext } from 'react';
-import { useNavigate } from 'react-router-dom';
-import {
-  FaGraduationCap,
-  FaCheckCircle,
-  FaEnvelope,
-  FaEye,
-  FaEyeSlash,
-  FaLock,
-  FaGoogle
-} from 'react-icons/fa';
-import { AuthContext } from '../../context/AuthContext';
-import axios from '../../config/axios';
-import './LoginPage.css';
+import React, { useState } from "react";
+import "./LoginPage.css";
 
 const LoginPage = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
-  });
-  const [error, setError] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const { login } = useContext(AuthContext); // ✅ استخدم login بدلًا من setAuth
-  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
-  const handleSubmit = async (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    setLoading(true);
-    setError('');
 
     try {
-      console.group('%c🔐 عملية تسجيل الدخول', 'color: #2196F3; font-weight: bold');
-      console.log('📤 إرسال بيانات:', {
-        email: formData.email,
-        rememberMe: formData.rememberMe,
-        time: new Date().toLocaleTimeString()
-      });
-
-      if (!formData.email || !formData.password) {
-        throw new Error('يجب ملء جميع الحقول');
-      }
-
-      const response = await axios.post('/login', {
-        email: formData.email,
-        password: formData.password
-      }, {
-        timeout: 10000,
+      const response = await fetch("http://localhost:8000/api/login", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json'
-        }
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
       });
 
-      console.log('📥 استجابة الخادم:', response.data);
+      const data = await response.json();
 
-      const { access_token, refresh_token, user, message } = response.data;
+      if (!response.ok) {
+        setError(data.message || "حدث خطأ أثناء تسجيل الدخول");
+      } else {
+        // حفظ التوكن في التخزين المحلي
+        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("refresh_token", data.refresh_token);
+        alert("تم تسجيل الدخول بنجاح!");
 
-      if (!access_token || !user || !user.email) {
-        console.warn('⚠️ تحذير: بيانات ناقصة في الاستجابة', response.data);
-        throw new Error(message || 'بيانات المصادقة غير مكتملة');
+        // توجيه المستخدم إلى لوحة التحكم
+        window.location.href = "/profile";
       }
-
-      if (formData.rememberMe) {
-        localStorage.setItem('rememberMe', 'true');
-        console.log('🔐 تم تفعيل "تذكرني"');
-      }
-
-      // ✅ استخدم login لتحديث الحالة وتخزين البيانات
-      login(access_token, refresh_token, user);
-
-      setTimeout(() => {
-        console.log('➡️ توجيه إلى لوحة التحكم');
-        navigate('/dashboard', { replace: true });
-      }, 100);
-
     } catch (err) {
-      const errorDetails = {
-        name: err.name,
-        message: err.message,
-        status: err.response?.status,
-        data: err.response?.data,
-        time: new Date().toLocaleTimeString()
-      };
-
-      console.group('%c❌ فشل المصادقة', 'color: #F44336; font-weight: bold');
-      console.error('📌 الخطأ:', errorDetails.message);
-      console.table({
-        '📧 البريد': formData.email,
-        '🕒 الوقت': errorDetails.time,
-        '🧾 التفاصيل': JSON.stringify(errorDetails.data || 'لا يوجد تفاصيل إضافية')
-      });
-      console.groupEnd();
-
-      setError(errorDetails.message || 'حدث خطأ غير متوقع');
-
-    } finally {
-      setLoading(false);
-      console.groupEnd();
+      setError("حدث خطأ في الاتصال بالخادم");
     }
   };
 
   return (
-    <div className="login-card">
-      <div className="header-section">
-        <div className="logo-container">
-          <FaGraduationCap className="graduation-icon" />
+    <div className="login-container">
+      {/* الجزء الرسومي */}
+      <div className="graphic-section gradient-bg">
+        <div className="header">
+          <h1>Academic Project Hub</h1>
+          <p>نظام إدارة المشاريع الأكاديمية</p>
         </div>
-        <h1 className="system-title">نظام إدارة المشاريع</h1>
-        <p className="system-description">منصة متكاملة لإدارة المشاريع الأكاديمية والبحثية</p>
-        <div className="features-section">
-          <h3 className="features-title">مميزات النظام:</h3>
-          <ul className="features-list">
-            <li>
-              <FaCheckCircle className="feature-icon" />
-              <span>إدارة المشاريع البحثية</span>
-            </li>
-            <li>
-              <FaCheckCircle className="feature-icon" />
-              <span>متابعة المهام الأكاديمية</span>
-            </li>
-            <li>
-              <FaCheckCircle className="feature-icon" />
-              <span>تواصل بين أعضاء الفريق</span>
-            </li>
-          </ul>
+
+        <div className="illustration-container">
+          <div className="illustration-bg"></div>
+          <i className="fas fa-graduation-cap illustration-icon"></i>
+        </div>
+
+        <div className="features-container">
+          <div className="feature-item" style={{ animationDelay: "0.4s" }}>
+            <i className="fas fa-graduation-cap"></i>
+            <p>إدارة كافة مشاريعك الأكاديمية في مكان واحد</p>
+          </div>
+          <div className="feature-item" style={{ animationDelay: "0.5s" }}>
+            <i className="fas fa-users"></i>
+            <p>تعاون مع زملائك وأساتذتك بسهولة</p>
+          </div>
+          <div className="feature-item" style={{ animationDelay: "0.6s" }}>
+            <i className="fas fa-chart-line"></i>
+            <p>تابع تقدم مشاريعك بتحليلات دقيقة</p>
+          </div>
         </div>
       </div>
 
+      {/* نموذج تسجيل الدخول */}
       <div className="form-section">
-        <div className="form-header">
-          <h2 className="form-title">تسجيل الدخول</h2>
-          <p className="form-subtitle">أدخل بياناتك للوصول إلى حسابك</p>
-        </div>
+        <h2 className="form-title arabic-font">مرحباً بعودتك</h2>
+        <p className="form-subtitle arabic-font">سجل دخولك للوصول إلى لوحة التحكم</p>
 
-        {error && (
-          <div className="error-message">
-            <p>⛔ {error}</p>
-            <small>يرجى المحاولة مرة أخرى أو التواصل مع الدعم الفني</small>
-          </div>
-        )}
+        <form onSubmit={handleLogin}>
+          {error && <div className="error-message arabic-font">{error}</div>}
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-group">
-            <label htmlFor="email" className="input-label">البريد الإلكتروني</label>
-            <div className="input-container">
+          <div className="form-group">
+            <label htmlFor="email-ar" className="form-label arabic-font">
+              البريد الإلكتروني أو الرقم الجامعي
+            </label>
+            <div className="input-wrapper">
               <input
-                type="email"
-                id="email"
-                className="input-field"
-                placeholder="example@university.edu"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                required
-                autoComplete="username"
+                type="text"
+                id="email-ar"
+                className="form-input"
+                placeholder="ادخل بريدك الجامعي"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
-              <FaEnvelope className="input-icon" />
+              <div className="input-icon">
+                <i className="far fa-envelope"></i>
+              </div>
             </div>
           </div>
 
-          <div className="input-group">
-            <label htmlFor="password" className="input-label">كلمة المرور</label>
-            <div className="input-container">
+          <div className="form-group">
+            <label htmlFor="password-ar" className="form-label arabic-font">
+              كلمة المرور
+            </label>
+            <div className="input-wrapper">
               <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                className="input-field"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                required
-                autoComplete="current-password"
+                type="password"
+                id="password-ar"
+                className="form-input"
+                placeholder="ادخل كلمة المرور"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
               />
-              {showPassword ? (
-                <FaEye
-                  className="password-toggle"
-                  onClick={() => setShowPassword(false)}
-                  title="إخفاء كلمة المرور"
-                />
-              ) : (
-                <FaEyeSlash
-                  className="password-toggle"
-                  onClick={() => setShowPassword(true)}
-                  title="إظهار كلمة المرور"
-                />
-              )}
-              <FaLock className="input-icon" />
+              <div className="input-icon">
+                <i className="fas fa-lock"></i>
+              </div>
+            </div>
+            <div className="forgot-link">
+              <a href="#" className="arabic-font">هل نسيت كلمة المرور؟</a>
             </div>
           </div>
 
-          
-          <button
-            type="submit"
-            className="btn-login"
-            disabled={loading}
-            aria-busy={loading}
-          >
-            {loading ? (
-              <>
-                <span className="spinner"></span>
-                جاري المعالجة...
-              </>
-            ) : 'تسجيل الدخول'}
+          <div className="remember-me">
+            <div className="checkbox-wrapper">
+              <input type="checkbox" id="remember-ar" className="form-checkbox" />
+              <label htmlFor="remember-ar" className="checkbox-label arabic-font">
+                تذكرني
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" className="submit-btn arabic-font">
+            تسجيل الدخول
           </button>
-
-         
-
-          
-
-          <p className="register-link">
-            ليس لديك حساب؟ <a href="/register">سجل الآن</a>
-          </p>
         </form>
+
+        <div className="signup-link arabic-font">
+          <span>ليس لديك حساب؟ </span>
+          <a href="#">سجل الآن</a>
+        </div>
       </div>
     </div>
   );
