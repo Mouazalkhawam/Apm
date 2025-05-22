@@ -35,6 +35,8 @@ body {
 @media (min-width: 768px) {
   .login-card {
     flex-direction: row;
+    min-width: 170vh;
+    min-height: 100vh;
   }
 }
 
@@ -124,13 +126,15 @@ body {
 }
 
 .input-group {
-  margin-bottom: 1.5rem;
+  margin-bottom: 4.5rem;
 }
 
 .input-label {
   display: block;
   color: #1e293b;
   margin-bottom: 0.5rem;
+  margin-left: 34rem;
+  min-width: 7rem;
 }
 
 .input-container {
@@ -138,7 +142,7 @@ body {
 }
 
 .input-field {
-  width: 88%;
+  width: 95%;
   padding: 0.5rem 2.5rem 0.5rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
@@ -156,7 +160,7 @@ body {
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  right: 1rem;
+  right: 2rem;
   color: #94a3b8;
 }
 
@@ -378,12 +382,10 @@ body {
     font-size: 0.875rem; /* مطابق لـ text-sm */
   }
   
-  .input-icon {
-    right: 1rem; /* تعديل ليتناسب مع الاتجاه RTL */
-  }
+ 
   
   .password-toggle {
-    left: 1rem; /* تعديل ليتناسب مع الاتجاه RTL */
+    left: 2rem; /* تعديل ليتناسب مع الاتجاه RTL */
   }
   
   /* تعديلات الأزرار */

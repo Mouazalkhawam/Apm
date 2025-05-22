@@ -188,18 +188,7 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <div className="form-options">
-            <label className="remember-me">
-              <input
-                type="checkbox"
-                checked={formData.rememberMe}
-                onChange={(e) => setFormData({ ...formData, rememberMe: e.target.checked })}
-              />
-              <span>تذكرني على هذا الجهاز</span>
-            </label>
-            <a href="/forgot-password" className="forgot-password">نسيت كلمة المرور؟</a>
-          </div>
-
+          
           <button
             type="submit"
             className="btn-login"
@@ -214,18 +203,9 @@ const LoginPage = () => {
             ) : 'تسجيل الدخول'}
           </button>
 
-          <div className="divider">
-            <span>أو</span>
-          </div>
+         
 
-          <button
-            type="button"
-            className="btn-google"
-            onClick={() => console.log('جاري التكامل مع Google')}
-          >
-            <FaGoogle className="google-icon" />
-            تسجيل الدخول باستخدام Google
-          </button>
+          
 
           <p className="register-link">
             ليس لديك حساب؟ <a href="/register">سجل الآن</a>

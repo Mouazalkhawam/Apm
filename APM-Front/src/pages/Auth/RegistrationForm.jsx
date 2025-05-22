@@ -8,70 +8,71 @@ const RegistrationForm = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
-        firstName: '',
-        lastName: '',
-        universityId: '',
-        college: '',
-        major: '',
-        year: '',
+        name: '',
         email: '',
         password: '',
         confirmPassword: '',
-        phone: '',
         gpa: '0',
         agreeTerms: false
     });
     const [photoPreview, setPhotoPreview] = useState(null);
-    const [skills, setSkills] = useState(['HTML/CSS', 'JavaScript', 'Python', 'إدارة المشاريع', 'التفكير النقدي']);
-    const [experiences, setExperiences] = useState([
-        {
-            title: 'مشروع التخرج',
-            date: '2022 - 2023',
-            description: 'تصميم وتنفيذ نظام إدارة المشاريع الأكاديمية باستخدام تقنيات الويب الحديثة'
-        }
-    ]);
+    const [photoFile, setPhotoFile] = useState(null);
+    const [skills, setSkills] = useState([]);
+    const [availableSkills, setAvailableSkills] = useState([]);
+    const [experiences, setExperiences] = useState([]);
     const [showModal, setShowModal] = useState(false);
     const [newExperience, setNewExperience] = useState({
         title: '',
         date: '',
         description: ''
     });
-    const [newSkill, setNewSkill] = useState('');
+    const [selectedSkillId, setSelectedSkillId] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
+    const [loadingSkills, setLoadingSkills] = useState(true);
 
-    // Initialize GPA bar
     useEffect(() => {
         updateGpaBar();
+        fetchAvailableSkills();
     }, [formData.gpa]);
+
+    const fetchAvailableSkills = async () => {
+        try {
+            const response = await fetch('http://127.0.0.1:8000/api/all-skills');
+            const data = await response.json();
+            if (data.success) setAvailableSkills(data.data);
+        } catch (error) {
+            console.error('Error fetching skills:', error);
+        } finally {
+            setLoadingSkills(false);
+        }
+    };
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
-        setFormData({
-            ...formData,
+        setFormData(prev => ({
+            ...prev,
             [name]: type === 'checkbox' ? checked : value
-        });
+        }));
     };
 
     const handlePhotoUpload = (e) => {
         const file = e.target.files[0];
         if (file) {
+            setPhotoFile(file);
             const reader = new FileReader();
-            reader.onloadend = () => {
-                setPhotoPreview(reader.result);
-            };
+            reader.onloadend = () => setPhotoPreview(reader.result);
             reader.readAsDataURL(file);
         }
     };
 
-    const triggerFileInput = () => {
-        fileInputRef.current.click();
-    };
+    const triggerFileInput = () => fileInputRef.current.click();
 
     const addSkill = () => {
-        if (newSkill.trim()) {
-            setSkills([...skills, newSkill.trim()]);
-            setNewSkill('');
+        if (selectedSkillId && !skills.some(s => s.id == selectedSkillId)) {
+            const skill = availableSkills.find(s => s.id == selectedSkillId);
+            if (skill) setSkills(prev => [...prev, skill]);
         }
+        setSelectedSkillId('');
     };
 
     const removeSkill = (index) => {
@@ -87,279 +88,177 @@ const RegistrationForm = () => {
         
         let gpa = parseFloat(formData.gpa);
         if (isNaN(gpa) || gpa < 0) gpa = 0;
-        if (gpa > 5) gpa = 5;
+        if (gpa > 4) gpa = 4;
         
-        const percentage = (gpa / 5) * 100;
+        const percentage = (gpa / 4) * 100;
         if (gpaProgress) gpaProgress.style.width = `${percentage}%`;
         if (gpaValue) gpaValue.textContent = gpa.toFixed(2);
         
-        // Change color based on GPA
         if (gpaProgress) {
-            if (gpa >= 4.5) {
+            if (gpa >= 3.75) {
                 gpaProgress.style.background = 'linear-gradient(90deg, #27ae60 0%, #2ecc71 100%)';
-            } else if (gpa >= 3.5) {
+            } else if (gpa >= 2.75) {
                 gpaProgress.style.background = 'linear-gradient(90deg, #f39c12 0%, #f1c40f 100%)';
             } else {
                 gpaProgress.style.background = 'linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)';
             }
         }
     };
-
     const handleExperienceChange = (e) => {
         const { name, value } = e.target;
-        setNewExperience({
-            ...newExperience,
-            [name]: value
-        });
+        setNewExperience(prev => ({ ...prev, [name]: value }));
     };
 
     const saveExperience = () => {
+        if (experiences.length >= 5) return alert('الحد الأقصى 5 مشاريع');
         if (newExperience.title && newExperience.date && newExperience.description) {
-            setExperiences([...experiences, newExperience]);
+            setExperiences(prev => [...prev, newExperience]);
             setNewExperience({ title: '', date: '', description: '' });
             setShowModal(false);
-            showSuccessMessage('تم إضافة الخبرة بنجاح!');
-        } else {
-            alert('الرجاء ملئ جميع الحقول المطلوبة');
         }
     };
 
-    const showSuccessMessage = (message) => {
-        setShowSuccess(true);
-        setTimeout(() => {
-            setShowSuccess(false);
-        }, 3000);
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (!validateForm()) return;
+
+        try {
+            const form = new FormData();
+            form.append('name', formData.name);
+            form.append('email', formData.email);
+            form.append('password', formData.password);
+            form.append('password_confirmation', formData.confirmPassword);
+            form.append('profile_picture', photoFile);
+
+            const regResponse = await fetch('http://127.0.0.1:8000/api/register', {
+                method: 'POST',
+                body: form
+            });
+            
+            if (!regResponse.ok) throw new Error('فشل التسجيل');
+            
+            const { access_token, user } = await regResponse.json();
+            
+            await updateProfile(access_token);
+            await addSkills(access_token);
+            
+            setShowSuccess(true);
+            setTimeout(() => navigate('/login'), 3000);
+            
+        } catch (error) {
+            alert(error.message);
+        }
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
-        // Validate passwords match
+    const validateForm = () => {
         if (formData.password !== formData.confirmPassword) {
             alert('كلمات المرور غير متطابقة!');
-            return;
+            return false;
         }
-        
-        if (formData.password.length < 8) {
-            alert('يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل');
-            return;
-        }
-        
-        // Check if terms are agreed
-        if (!formData.agreeTerms) {
-            alert('يجب الموافقة على شروط وأحكام استخدام النظام');
-            return;
-        }
-        
-        // Check if photo is uploaded
-        if (!photoPreview) {
-            alert('الرجاء رفع صورة شخصية');
-            return;
-        }
-        
-        // Check experiences count (max 5)
-        if (experiences.length > 5) {
-            alert('يمكنك إضافة ما يصل إلى 5 مشروعات أكاديمية فقط');
-            return;
-        }
-        
-        // Prepare data for submission
-        const submissionData = {
-            ...formData,
-            photo: photoPreview,
-            skills,
-            experiences
-        };
-        
-        console.log('Form Data:', submissionData);
-        
-        // Show success message and reset form
-        setShowSuccess(true);
-        setFormData({
-            firstName: '',
-            lastName: '',
-            universityId: '',
-            college: '',
-            major: '',
-            year: '',
-            email: '',
-            password: '',
-            confirmPassword: '',
-            phone: '',
-            gpa: '0',
-            agreeTerms: false
+      /*  if (!formData.agreeTerms || !photoFile) {
+            alert('الرجاء استكمال جميع الحقول المطلوبة');
+            return false;
+        }*/
+        return true;
+    };
+
+    const updateProfile = async (token) => {
+        const response = await fetch('http://127.0.0.1:8000/api/student/profile/update', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({
+                gpa: formData.gpa,
+                experience: JSON.stringify(experiences)
+            })
         });
-        setPhotoPreview(null);
-        setSkills([]);
-        setExperiences([]);
-        
-        // Redirect after 3 seconds
-        setTimeout(() => {
-            navigate('/login');
-        }, 3000);
+        if (!response.ok) throw new Error('فشل تحديث الملف');
+    };
+
+    const addSkills = async (token) => {
+        for (const skill of skills) {
+            const response = await fetch('http://127.0.0.1:8000/api/student/profile/skills/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ skill_id: skill.id })
+            });
+            if (!response.ok) console.error('فشل إضافة المهارة:', skill.name);
+        }
     };
 
     return (
         <div className="main-container">
             <div className="form-container">
-                <div className="header-section">
+                <div className="header-section-reg">
                     <h1 className="header-title">إنشاء حساب طالب جديد</h1>
-                    <p className="header-description">املأ النموذج التالي لتسجيل حسابك في نظام إدارة المشاريع الأكاديمية وابدأ رحلتك التعليمية</p>
+                    <p className="header-description">املأ النموذج التالي لتسجيل حسابك في النظام</p>
                 </div>
-                
+
                 <form id="registrationForm" onSubmit={handleSubmit}>
                     <div className="form-row">
                         <div className="form-group half-width">
-                            <label htmlFor="firstName" className="form-label">الاسم الأول</label>
-                            <input 
-                                type="text" 
-                                id="firstName" 
-                                name="firstName" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل اسمك الأول"
-                                value={formData.firstName}
-                                onChange={handleInputChange}
-                            />
-                        </div>
-                        
-                        <div className="form-group half-width">
-                            <label htmlFor="lastName" className="form-label">اسم العائلة</label>
-                            <input 
-                                type="text" 
-                                id="lastName" 
-                                name="lastName" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل اسم العائلة"
-                                value={formData.lastName}
-                                onChange={handleInputChange}
-                            />
-                        </div>
-                        
-                        <div className="form-group half-width">
-                            <label htmlFor="universityId" className="form-label">الرقم الجامعي</label>
-                            <input 
-                                type="text" 
-                                id="universityId" 
-                                name="universityId" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل رقمك الجامعي"
-                                value={formData.universityId}
-                                onChange={handleInputChange}
-                            />
-                        </div>
-                        
-                        <div className="form-group half-width">
-                            <label htmlFor="college" className="form-label">الكلية</label>
-                            <select 
-                                id="college" 
-                                name="college" 
-                                className="form-select" 
+                            <label htmlFor="name" className="form-label">الاسم الكامل</label>
+                            <input
+                                type="text"
+                                id="name"
+                                name="name"
+                                className="form-input"
                                 required
-                                value={formData.college}
+                                value={formData.name}
                                 onChange={handleInputChange}
-                            >
-                                <option value="">اختر الكلية</option>
-                                <option value="engineering">كلية الهندسة</option>
-                                <option value="medicine">كلية الطب</option>
-                                <option value="science">كلية العلوم</option>
-                                <option value="arts">كلية الآداب</option>
-                                <option value="business">كلية إدارة الأعمال</option>
-                            </select>
-                        </div>
-                        
-                        <div className="form-group half-width">
-                            <label htmlFor="major" className="form-label">التخصص</label>
-                            <input 
-                                type="text" 
-                                id="major" 
-                                name="major" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل تخصصك"
-                                value={formData.major}
-                                onChange={handleInputChange}
+                                placeholder="الاسم الثلاثي"
                             />
                         </div>
-                        
+
                         <div className="form-group half-width">
-                            <label htmlFor="year" className="form-label">السنة الدراسية</label>
-                            <select 
-                                id="year" 
-                                name="year" 
-                                className="form-select" 
+                            <label htmlFor="email" className="form-label">البريد الجامعي</label>
+                            <input
+                                type="email"
+                                id="email"
+                                name="email"
+                                className="form-input"
                                 required
-                                value={formData.year}
-                                onChange={handleInputChange}
-                            >
-                                <option value="">اختر السنة</option>
-                                <option value="1">الأولى</option>
-                                <option value="2">الثانية</option>
-                                <option value="3">الثالثة</option>
-                                <option value="4">الرابعة</option>
-                                <option value="5">الخامسة</option>
-                            </select>
-                        </div>
-                        
-                        <div className="form-group">
-                            <label htmlFor="email" className="form-label">البريد الإلكتروني الجامعي</label>
-                            <input 
-                                type="email" 
-                                id="email" 
-                                name="email" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل بريدك الجامعي"
                                 value={formData.email}
                                 onChange={handleInputChange}
+                                placeholder="example@university.edu.sa"
                             />
                         </div>
-                        
+
                         <div className="form-group half-width">
                             <label htmlFor="password" className="form-label">كلمة المرور</label>
-                            <input 
-                                type="password" 
-                                id="password" 
-                                name="password" 
-                                className="form-input" 
-                                required 
-                                placeholder="******"
+                            <input
+                                type="password"
+                                id="password"
+                                name="password"
+                                className="form-input"
+                                required
+                                minLength="6"
                                 value={formData.password}
                                 onChange={handleInputChange}
+                                placeholder="••••••••"
                             />
-                            <small className="form-note">يجب أن تحتوي على 8 أحرف على الأقل</small>
+                            <small className="form-note">8 أحرف على الأقل</small>
                         </div>
-                        
+
                         <div className="form-group half-width">
                             <label htmlFor="confirmPassword" className="form-label">تأكيد كلمة المرور</label>
-                            <input 
-                                type="password" 
-                                id="confirmPassword" 
-                                name="confirmPassword" 
-                                className="form-input" 
-                                required 
-                                placeholder="******"
+                            <input
+                                type="password"
+                                id="confirmPassword"
+                                name="confirmPassword"
+                                className="form-input"
+                                required
                                 value={formData.confirmPassword}
                                 onChange={handleInputChange}
+                                placeholder="••••••••"
                             />
                         </div>
-                        
-                        <div className="form-group">
-                            <label htmlFor="phone" className="form-label">رقم الجوال</label>
-                            <input 
-                                type="tel" 
-                                id="phone" 
-                                name="phone" 
-                                className="form-input" 
-                                required 
-                                placeholder="ادخل رقم جوالك"
-                                value={formData.phone}
-                                onChange={handleInputChange}
-                            />
-                        </div>
-                        
+
                         <div className="form-group">
                             <label className="form-label">الصورة الشخصية</label>
                             <div className="photo-upload" onClick={triggerFileInput}>
@@ -368,66 +267,67 @@ const RegistrationForm = () => {
                                 ) : (
                                     <>
                                         <FontAwesomeIcon icon={faUserCircle} className="photo-icon" />
-                                        <p className="photo-text">انقر لرفع صورة شخصية</p>
+                                        <p className="photo-text">انقر لرفع الصورة</p>
                                     </>
                                 )}
-                                <input 
-                                    type="file" 
-                                    id="photoInput" 
+                                <input
+                                    type="file"
                                     ref={fileInputRef}
-                                    accept="image/*" 
-                                    style={{ display: 'none' }}
+                                    accept="image/*"
+                                    hidden
                                     onChange={handlePhotoUpload}
                                 />
                             </div>
                         </div>
-                        
+
                         <div className="form-group">
                             <label className="form-label">المهارات</label>
                             <div className="skills-container">
                                 {skills.map((skill, index) => (
-                                    <div key={index} className="skill-tag">
+                                    <div key={skill.id} className="skill-tag">
                                         <span className="remove-skill" onClick={() => removeSkill(index)}>&times;</span>
-                                        {skill}
+                                        {skill.name}
                                     </div>
                                 ))}
                             </div>
                             <div className="add-skill-container">
-                                <input 
-                                    type="text" 
-                                    id="newSkill" 
-                                    className="add-skill-input form-input" 
-                                    placeholder="أضف مهارة جديدة..."
-                                    value={newSkill}
-                                    onChange={(e) => setNewSkill(e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                                />
-                                <button 
-                                    type="button" 
-                                    id="addSkillBtn" 
+                                <select
+                                    value={selectedSkillId}
+                                    onChange={(e) => setSelectedSkillId(e.target.value)}
+                                    className="form-input"
+                                    disabled={loadingSkills}
+                                >
+                                    <option value="">{loadingSkills ? 'جاري التحميل...' : 'اختر مهارة'}</option>
+                                    {availableSkills.map(skill => (
+                                        <option key={skill.id} value={skill.id}>{skill.name}</option>
+                                    ))}
+                                </select>
+                                <button
+                                    type="button"
                                     className="add-skill-btn"
                                     onClick={addSkill}
+                                    disabled={!selectedSkillId}
                                 >
                                     <FontAwesomeIcon icon={faPlus} /> إضافة
                                 </button>
                             </div>
-                            <small className="form-note">اضف مهاراتك التقنية والأكاديمية</small>
+                            <small className="form-note">اختر من القائمة المنسدلة</small>
                         </div>
-                        
+
                         <div className="form-group">
-                            <label className="form-label">المعدل التراكمي (GPA)</label>
+                            <label className="form-label">المعدل التراكمي</label>
                             <div className="gpa-container">
                                 <div className="gpa-bar">
                                     <div className="gpa-progress" id="gpaProgress"></div>
                                 </div>
-                                <input 
-                                    type="number" 
-                                    id="gpa" 
-                                    name="gpa" 
-                                    className="gpa-input form-input" 
-                                    min="0" 
-                                    max="5" 
-                                    step="0.01" 
+                                <input
+                                    type="number"
+                                    id="gpa"
+                                    name="gpa"
+                                    className="gpa-input form-input"
+                                    min="0"
+                                    max="4"
+                                    step="0.01"
                                     value={formData.gpa}
                                     onChange={handleInputChange}
                                     placeholder="0.00"
@@ -435,9 +335,9 @@ const RegistrationForm = () => {
                                 <span className="gpa-value" id="gpaValue">0.00</span>
                             </div>
                         </div>
-                        
+
                         <div className="form-group">
-                            <label className="form-label">الخبرات والمشاريع السابقة</label>
+                            <label className="form-label">الخبرات الأكاديمية</label>
                             <div id="experiencesContainer">
                                 {experiences.map((exp, index) => (
                                     <div key={index} className="experience-item">
@@ -445,113 +345,91 @@ const RegistrationForm = () => {
                                             <span className="experience-title">{exp.title}</span>
                                             <span className="experience-date">{exp.date}</span>
                                         </div>
-                                        <p className="experience-description">
-                                            {exp.description}
-                                        </p>
+                                        <p className="experience-description">{exp.description}</p>
                                     </div>
                                 ))}
-                                <div 
-                                    className="add-experience-btn" 
-                                    id="addExperienceBtn"
-                                    onClick={() => setShowModal(true)}
-                                >
+                                <div className="add-experience-btn" onClick={() => setShowModal(true)}>
                                     <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
                                 </div>
                             </div>
-                            <small className="form-note">يمكنك إضافة ما يصل إلى 5 مشروعات أكاديمية</small>
+                            <small className="form-note">الحد الأقصى 5 خبرات</small>
                         </div>
-                        
-                        <div className="terms-container">
-                            <input 
-                                type="checkbox" 
-                                id="agreeTerms" 
-                                name="agreeTerms" 
-                                className="terms-checkbox" 
-                                required
-                                checked={formData.agreeTerms}
-                                onChange={handleInputChange}
-                            />
-                            <label htmlFor="agreeTerms" className="terms-label">أوافق على <a href="#" target="_blank" className="terms-link">شروط وأحكام</a> استخدام النظام</label>
+
+                        <div className="form-group terms-group">
+                            <label>
+                                <input
+                                    type="checkbox"
+                                    name="agreeTerms"
+                                    checked={formData.agreeTerms}
+                                    onChange={handleInputChange}
+                                />
+                                أوافق على <a href="/terms">الشروط والأحكام</a>
+                            </label>
                         </div>
-                        
+
                         <button type="submit" className="submit-btn">
-                            تسجيل الحساب <FontAwesomeIcon icon={faUserGraduate} className="submit-icon" />
+                            <FontAwesomeIcon icon={faUserGraduate} /> تسجيل الحساب
                         </button>
                     </div>
                 </form>
             </div>
-            
-      
-      {/* Experience Modal */}
-      {showModal && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <span className="close-modal" onClick={closeExperienceModal}>
-              <FontAwesomeIcon icon={faTimes} />
-            </span>
-            <h2 className="modal-title">إضافة خبرة جديدة</h2>
-            <div className="form-group">
-              <label htmlFor="expTitle" className="form-label">عنوان الخبرة/المشروع</label>
-              <input
-                type="text"
-                id="expTitle"
-                name="title"
-                className="form-input"
-                required
-                placeholder="مثال: مشروع التخرج"
-                value={newExperience.title}
-                onChange={handleExperienceChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="expDate" className="form-label">الفترة الزمنية</label>
-              <input
-                type="text"
-                id="expDate"
-                name="date"
-                className="form-input"
-                placeholder="مثال: 2021 - 2022"
-                required
-                value={newExperience.date}
-                onChange={handleExperienceChange}
-              />
-            </div>
-            <div className="form-group">
-              <label htmlFor="expDescription" className="form-label">وصف الخبرة/المشروع</label>
-              <textarea
-                id="expDescription"
-                name="description"
-                className="form-textarea"
-                rows="4"
-                required
-                placeholder="وصف مختصر للمشروع وأهدافه والنتائج المتحققة..."
-                value={newExperience.description}
-                onChange={handleExperienceChange}
-              ></textarea>
-            </div>
-            <button type="button" className="save-experience-btn" onClick={saveExperience}>
-              حفظ الخبرة <FontAwesomeIcon icon={faSave} />
-            </button>
-          </div>
+
+            {showModal && (
+                <div className="modal-overlay">
+                    <div className="modal-content">
+                        <span className="close-modal" onClick={() => setShowModal(false)}>
+                            <FontAwesomeIcon icon={faTimes} />
+                        </span>
+                        <h2 className="modal-title">إضافة خبرة جديدة</h2>
+                        <div className="form-group">
+                            <input
+                                type="text"
+                                name="title"
+                                className="form-input"
+                                placeholder="عنوان الخبرة"
+                                value={newExperience.title}
+                                onChange={handleExperienceChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <input
+                                type="text"
+                                name="date"
+                                className="form-input"
+                                placeholder="الفترة الزمنية"
+                                value={newExperience.date}
+                                onChange={handleExperienceChange}
+                            />
+                        </div>
+                        <div className="form-group">
+                            <textarea
+                                name="description"
+                                className="form-textarea"
+                                rows="4"
+                                placeholder="وصف الخبرة"
+                                value={newExperience.description}
+                                onChange={handleExperienceChange}
+                            ></textarea>
+                        </div>
+                        <button className="save-experience-btn" onClick={saveExperience}>
+                            <FontAwesomeIcon icon={faSave} /> حفظ
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {showSuccess && (
+                <div className="success-message">
+                    <FontAwesomeIcon icon={faCheckCircle} className="success-icon" />
+                    <h2 className="success-title">تم التسجيل بنجاح!</h2>
+                    <p className="success-text">سيتم تحويلك لصفحة الدخول خلال 3 ثواني</p>
+                    <button className="success-close-btn" onClick={() => navigate('/login')}>
+                        تم
+                    </button>
+                </div>
+            )}
         </div>
-      )}
-      
-      {/* Success Message */}
-      {showSuccess && (
-        <div className="success-message">
-          <FontAwesomeIcon icon={faCheckCircle} className="success-icon" />
-          <h2 className="success-title">تم إنشاء الحساب بنجاح!</h2>
-          <p className="success-text">سيتم مراجعة بياناتك من قبل المسؤول وتفعيل الحساب خلال 24 ساعة</p>
-          <button className="success-close-btn" onClick={() => {
-            setShowSuccess(false);
-            navigate('/login');
-          }}>
-            تم
-          </button>
-        </div>
-      )}
-    </div>
-  );
+    );
 };
 
 export default RegistrationForm;
