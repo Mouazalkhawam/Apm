@@ -4,6 +4,7 @@ import LoginPage from './pages/Auth/LoginPage';
 import RegistrationForm from './pages/Auth/RegistrationForm';
 import StudentProfile from './pages/StudentProfile';
 import ProposalForm from './pages/ProposalForm';
+import NewProjectForm from './pages/NewProjectForm';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -22,6 +23,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+               path="/new-project" 
+               element={
+                <ProtectedRoute>
+                <NewProjectForm />
+                </ProtectedRoute>
+                       } 
+             />
                <Route 
                  path="/proposal" 
                  element={

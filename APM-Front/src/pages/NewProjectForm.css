@@ -1,0 +1,434 @@
+/* الخطوط */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap');
+
+/* أنماط أساسية */
+.new-project-container * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+.new-project-container {
+    font-family: 'Tajawal', sans-serif;
+    background-color: #f8f9fa;
+    direction: rtl;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* الألوان */
+.new-project-container .primary-bg {
+    background-color: #791770;
+}
+
+.new-project-container .primary-text {
+    color: #791770;
+}
+
+.new-project-container .secondary-bg {
+    background-color: #eab307;
+}
+
+.new-project-container .secondary-text {
+    color: #eab307;
+}
+
+/* الترويسة */
+.new-project-container header {
+    background-color: #791770;
+    color: white;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.new-project-container .header-container {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.new-project-container header h1 {
+    font-size: 1.75rem;
+    font-weight: 700;
+}
+
+/* المحتوى الرئيسي */
+.new-project-container main {
+    flex-grow: 1;
+    width: 100%;
+    max-width: 1400px;
+    margin: 2rem auto;
+    padding: 0 1.5rem;
+}
+
+.new-project-container .project-card {
+    width: 100%;
+    background-color: white;
+    border-radius: 1rem;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    opacity: 1;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.new-project-container .project-header {
+    padding: 1.25rem 2rem;
+    background-color: #791770;
+    color: white;
+}
+
+.new-project-container .project-header h2 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* النموذج */
+.new-project-container .project-form {
+    padding: 2rem;
+}
+
+.new-project-container .form-group {
+    margin-bottom: 1.75rem;
+}
+
+.new-project-container label {
+    display: block;
+    margin-bottom: 0.75rem;
+    color: #374151;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.new-project-container input[type="text"],
+.new-project-container textarea {
+    width: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid #d1d5db;
+    border-radius: 0.75rem;
+    font-family: inherit;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.new-project-container input[type="text"]:focus,
+.new-project-container textarea:focus {
+    outline: none;
+    border-color: #791770;
+    box-shadow: 0 0 0 3px rgba(121, 23, 112, 0.1);
+}
+
+.new-project-container textarea {
+    resize: vertical;
+    min-height: 8rem;
+}
+
+/* إضافة الطلاب */
+.new-project-container .student-search-container {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+
+.new-project-container .add-student-btn {
+    position: absolute;
+    left: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background-color: #eab307;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.95rem;
+    transition: all 0.2s;
+}
+
+.new-project-container .add-student-btn:hover {
+    background-color: #d8a206;
+}
+
+/* اقتراحات الطلاب */
+.new-project-container .suggestions-container {
+    display: none;
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.new-project-container .suggestions-container.show {
+    display: block;
+}
+
+.new-project-container .suggestions-container h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.new-project-container .suggestion-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.new-project-container .suggestion-btn {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    color: #374151;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-size: 0.95rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.new-project-container .suggestion-btn:hover {
+    background-color: #f3f4f6;
+    transform: translateY(-1px);
+}
+
+/* قائمة الطلاب المضافين */
+.new-project-container .students-container {
+    background-color: #f9fafb;
+    padding: 1.25rem;
+    border-radius: 0.75rem;
+    border: 1px dashed #d1d5db;
+}
+
+.new-project-container .students-container h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 0.75rem;
+}
+
+.new-project-container .students-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.new-project-container .no-students {
+    color: #6b7280;
+    font-size: 0.95rem;
+    padding: 0.5rem 0;
+}
+
+/* بطاقات الطلاب */
+.new-project-container .student-tag {
+    background-color: #f3f4f6;
+    border: 1px solid #e5e7eb;
+    border-radius: 1.25rem;
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.new-project-container .student-tag:hover {
+    transform: translateY(-2px);
+    background-color: #e5e7eb;
+}
+
+.new-project-container .student-name {
+    color: #374151;
+}
+
+.new-project-container .remove-btn {
+    color: #ef4444;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-size: 0.8rem;
+    background: none;
+    border: none;
+}
+
+.new-project-container .remove-btn:hover {
+    color: #dc2626;
+}
+
+/* أزرار الإرسال */
+.new-project-container .form-actions {
+    display: flex;
+    justify-content: flex-start;
+    gap: 1rem;
+    margin-top: 2.5rem;
+    flex-wrap: wrap;
+}
+
+.new-project-container .cancel-btn {
+    padding: 0.75rem 1.5rem;
+    border: 1px solid #d1d5db;
+    color: #374151;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 600;
+    background-color: white;
+    transition: all 0.2s;
+}
+
+.new-project-container .cancel-btn:hover {
+    background-color: #f3f4f6;
+}
+
+.new-project-container .submit-btn {
+    padding: 0.75rem 1.5rem;
+    background-color: #eab307;
+    color: white;
+    border: none;
+    border-radius: 0.75rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.new-project-container .submit-btn:hover {
+    background-color: #d8a206;
+}
+
+/* تأثيرات */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.new-project-container .fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+/* الصور */
+.new-project-container .profile-img {
+    border-radius: 50%;
+    width: 2.75rem;
+    height: 2.75rem;
+    cursor: pointer;
+    object-fit: cover;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+}
+
+/* الأيقونات */
+.new-project-container .icon {
+    margin-left: 0.5rem;
+    font-size: 1.1rem;
+}
+
+/* تحسينات للشاشات الصغيرة */
+@media (max-width: 768px) {
+    .new-project-container .header-container {
+        padding: 1rem;
+    }
+    
+    .new-project-container header h1 {
+        font-size: 1.4rem;
+    }
+    
+    .new-project-container main {
+        padding: 0 1rem;
+        margin: 1rem 0;
+    }
+    
+    .new-project-container .project-form {
+        padding: 1.25rem;
+    }
+    
+    .new-project-container .form-group {
+        margin-bottom: 1.25rem;
+    }
+    
+    .new-project-container label {
+        font-size: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .new-project-container input[type="text"],
+    .new-project-container textarea {
+        padding: 0.75rem;
+        font-size: 0.95rem;
+    }
+    
+    .new-project-container .student-search-container input {
+        padding-right: 6rem;
+    }
+    
+    .new-project-container .add-student-btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.85rem;
+    }
+    
+    .new-project-container .students-container,
+    .new-project-container .suggestions-container {
+        padding: 0.75rem;
+    }
+    
+    .new-project-container .form-actions {
+        gap: 0.75rem;
+        margin-top: 1.5rem;
+    }
+    
+    .new-project-container .cancel-btn,
+    .new-project-container .submit-btn {
+        flex-grow: 1;
+        padding: 0.75rem;
+        font-size: 0.95rem;
+        justify-content: center;
+    }
+}
+
+/* تحسينات للشاشات الصغيرة جداً */
+@media (max-width: 480px) {
+    .new-project-container .header-container {
+        padding: 0.75rem;
+    }
+    
+    .new-project-container .project-form {
+        padding: 1rem;
+    }
+    
+    .new-project-container .project-header {
+        padding: 1rem;
+    }
+    
+    .new-project-container .project-header h2 {
+        font-size: 1.25rem;
+    }
+    
+    .new-project-container label {
+        font-size: 0.95rem;
+    }
+    
+    .new-project-container .student-search-container input {
+        font-size: 0.9rem;
+    }
+    
+    .new-project-container .student-tag,
+    .new-project-container .suggestion-btn {
+        font-size: 0.85rem;
+    }
+}
