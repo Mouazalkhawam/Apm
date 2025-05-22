@@ -3,12 +3,13 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
 body {
     direction: rtl;
+    justify-content: center;
     /* باقي التنسيقات كما هي */
 }
 
 .login-container {
-    width: 100%;
-    max-width: 900px;
+    min-width: 165vh;
+    /*max-width: 900px;*/
     min-height: 650px;
     background: white;
     border-radius: 20px;
@@ -270,7 +271,7 @@ body {
 }
 
 /* Global styles that would normally be in index.css */
-body {
+/*body {
     font-family: 'Tajawal', 'Poppins', sans-serif;
     background-color: #F9FAFB;
     background-image: radial-gradient(#e0e7ff 1px, transparent 1px);
@@ -281,9 +282,9 @@ body {
     justify-content: center;
     padding: 20px;
     position: relative;
-}
+}*/
 
-body::before {
+/*body::before {
     content: '';
     position: fixed;
     top: 0;
@@ -292,9 +293,9 @@ body::before {
     height: 100%;
     background: linear-gradient(135deg, rgba(121, 23, 112, 0.1) 0%, rgba(93, 14, 86, 0.1) 100%);
     z-index: -1;
-}
+}*/
 
-body::after {
+/*body::after {
     content: '';
     position: fixed;
     top: 0;
@@ -303,7 +304,7 @@ body::after {
     height: 100%;
     background: linear-gradient(to bottom, transparent 0%, rgba(255, 255, 255, 0.8) 100%);
     z-index: -1;
-}
+}*/
 
 /* Animations */
 @keyframes fadeInUp {
