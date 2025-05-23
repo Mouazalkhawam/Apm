@@ -4,6 +4,7 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProjectController;
 use App\Http\Controllers\ProjectProposalController;
+use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
 use App\Http\Controllers\Admin\HonorBoardController;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Http;
 // مسارات عامة بدون حماية
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
+Route::get('/all-skills', [StudentProfileController::class, 'getAllSkills']);
 
 // مسارات محمية تحتاج إلى Access Token
 Route::middleware('auth:api')->group(function () {
@@ -83,5 +85,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'leaderIndex']);
         Route::post('/meetings/{meeting}/choose', [MeetingController::class, 'chooseTime']);
     });
+
+    Route::prefix('student/profile')->group(function () {
+        Route::put('/update', [StudentProfileController::class, 'updateProfile']);
+        Route::post('/skills/add', [StudentProfileController::class, 'addSkill']);
+        Route::delete('/skills/remove/{skillId}', [StudentProfileController::class, 'removeSkill']);
+        Route::get('/skills', [StudentProfileController::class, 'getSkills']);
+    });
+    
   
 });

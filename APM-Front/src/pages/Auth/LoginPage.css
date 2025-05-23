@@ -8,7 +8,7 @@ body {
 }
 
 .login-container {
-    min-width: 165vh;
+   /* min-width: 165vh;*/
     /*max-width: 900px;*/
     min-height: 650px;
     background: white;
@@ -17,6 +17,7 @@ body {
     overflow: hidden;
     display: flex;
     animation: fadeInUp 0.6s ease-out forwards;
+    margin: 1rem 1rem;
 }
 
 .gradient-bg {
@@ -143,7 +144,7 @@ body {
     font-size: 1.75rem;
     font-weight: 700;
     color: #1f2937;
-    margin-bottom: 0.25rem;
+    margin-bottom: 6.25rem;
     text-align: center;
 }
 
@@ -153,8 +154,8 @@ body {
     text-align: center;
 }
 
-.form-group {
-    margin-bottom: 1.5rem;
+.form-group-log {
+    margin-bottom: 4.5rem;
 }
 
 .form-label {
@@ -169,7 +170,7 @@ body {
     position: relative;
 }
 
-.form-input {
+.form-input-log {
     width: 100%;
     padding: 0.75rem 1rem;
     padding-right: 45px;
@@ -179,7 +180,7 @@ body {
     transition: all 0.3s ease;
 }
 
-.form-input:focus {
+.form-input-log:focus {
     outline: none;
     border-color: #eab308;
     box-shadow: 0 0 0 3px rgba(121, 23, 112, 0.1);

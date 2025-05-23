@@ -41,7 +41,7 @@ const LoginPage = () => {
       {/* الجزء الرسومي */}
       <div className="graphic-section gradient-bg">
         <div className="header">
-          <h1>Academic Project Hub</h1>
+          <h1>Academic Project Management</h1>
           <p>نظام إدارة المشاريع الأكاديمية</p>
         </div>
 
@@ -69,12 +69,12 @@ const LoginPage = () => {
       {/* نموذج تسجيل الدخول */}
       <div className="form-section">
         <h2 className="form-title arabic-font">مرحباً بعودتك</h2>
-        <p className="form-subtitle arabic-font">سجل دخولك للوصول إلى لوحة التحكم</p>
+      
 
         <form onSubmit={handleLogin}>
           {error && <div className="error-message arabic-font">{error}</div>}
 
-          <div className="form-group">
+          <div className="form-group-log">
             <label htmlFor="email-ar" className="form-label arabic-font">
               البريد الإلكتروني أو الرقم الجامعي
             </label>
@@ -82,7 +82,7 @@ const LoginPage = () => {
               <input
                 type="text"
                 id="email-ar"
-                className="form-input"
+                className="form-input-log"
                 placeholder="ادخل بريدك الجامعي"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -93,7 +93,7 @@ const LoginPage = () => {
             </div>
           </div>
 
-          <div className="form-group">
+          <div className="form-group-log">
             <label htmlFor="password-ar" className="form-label arabic-font">
               كلمة المرور
             </label>
@@ -101,7 +101,7 @@ const LoginPage = () => {
               <input
                 type="password"
                 id="password-ar"
-                className="form-input"
+                className="form-input-log"
                 placeholder="ادخل كلمة المرور"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -110,19 +110,10 @@ const LoginPage = () => {
                 <i className="fas fa-lock"></i>
               </div>
             </div>
-            <div className="forgot-link">
-              <a href="#" className="arabic-font">هل نسيت كلمة المرور؟</a>
-            </div>
+           
           </div>
 
-          <div className="remember-me">
-            <div className="checkbox-wrapper">
-              <input type="checkbox" id="remember-ar" className="form-checkbox" />
-              <label htmlFor="remember-ar" className="checkbox-label arabic-font">
-                تذكرني
-              </label>
-            </div>
-          </div>
+          
 
           <button type="submit" className="submit-btn arabic-font">
             تسجيل الدخول

@@ -203,7 +203,7 @@ label {
     margin-bottom: 4px;
 }
 
-input:not([type="checkbox"]),
+/*input:not([type="checkbox"]),
 select,
 textarea {
     width: 100%;
@@ -213,7 +213,7 @@ textarea {
     font-family: 'Tajawal', sans-serif;
     font-size: 14px;
     transition: all 0.3s;
-}
+}*/
 
 input:focus,
 select:focus,

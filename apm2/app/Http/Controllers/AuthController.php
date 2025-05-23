@@ -19,7 +19,13 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6|confirmed',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
+
+        $profilePicturePath = null;
+        if ($request->hasFile('profile_picture')) {
+            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
+        }
 
         $user = User::create([
             'name' => $request->name,
@@ -78,18 +84,32 @@ class AuthController extends Controller
         $user = Auth::user();
         $request->validate([
             'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->id,
+            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->userId,
             'password' => 'sometimes|string|min:6|confirmed',
+            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $user->update([
+        $data = [
             'name' => $request->name ?? $user->name,
             'email' => $request->email ?? $user->email,
             'password' => $request->password ? Hash::make($request->password) : $user->password,
-        ]);
+        ];
 
-        return response()->json(['message' => 'تم تحديث الحساب بنجاح!', 'user' => $user], 200);
+        if ($request->hasFile('profile_picture')) {
+            if ($user->profile_picture) {
+                Storage::disk('public')->delete($user->profile_picture);
+            }
+            $data['profile_picture'] = $request->file('profile_picture')->store('profile_pictures', 'public');
+        }
+
+        $user->update($data);
+
+        return response()->json([
+            'message' => 'تم تحديث الحساب بنجاح!',
+            'user' => $user
+        ], 200);
     }
+
 
     // ✅ حذف الحساب (مؤقت أو نهائي)
     public function deleteAccount(Request $request)
@@ -176,6 +196,27 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'تم تغيير الدور إلى خريج بنجاح!']);
     }
+    // أضف هذه الدالة إلى الكونترولر
+    // في AuthController.php
+    public function getUsersByRole(Request $request)
+    {
+        $request->validate([
+            'role' => 'required|in:student,supervisor'
+        ]);
+
+        $users = User::where('role', $request->role)
+                    ->with($request->role)
+                    ->get()
+                    ->map(function ($user) use ($request) {
+                        return [
+                            'userId' => $user->userId,
+                            'name' => $user->name,
+                            'identifier' => $user->{$request->role}->{$request->role . 'Id'} ?? 'N/A'
+                        ];
+                    });
+
+        return response()->json($users);
+    }
 
     // ✅ تسجيل الخروج
     public function logout(Request $request)
@@ -202,6 +243,10 @@ class AuthController extends Controller
     public function userProfile(Request $request)
     {
         $user = $request->user()->load('student');
+        $user->profile_picture_url = $user->profile_picture 
+            ? asset("storage/{$user->profile_picture}") 
+            : null;
         return response()->json($user);
     }
+
 }
