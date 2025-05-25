@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faPlus, faUserGraduate, faSave, faCheckCircle, faTimes } from '@fortawesome/free-solid-svg-icons';
+import axios from 'axios';
 import './Registration.css';
 
 const RegistrationForm = () => {
@@ -10,10 +11,14 @@ const RegistrationForm = () => {
     const [formData, setFormData] = useState({
         name: '',
         email: '',
+        phone: '',
         password: '',
         confirmPassword: '',
         gpa: '0',
-        agreeTerms: false
+        agreeTerms: false,
+        universityNumber: '',
+        major: '',
+        academicYear: '1'
     });
     const [photoPreview, setPhotoPreview] = useState(null);
     const [photoFile, setPhotoFile] = useState(null);
@@ -29,6 +34,7 @@ const RegistrationForm = () => {
     const [selectedSkillId, setSelectedSkillId] = useState('');
     const [showSuccess, setShowSuccess] = useState(false);
     const [loadingSkills, setLoadingSkills] = useState(true);
+    const [errors, setErrors] = useState({});
 
     useEffect(() => {
         updateGpaBar();
@@ -37,9 +43,10 @@ const RegistrationForm = () => {
 
     const fetchAvailableSkills = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/all-skills');
-            const data = await response.json();
-            if (data.success) setAvailableSkills(data.data);
+            const response = await axios.get('http://127.0.0.1:8000/api/all-skills');
+            if (response.data.success) {
+                setAvailableSkills(response.data.data);
+            }
         } catch (error) {
             console.error('Error fetching skills:', error);
         } finally {
@@ -82,35 +89,34 @@ const RegistrationForm = () => {
     };
 
     const updateGpaBar = () => {
-        const gpaInput = document.getElementById('gpa');
+        let gpa = parseFloat(formData.gpa) || 0;  // القيمة الافتراضية 0 إذا لم تُحدد
+        gpa = Math.max(0, Math.min(gpa, 4));      // التأكد من أن المعدل بين 0 و 4
+    
+        const percentage = (gpa / 4) * 100;
         const gpaProgress = document.getElementById('gpaProgress');
         const gpaValue = document.getElementById('gpaValue');
         
-        let gpa = parseFloat(formData.gpa);
-        if (isNaN(gpa) || gpa < 0) gpa = 0;
-        if (gpa > 4) gpa = 4;
-        
-        const percentage = (gpa / 4) * 100;
-        if (gpaProgress) gpaProgress.style.width = `${percentage}%`;
-        if (gpaValue) gpaValue.textContent = gpa.toFixed(2);
-        
         if (gpaProgress) {
-            if (gpa >= 3.75) {
-                gpaProgress.style.background = 'linear-gradient(90deg, #27ae60 0%, #2ecc71 100%)';
-            } else if (gpa >= 2.75) {
-                gpaProgress.style.background = 'linear-gradient(90deg, #f39c12 0%, #f1c40f 100%)';
-            } else {
-                gpaProgress.style.background = 'linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)';
-            }
+            gpaProgress.style.width = `${percentage}%`;
+            gpaProgress.style.background = gpa >= 3.75 ? 
+                'linear-gradient(90deg, #27ae60 0%, #2ecc71 100%)' :
+                gpa >= 2.75 ?
+                'linear-gradient(90deg, #f39c12 0%, #f1c40f 100%)' :
+                'linear-gradient(90deg, #e74c3c 0%, #c0392b 100%)';
         }
+        if (gpaValue) gpaValue.textContent = gpa.toFixed(2);
     };
+
     const handleExperienceChange = (e) => {
         const { name, value } = e.target;
         setNewExperience(prev => ({ ...prev, [name]: value }));
     };
 
     const saveExperience = () => {
-        if (experiences.length >= 5) return alert('الحد الأقصى 5 مشاريع');
+        if (experiences.length >= 5) {
+            alert('الحد الأقصى 5 مشاريع');
+            return;
+        }
         if (newExperience.title && newExperience.date && newExperience.description) {
             setExperiences(prev => [...prev, newExperience]);
             setNewExperience({ title: '', date: '', description: '' });
@@ -118,76 +124,167 @@ const RegistrationForm = () => {
         }
     };
 
+    const validateForm = () => {
+        const newErrors = {};
+        
+        if (formData.password !== formData.confirmPassword) {
+            newErrors.confirmPassword = 'كلمتا المرور غير متطابقتين';
+        }
+        
+        const requiredFields = ['name', 'email', 'phone', 'universityNumber', 'major'];
+        requiredFields.forEach(field => {
+            if (!formData[field]?.trim()) {
+                newErrors[field] = 'هذا الحقل مطلوب';
+            }
+        });
+        
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(formData.email)) {
+            newErrors.email = 'البريد الإلكتروني غير صالح';
+        }
+        
+        if (!formData.agreeTerms) {
+            newErrors.agreeTerms = 'يجب الموافقة على الشروط والأحكام';
+        }
+        
+        if (!photoFile) {
+            newErrors.photo = 'يجب رفع صورة شخصية';
+        }
+        
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+    
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // تحقق من الصحة على العميل أولاً
         if (!validateForm()) return;
-
+        
         try {
-            const form = new FormData();
-            form.append('name', formData.name);
-            form.append('email', formData.email);
-            form.append('password', formData.password);
-            form.append('password_confirmation', formData.confirmPassword);
-            form.append('profile_picture', photoFile);
-
-            const regResponse = await fetch('http://127.0.0.1:8000/api/register', {
-                method: 'POST',
-                body: form
+            // 1. إنشاء FormData وإعداد البيانات
+            const formDataToSend = new FormData();
+            formDataToSend.append('name', formData.name.trim());
+            formDataToSend.append('email', formData.email.trim());
+            formDataToSend.append('phone', formData.phone.trim() || ''); // nullable
+            formDataToSend.append('password', formData.password);
+            formDataToSend.append('password_confirmation', formData.confirmPassword);
+            
+            // إضافة الصورة إذا وجدت (nullable)
+            if (photoFile) {
+                // التحقق من نوع الصورة وحجمها
+                const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
+                if (!validTypes.includes(photoFile.type)) {
+                    setErrors({...errors, photo: 'نوع الصورة غير مدعوم (يجب أن تكون jpeg,png,jpg,gif)'});
+                    return;
+                }
+                
+                if (photoFile.size > 2048 * 1024) { // 2048 KB
+                    setErrors({...errors, photo: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)'});
+                    return;
+                }
+                
+                formDataToSend.append('profile_picture', photoFile);
+            }
+    
+            // 2. إرسال طلب التسجيل
+            const regResponse = await axios.post('http://127.0.0.1:8000/api/register', formDataToSend, {
+                headers: {
+                    'Content-Type': 'multipart/form-data'
+                }
             });
-            
-            if (!regResponse.ok) throw new Error('فشل التسجيل');
-            
-            const { access_token, user } = await regResponse.json();
-            
-            await updateProfile(access_token);
-            await addSkills(access_token);
-            
-            setShowSuccess(true);
-            setTimeout(() => navigate('/login'), 3000);
-            
-        } catch (error) {
-            alert(error.message);
-        }
-    };
-
-    const validateForm = () => {
-        if (formData.password !== formData.confirmPassword) {
-            alert('كلمات المرور غير متطابقة!');
-            return false;
-        }
-      /*  if (!formData.agreeTerms || !photoFile) {
-            alert('الرجاء استكمال جميع الحقول المطلوبة');
-            return false;
-        }*/
-        return true;
-    };
-
-    const updateProfile = async (token) => {
-        const response = await fetch('http://127.0.0.1:8000/api/student/profile/update', {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({
+    
+            const { access_token, user } = regResponse.data;
+    
+            // 3. تحديث الملف الشخصي للطالب (إذا كان التسجيل ناجحاً)
+            const profileResponse = await axios.put('http://127.0.0.1:8000/api/student/profile/update', {
+                university_number: formData.universityNumber,
+                major: formData.major,
+                academic_year: formData.academicYear,
                 gpa: formData.gpa,
                 experience: JSON.stringify(experiences)
-            })
-        });
-        if (!response.ok) throw new Error('فشل تحديث الملف');
-    };
-
-    const addSkills = async (token) => {
-        for (const skill of skills) {
-            const response = await fetch('http://127.0.0.1:8000/api/student/profile/skills/add', {
-                method: 'POST',
+            }, {
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ skill_id: skill.id })
+                    'Authorization': `Bearer ${access_token}`,
+                    'Content-Type': 'application/json'
+                }
             });
-            if (!response.ok) console.error('فشل إضافة المهارة:', skill.name);
+    
+            // 4. إضافة المهارات إذا وجدت
+            if (skills.length > 0) {
+                await Promise.all(skills.map(skill => 
+                    axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', 
+                        { skill_id: skill.id },
+                        { headers: { 'Authorization': `Bearer ${access_token}` } }
+                    )
+                  )  );
+            }
+    
+            // 5. حفظ التوكن وإظهار رسالة النجاح
+            localStorage.setItem('access_token', access_token);
+            setShowSuccess(true);
+            setTimeout(() => navigate('/dashboard'), 3000);
+    
+        } catch (error) {
+            console.error('Registration error:', error);
+            
+            // معالجة أخطاء التحقق من الصحة من الخادم
+            if (error.response?.status === 422) {
+                console.log("Validation Errors:", error.response.data.errors);
+                setErrors(error.response.data.errors); 
+                const serverErrors = {};
+                Object.entries(error.response.data.errors || {}).forEach(([field, messages]) => {
+                    // تحويل أسماء الحقول إذا كانت مختلفة بين Frontend وBackend
+                    const fieldName = field === 'profile_picture' ? 'photo' : field;
+                    serverErrors[fieldName] = messages[0];
+                });
+                setErrors(serverErrors);
+            } 
+            else if (error.response?.data?.message) {
+                alert(error.response.data.message);
+            } 
+            else {
+                alert('حدث خطأ غير متوقع أثناء التسجيل. يرجى المحاولة لاحقاً.');
+            }
+        }
+    };
+    
+    const updateStudentProfile = async (token) => {
+        try {
+            const profileData = {
+                university_number: formData.universityNumber,
+                major: formData.major,
+                academic_year: formData.academicYear,
+                gpa: formData.gpa,
+                experience: JSON.stringify(experiences)
+            };
+            
+            await axios.put('http://127.0.0.1:8000/api/student/profile/update', profileData, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+        } catch (error) {
+            console.error('Profile update error:', error);
+            throw error;
+        }
+    };
+    
+    const addStudentSkills = async (token) => {
+        try {
+            const skillPromises = skills.map(skill => 
+                axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', 
+                    { skill_id: skill.id },
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                )
+            );
+            
+            await Promise.all(skillPromises);
+        } catch (error) {
+            console.error('Error adding skills:', error);
+            throw error;
         }
     };
 
@@ -207,12 +304,13 @@ const RegistrationForm = () => {
                                 type="text"
                                 id="name"
                                 name="name"
-                                className="form-input"
+                                className={`form-input ${errors.name ? 'error' : ''}`}
                                 required
                                 value={formData.name}
                                 onChange={handleInputChange}
                                 placeholder="الاسم الثلاثي"
                             />
+                            {errors.name && <span className="error-message">{errors.name}</span>}
                         </div>
 
                         <div className="form-group half-width">
@@ -221,12 +319,75 @@ const RegistrationForm = () => {
                                 type="email"
                                 id="email"
                                 name="email"
-                                className="form-input"
+                                className={`form-input ${errors.email ? 'error' : ''}`}
                                 required
                                 value={formData.email}
                                 onChange={handleInputChange}
                                 placeholder="example@university.edu.sa"
                             />
+                            {errors.email && <span className="error-message">{errors.email}</span>}
+                        </div>
+                        
+                        <div className="form-group half-width">
+                            <label htmlFor="phone" className="form-label">رقم الجوال</label>
+                            <input
+                                type="tel"
+                                id="phone"
+                                name="phone"
+                                className={`form-input ${errors.phone ? 'error' : ''}`}
+                                value={formData.phone}
+                                onChange={handleInputChange}
+                                placeholder="05XXXXXXXX"
+                            />
+                            {errors.phone && <span className="error-message">{errors.phone}</span>}
+                        </div>
+                        
+                        <div className="form-group half-width">
+                            <label htmlFor="universityNumber" className="form-label">الرقم الجامعي</label>
+                            <input
+                                type="text"
+                                id="universityNumber"
+                                name="universityNumber"
+                                className={`form-input ${errors.universityNumber ? 'error' : ''}`}
+                                required
+                                value={formData.universityNumber}
+                                onChange={handleInputChange}
+                                placeholder="الرقم الجامعي"
+                            />
+                            {errors.universityNumber && <span className="error-message">{errors.universityNumber}</span>}
+                        </div>
+                        
+                        <div className="form-group half-width">
+                            <label htmlFor="major" className="form-label">التخصص</label>
+                            <input
+                                type="text"
+                                id="major"
+                                name="major"
+                                className={`form-input ${errors.major ? 'error' : ''}`}
+                                required
+                                value={formData.major}
+                                onChange={handleInputChange}
+                                placeholder="التخصص الدراسي"
+                            />
+                            {errors.major && <span className="error-message">{errors.major}</span>}
+                        </div>
+
+                        <div className="form-group half-width">
+                            <label htmlFor="academicYear" className="form-label">السنة الدراسية</label>
+                            <select
+                                id="academicYear"
+                                name="academicYear"
+                                className="form-input"
+                                required
+                                value={formData.academicYear}
+                                onChange={handleInputChange}
+                            >
+                                <option value="1">الأولى</option>
+                                <option value="2">الثانية</option>
+                                <option value="3">الثالثة</option>
+                                <option value="4">الرابعة</option>
+                                <option value="5">الخامسة</option>
+                            </select>
                         </div>
 
                         <div className="form-group half-width">
@@ -235,7 +396,7 @@ const RegistrationForm = () => {
                                 type="password"
                                 id="password"
                                 name="password"
-                                className="form-input"
+                                className={`form-input ${errors.password ? 'error' : ''}`}
                                 required
                                 minLength="6"
                                 value={formData.password}
@@ -243,6 +404,7 @@ const RegistrationForm = () => {
                                 placeholder="••••••••"
                             />
                             <small className="form-note">8 أحرف على الأقل</small>
+                            {errors.password && <span className="error-message">{errors.password}</span>}
                         </div>
 
                         <div className="form-group half-width">
@@ -251,12 +413,13 @@ const RegistrationForm = () => {
                                 type="password"
                                 id="confirmPassword"
                                 name="confirmPassword"
-                                className="form-input"
+                                className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
                                 required
                                 value={formData.confirmPassword}
                                 onChange={handleInputChange}
                                 placeholder="••••••••"
                             />
+                            {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
                         </div>
 
                         <div className="form-group">
@@ -278,6 +441,7 @@ const RegistrationForm = () => {
                                     onChange={handlePhotoUpload}
                                 />
                             </div>
+                            {errors.photo && <span className="error-message">{errors.photo}</span>}
                         </div>
 
                         <div className="form-group">
@@ -365,6 +529,7 @@ const RegistrationForm = () => {
                                 />
                                 أوافق على <a href="/terms">الشروط والأحكام</a>
                             </label>
+                            {errors.agreeTerms && <span className="error-message">{errors.agreeTerms}</span>}
                         </div>
 
                         <button type="submit" className="submit-btn">

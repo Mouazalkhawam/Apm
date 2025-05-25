@@ -69,6 +69,7 @@ const LoginPage = () => {
       {/* نموذج تسجيل الدخول */}
       <div className="form-section">
         <h2 className="form-title arabic-font">مرحباً بعودتك</h2>
+        <p className="form-subtitle arabic-font">سجل دخولك للوصول إلى الملف الشخصي الخاص بك</p>
       
 
         <form onSubmit={handleLogin}>

@@ -259,6 +259,7 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-right: 0.5rem;
 }
 
 .add-skill-btn:hover {
@@ -286,6 +287,8 @@
     font-weight: bold;
     border: 2px solid #d2b4de;
     color: #791770;
+    min-width: 65px;
+    margin-right: 10px;
 }
 
 .gpa-bar {
@@ -296,6 +299,7 @@
     position: relative;
     overflow: hidden;
     box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1);
+    min-width: 85%;
 }
 
 .gpa-progress {
@@ -310,7 +314,7 @@
 }
 
 .gpa-value {
-    margin-right: 15px;
+    margin-right: 5px;
     font-weight: bold;
     color: #791770;
     font-size: 18px;

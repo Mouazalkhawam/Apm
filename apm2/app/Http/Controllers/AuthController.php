@@ -18,6 +18,7 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
+            'phone' => 'nullable|string|max:20|unique:users',
             'password' => 'required|string|min:6|confirmed',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -30,6 +31,7 @@ class AuthController extends Controller
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
+            'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role' => 'student',
         ]);
@@ -85,6 +87,7 @@ class AuthController extends Controller
         $request->validate([
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->userId,
+            'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->userId,
             'password' => 'sometimes|string|min:6|confirmed',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -92,6 +95,7 @@ class AuthController extends Controller
         $data = [
             'name' => $request->name ?? $user->name,
             'email' => $request->email ?? $user->email,
+            'phone' => $request->phone ?? $user->phone,
             'password' => $request->password ? Hash::make($request->password) : $user->password,
         ];
 
