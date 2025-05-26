@@ -6,6 +6,7 @@ import StudentProfile from './pages/StudentProfile';
 import ProposalForm from './pages/ProposalForm';
 import NewProjectForm from './pages/NewProjectForm';
 import AcademicDashboard from './pages/AcademicDashboard';
+import HonorBoard from './pages/HonorBoard';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -48,6 +49,14 @@ function App() {
     </ProtectedRoute>
   } 
 />
+<Route 
+                 path="/honorboard" 
+                 element={
+                  <ProtectedRoute>
+                    <HonorBoard />
+                            </ProtectedRoute>
+                          } 
+               />
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
     
