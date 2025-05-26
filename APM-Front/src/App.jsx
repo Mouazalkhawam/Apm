@@ -5,6 +5,7 @@ import RegistrationForm from './pages/Auth/RegistrationForm';
 import StudentProfile from './pages/StudentProfile';
 import ProposalForm from './pages/ProposalForm';
 import NewProjectForm from './pages/NewProjectForm';
+import AcademicDashboard from './pages/AcademicDashboard';
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -39,6 +40,14 @@ function App() {
                             </ProtectedRoute>
                           } 
                />
+               <Route 
+  path="/dashboard" 
+  element={
+    <ProtectedRoute>
+      <AcademicDashboard />
+    </ProtectedRoute>
+  } 
+/>
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
     
