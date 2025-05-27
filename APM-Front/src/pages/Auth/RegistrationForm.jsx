@@ -107,6 +107,7 @@ const RegistrationForm = () => {
         if (gpaValue) gpaValue.textContent = gpa.toFixed(2);
     };
 
+    
     const handleExperienceChange = (e) => {
         const { name, value } = e.target;
         setNewExperience(prev => ({ ...prev, [name]: value }));
@@ -114,11 +115,22 @@ const RegistrationForm = () => {
 
     const saveExperience = () => {
         if (experiences.length >= 5) {
-            alert('الحد الأقصى 5 مشاريع');
+            alert('الحد الأقصى 5 خبرات');
             return;
         }
+        
         if (newExperience.title && newExperience.date && newExperience.description) {
-            setExperiences(prev => [...prev, newExperience]);
+            const newExp = {
+                ...newExperience,
+                type: 'text', // تحديد نوع الخبرة
+                content: JSON.stringify({
+                    title: newExperience.title,
+                    date: newExperience.date,
+                    description: newExperience.description
+                })
+            };
+            
+            setExperiences(prev => [...prev, newExp]);
             setNewExperience({ title: '', date: '', description: '' });
             setShowModal(false);
         }
@@ -158,36 +170,32 @@ const RegistrationForm = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         
-        // تحقق من الصحة على العميل أولاً
         if (!validateForm()) return;
         
         try {
-            // 1. إنشاء FormData وإعداد البيانات
             const formDataToSend = new FormData();
             formDataToSend.append('name', formData.name.trim());
             formDataToSend.append('email', formData.email.trim());
-            formDataToSend.append('phone', formData.phone.trim() || ''); // nullable
+            formDataToSend.append('phone', formData.phone.trim() || '');
             formDataToSend.append('password', formData.password);
             formDataToSend.append('password_confirmation', formData.confirmPassword);
             
-            // إضافة الصورة إذا وجدت (nullable)
             if (photoFile) {
-                // التحقق من نوع الصورة وحجمها
                 const validTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/gif'];
                 if (!validTypes.includes(photoFile.type)) {
-                    setErrors({...errors, photo: 'نوع الصورة غير مدعوم (يجب أن تكون jpeg,png,jpg,gif)'});
+                    setErrors({...errors, photo: 'نوع الصورة غير مدعوم'});
                     return;
                 }
                 
-                if (photoFile.size > 2048 * 1024) { // 2048 KB
-                    setErrors({...errors, photo: 'حجم الصورة كبير جداً (الحد الأقصى 2MB)'});
+                if (photoFile.size > 2048 * 1024) {
+                    setErrors({...errors, photo: 'حجم الصورة كبير جداً'});
                     return;
                 }
                 
                 formDataToSend.append('profile_picture', photoFile);
             }
     
-            // 2. إرسال طلب التسجيل
+            // 1. تسجيل المستخدم
             const regResponse = await axios.post('http://127.0.0.1:8000/api/register', formDataToSend, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
@@ -196,13 +204,23 @@ const RegistrationForm = () => {
     
             const { access_token, user } = regResponse.data;
     
-            // 3. تحديث الملف الشخصي للطالب (إذا كان التسجيل ناجحاً)
+            // 2. إعداد بيانات الخبرات حسب الهيكل الجديد
+            const formattedExperiences = experiences.map(exp => ({
+                type: 'text', // أو أي نوع آخر حسب الحاجة
+                content: JSON.stringify({
+                    title: exp.title,
+                    date: exp.date,
+                    description: exp.description
+                })
+            }));
+    
+            // 3. تحديث الملف الشخصي مع الخبرات
             const profileResponse = await axios.put('http://127.0.0.1:8000/api/student/profile/update', {
                 university_number: formData.universityNumber,
                 major: formData.major,
                 academic_year: formData.academicYear,
                 gpa: formData.gpa,
-                experience: JSON.stringify(experiences)
+                experience: formattedExperiences
             }, {
                 headers: {
                     'Authorization': `Bearer ${access_token}`,
@@ -210,41 +228,31 @@ const RegistrationForm = () => {
                 }
             });
     
-            // 4. إضافة المهارات إذا وجدت
+            // 4. إضافة المهارات
             if (skills.length > 0) {
                 await Promise.all(skills.map(skill => 
                     axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', 
                         { skill_id: skill.id },
                         { headers: { 'Authorization': `Bearer ${access_token}` } }
                     )
-                  )  );
+                ));
             }
     
-            // 5. حفظ التوكن وإظهار رسالة النجاح
             localStorage.setItem('access_token', access_token);
             setShowSuccess(true);
             setTimeout(() => navigate('/dashboard'), 3000);
     
         } catch (error) {
             console.error('Registration error:', error);
-            
-            // معالجة أخطاء التحقق من الصحة من الخادم
             if (error.response?.status === 422) {
-                console.log("Validation Errors:", error.response.data.errors);
-                setErrors(error.response.data.errors); 
                 const serverErrors = {};
                 Object.entries(error.response.data.errors || {}).forEach(([field, messages]) => {
-                    // تحويل أسماء الحقول إذا كانت مختلفة بين Frontend وBackend
-                    const fieldName = field === 'profile_picture' ? 'photo' : field;
-                    serverErrors[fieldName] = messages[0];
+                    serverErrors[field] = messages[0];
                 });
                 setErrors(serverErrors);
             } 
-            else if (error.response?.data?.message) {
-                alert(error.response.data.message);
-            } 
             else {
-                alert('حدث خطأ غير متوقع أثناء التسجيل. يرجى المحاولة لاحقاً.');
+                alert(error.response?.data?.message || 'حدث خطأ غير متوقع');
             }
         }
     };
@@ -501,24 +509,31 @@ const RegistrationForm = () => {
                         </div>
 
                         <div className="form-group">
-                            <label className="form-label">الخبرات الأكاديمية</label>
-                            <div id="experiencesContainer">
-                                {experiences.map((exp, index) => (
-                                    <div key={index} className="experience-item">
-                                        <div className="experience-header">
-                                            <span className="experience-title">{exp.title}</span>
-                                            <span className="experience-date">{exp.date}</span>
-                                        </div>
-                                        <p className="experience-description">{exp.description}</p>
-                                    </div>
-                                ))}
-                                <div className="add-experience-btn" onClick={() => setShowModal(true)}>
-                                    <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
-                                </div>
-                            </div>
-                            <small className="form-note">الحد الأقصى 5 خبرات</small>
+    <label className="form-label">الخبرات الأكاديمية</label>
+    <div id="experiencesContainer">
+        {experiences.map((exp, index) => {
+            try {
+                const content = JSON.parse(exp.content);
+                return (
+                    <div key={index} className="experience-item">
+                        <div className="experience-header">
+                            <span className="experience-title">{content.title}</span>
+                            <span className="experience-date">{content.date}</span>
                         </div>
-
+                        <p className="experience-description">{content.description}</p>
+                    </div>
+                );
+            } catch (e) {
+                console.error('Error parsing experience content:', e);
+                return null;
+            }
+        })}
+        <div className="add-experience-btn" onClick={() => setShowModal(true)}>
+            <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
+        </div>
+    </div>
+    <small className="form-note">الحد الأقصى 5 خبرات</small>
+</div>
                         <div className="form-group terms-group">
                             <label>
                                 <input
@@ -538,10 +553,9 @@ const RegistrationForm = () => {
                     </div>
                 </form>
             </div>
-
-            {showModal && (
-                <div className="modal-overlay">
-                    <div className="modal-content">
+ {showModal && (
+                <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                         <span className="close-modal" onClick={() => setShowModal(false)}>
                             <FontAwesomeIcon icon={faTimes} />
                         </span>
@@ -582,7 +596,6 @@ const RegistrationForm = () => {
                     </div>
                 </div>
             )}
-
             {showSuccess && (
                 <div className="success-message">
                     <FontAwesomeIcon icon={faCheckCircle} className="success-icon" />

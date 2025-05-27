@@ -1142,7 +1142,7 @@
             align-items: center;
             justify-content: center;
             z-index: 1000;
-            display: none;
+          /*  display: none;*/
         }
         
         .modal-content {
