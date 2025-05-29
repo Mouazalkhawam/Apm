@@ -91,6 +91,7 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/skills/add', [StudentProfileController::class, 'addSkill']);
         Route::delete('/skills/remove/{skillId}', [StudentProfileController::class, 'removeSkill']);
         Route::get('/skills', [StudentProfileController::class, 'getSkills']);
+        Route::get('/info', [StudentProfileController::class, 'getProfile']);
     });
     
   

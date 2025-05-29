@@ -23,21 +23,26 @@ class AuthController extends Controller
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
 
-        $profilePicturePath = null;
-        if ($request->hasFile('profile_picture')) {
-            $profilePicturePath = $request->file('profile_picture')->store('profile_pictures', 'public');
-        }
-
-        $user = User::create([
+        $userData = [
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'password' => Hash::make($request->password),
             'role' => 'student',
-        ]);
+        ];
+
+        // إضافة مسار الصورة إذا وجدت
+        if ($request->hasFile('profile_picture')) {
+            $image = $request->file('profile_picture');
+            $imageName = time().'.'.$image->extension();
+            $image->move(public_path('images/users'), $imageName);
+            $userData['profile_picture'] = 'images/users/'.$imageName;
+        }
+
+        $user = User::create($userData);
 
         Student::create([
-           'userId' => $user->userId,
+            'userId' => $user->userId,
         ]);
 
         $accessToken = JWTAuth::fromUser($user);
@@ -244,13 +249,42 @@ class AuthController extends Controller
     }
 
     // ✅ استرجاع بيانات المستخدم الحالي مع علاقة الطالب
+   // ✅ استرجاع بيانات المستخدم الحالي مع علاقة الطالب والمهارات
     public function userProfile(Request $request)
     {
-        $user = $request->user()->load('student');
-        $user->profile_picture_url = $user->profile_picture 
-            ? asset("storage/{$user->profile_picture}") 
-            : null;
-        return response()->json($user);
+        $user = $request->user()->load(['student', 'student.skills']);
+        
+        // تحسين عرض بيانات المستخدم
+        $response = [
+            'userId' => $user->userId,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'profile_picture_url' => $user->profile_picture 
+                ? asset("storage/{$user->profile_picture}") 
+                : null,
+            'student' => null
+        ];
+
+        if ($user->student) {
+            $response['student'] = [
+                'studentId' => $user->student->studentId,
+                'university_number' => $user->student->university_number,
+                'major' => $user->student->major,
+                'academic_year' => $user->student->academic_year,
+                'gpa' => $user->student->gpa,
+                'experience' => $user->student->experience,
+                'skills' => $user->student->skills->map(function($skill) {
+                    return [
+                        'skillId' => $skill->id,
+                        'name' => $skill->name
+                    ];
+                })
+            ];
+        }
+
+        return response()->json($response);
     }
 
 }

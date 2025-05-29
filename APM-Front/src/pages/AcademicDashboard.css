@@ -6,11 +6,11 @@
             box-sizing: border-box;
         }
         
-        body {
+        /*body {
             font-family: 'Tajawal', sans-serif;
             background-color: #f5f7fa;
             direction: rtl;
-        }
+        }*/
         
         /* Layout */
         .dashboard-container {
@@ -811,9 +811,9 @@
         }
         
         @media (min-width: 1024px) {
-          /*  .stats-grid {
+            .stats-grid {
                 grid-template-columns: repeat(4, 1fr);
-            }*/
+            }
             
             .mobile-sidebar-toggle {
                 display: none;
