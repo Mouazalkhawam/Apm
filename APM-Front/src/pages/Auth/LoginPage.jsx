@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import axios from "axios";
 import "./LoginPage.css";
 
 const LoginPage = () => {
@@ -10,29 +11,33 @@ const LoginPage = () => {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://localhost:8000/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post("http://localhost:8000/api/login", {
+        email,
+        password
       });
 
-      const data = await response.json();
+      // مع axios البيانات تكون متاحة مباشرة في response.data
+      const data = response.data;
 
-      if (!response.ok) {
-        setError(data.message || "حدث خطأ أثناء تسجيل الدخول");
-      } else {
-        // حفظ التوكن في التخزين المحلي
-        localStorage.setItem("access_token", data.access_token);
-        localStorage.setItem("refresh_token", data.refresh_token);
-        alert("تم تسجيل الدخول بنجاح!");
+      // حفظ التوكن في التخزين المحلي
+      localStorage.setItem("access_token", data.access_token);
+      localStorage.setItem("refresh_token", data.refresh_token);
+      alert("تم تسجيل الدخول بنجاح!");
 
-        // توجيه المستخدم إلى لوحة التحكم
-        window.location.href = "/profile";
-      }
+      // توجيه المستخدم إلى لوحة التحكم
+      window.location.href = "/profile";
     } catch (err) {
-      setError("حدث خطأ في الاتصال بالخادم");
+      // مع axios يتم التعامل مع الأخطاء بشكل مختلف
+      if (err.response) {
+        // الخادم رد برمز حالة غير ناجح (غير 2xx)
+        setError(err.response.data.message || "حدث خطأ أثناء تسجيل الدخول");
+      } else if (err.request) {
+        // تم إجراء الطلب ولكن لم يتم استقبال أي رد
+        setError("لا يوجد اتصال بالخادم");
+      } else {
+        // حدث خطأ أثناء إعداد الطلب
+        setError("حدث خطأ أثناء إعداد طلب تسجيل الدخول");
+      }
     }
   };
 
@@ -40,7 +45,7 @@ const LoginPage = () => {
     <div className="login-container">
       {/* الجزء الرسومي */}
       <div className="graphic-section gradient-bg">
-        <div className="header">
+        <div className="header-login">
           <h1>Academic Project Management</h1>
           <p>نظام إدارة المشاريع الأكاديمية</p>
         </div>
@@ -113,8 +118,6 @@ const LoginPage = () => {
             </div>
            
           </div>
-
-          
 
           <button type="submit" className="submit-btn arabic-font">
             تسجيل الدخول

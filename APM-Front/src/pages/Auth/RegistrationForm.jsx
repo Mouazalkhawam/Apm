@@ -6,8 +6,11 @@ import axios from 'axios';
 import './Registration.css';
 
 const RegistrationForm = () => {
+    // Hooks and Refs
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
+    
+    // State Management
     const [formData, setFormData] = useState({
         name: '',
         email: '',
@@ -20,6 +23,7 @@ const RegistrationForm = () => {
         major: '',
         academicYear: '1'
     });
+    
     const [photoPreview, setPhotoPreview] = useState(null);
     const [photoFile, setPhotoFile] = useState(null);
     const [skills, setSkills] = useState([]);
@@ -36,11 +40,13 @@ const RegistrationForm = () => {
     const [loadingSkills, setLoadingSkills] = useState(true);
     const [errors, setErrors] = useState({});
 
+    // Effects
     useEffect(() => {
         updateGpaBar();
         fetchAvailableSkills();
     }, [formData.gpa]);
 
+    // API Functions
     const fetchAvailableSkills = async () => {
         try {
             const response = await axios.get('http://127.0.0.1:8000/api/all-skills');
@@ -54,6 +60,7 @@ const RegistrationForm = () => {
         }
     };
 
+    // Handlers
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target;
         setFormData(prev => ({
@@ -74,6 +81,7 @@ const RegistrationForm = () => {
 
     const triggerFileInput = () => fileInputRef.current.click();
 
+    // Skills Functions
     const addSkill = () => {
         if (selectedSkillId && !skills.some(s => s.id == selectedSkillId)) {
             const skill = availableSkills.find(s => s.id == selectedSkillId);
@@ -88,9 +96,10 @@ const RegistrationForm = () => {
         setSkills(updatedSkills);
     };
 
+    // GPA Functions
     const updateGpaBar = () => {
-        let gpa = parseFloat(formData.gpa) || 0;  // القيمة الافتراضية 0 إذا لم تُحدد
-        gpa = Math.max(0, Math.min(gpa, 4));      // التأكد من أن المعدل بين 0 و 4
+        let gpa = parseFloat(formData.gpa) || 0;
+        gpa = Math.max(0, Math.min(gpa, 4));
     
         const percentage = (gpa / 4) * 100;
         const gpaProgress = document.getElementById('gpaProgress');
@@ -107,35 +116,83 @@ const RegistrationForm = () => {
         if (gpaValue) gpaValue.textContent = gpa.toFixed(2);
     };
 
-    
+    // Experience Functions
     const handleExperienceChange = (e) => {
         const { name, value } = e.target;
         setNewExperience(prev => ({ ...prev, [name]: value }));
     };
 
-    const saveExperience = () => {
-        if (experiences.length >= 5) {
-            alert('الحد الأقصى 5 خبرات');
+    // دالة saveExperience المعدلة
+const saveExperience = () => {
+    if (experiences.length >= 5) {
+        alert('الحد الأقصى 5 خبرات');
+        return;
+    }
+    
+    let newExp;
+    
+    if (newExperience.type === 'text') {
+        if (!newExperience.title || !newExperience.description) {
+            alert('الرجاء إدخال العنوان والوصف');
+            return;
+        }
+        newExp = {
+            type: 'text',
+            content: JSON.stringify({
+                title: newExperience.title,
+                date: newExperience.date || 'بدون تاريخ',
+                description: newExperience.description
+            })
+        };
+    } 
+    else if (newExperience.type === 'image') {
+        if (!newExperience.content) {
+            alert('الرجاء اختيار صورة');
+            return;
+        }
+        newExp = {
+            type: 'image',
+            content: newExperience.content
+        };
+    }
+    else if (newExperience.type === 'video') {
+        if (!newExperience.content) {
+            alert('الرجاء إدخال رابط الفيديو');
             return;
         }
         
-        if (newExperience.title && newExperience.date && newExperience.description) {
-            const newExp = {
-                ...newExperience,
-                type: 'text', // تحديد نوع الخبرة
-                content: JSON.stringify({
-                    title: newExperience.title,
-                    date: newExperience.date,
-                    description: newExperience.description
-                })
-            };
-            
-            setExperiences(prev => [...prev, newExp]);
-            setNewExperience({ title: '', date: '', description: '' });
-            setShowModal(false);
+        // تحقق من أن الرابط من يوتيوب
+        if (!newExperience.content.includes('youtube.com') && !newExperience.content.includes('youtu.be')) {
+            alert('يجب أن يكون الرابط من يوتيوب');
+            return;
         }
+        
+        newExp = {
+            type: 'video',
+            content: newExperience.content
+        };
+    }
+    
+    if (newExp) {
+        setExperiences(prev => [...prev, newExp]);
+        setNewExperience({ 
+            type: 'text',
+            title: '',
+            date: '',
+            description: '',
+            content: ''
+        });
+        setShowModal(false);
+    }
+}
+
+    const removeExperience = (index) => {
+        const updatedExperiences = [...experiences];
+        updatedExperiences.splice(index, 1);
+        setExperiences(updatedExperiences);
     };
 
+    // Form Validation and Submission
     const validateForm = () => {
         const newErrors = {};
         
@@ -195,7 +252,7 @@ const RegistrationForm = () => {
                 formDataToSend.append('profile_picture', photoFile);
             }
     
-            // 1. تسجيل المستخدم
+            // 1. Register User
             const regResponse = await axios.post('http://127.0.0.1:8000/api/register', formDataToSend, {
                 headers: {
                     'Content-Type': 'multipart/form-data'
@@ -204,18 +261,14 @@ const RegistrationForm = () => {
     
             const { access_token, user } = regResponse.data;
     
-            // 2. إعداد بيانات الخبرات حسب الهيكل الجديد
+            // 2. Format Experiences
             const formattedExperiences = experiences.map(exp => ({
-                type: 'text', // أو أي نوع آخر حسب الحاجة
-                content: JSON.stringify({
-                    title: exp.title,
-                    date: exp.date,
-                    description: exp.description
-                })
+                type: exp.type,
+                content: exp.content
             }));
     
-            // 3. تحديث الملف الشخصي مع الخبرات
-            const profileResponse = await axios.put('http://127.0.0.1:8000/api/student/profile/update', {
+            // 3. Update Profile with Experiences
+            await axios.put('http://127.0.0.1:8000/api/student/profile/update', {
                 university_number: formData.universityNumber,
                 major: formData.major,
                 academic_year: formData.academicYear,
@@ -228,7 +281,7 @@ const RegistrationForm = () => {
                 }
             });
     
-            // 4. إضافة المهارات
+            // 4. Add Skills
             if (skills.length > 0) {
                 await Promise.all(skills.map(skill => 
                     axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', 
@@ -256,46 +309,8 @@ const RegistrationForm = () => {
             }
         }
     };
-    
-    const updateStudentProfile = async (token) => {
-        try {
-            const profileData = {
-                university_number: formData.universityNumber,
-                major: formData.major,
-                academic_year: formData.academicYear,
-                gpa: formData.gpa,
-                experience: JSON.stringify(experiences)
-            };
-            
-            await axios.put('http://127.0.0.1:8000/api/student/profile/update', profileData, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            
-        } catch (error) {
-            console.error('Profile update error:', error);
-            throw error;
-        }
-    };
-    
-    const addStudentSkills = async (token) => {
-        try {
-            const skillPromises = skills.map(skill => 
-                axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', 
-                    { skill_id: skill.id },
-                    { headers: { 'Authorization': `Bearer ${token}` } }
-                )
-            );
-            
-            await Promise.all(skillPromises);
-        } catch (error) {
-            console.error('Error adding skills:', error);
-            throw error;
-        }
-    };
 
+    // Render
     return (
         <div className="main-container">
             <div className="form-container">
@@ -306,6 +321,7 @@ const RegistrationForm = () => {
 
                 <form id="registrationForm" onSubmit={handleSubmit}>
                     <div className="form-row">
+                        {/* Personal Information Section */}
                         <div className="form-group half-width">
                             <label htmlFor="name" className="form-label">الاسم الكامل</label>
                             <input
@@ -350,6 +366,7 @@ const RegistrationForm = () => {
                             {errors.phone && <span className="error-message">{errors.phone}</span>}
                         </div>
                         
+                        {/* Academic Information Section */}
                         <div className="form-group half-width">
                             <label htmlFor="universityNumber" className="form-label">الرقم الجامعي</label>
                             <input
@@ -398,6 +415,7 @@ const RegistrationForm = () => {
                             </select>
                         </div>
 
+                        {/* Security Section */}
                         <div className="form-group half-width">
                             <label htmlFor="password" className="form-label">كلمة المرور</label>
                             <input
@@ -430,6 +448,7 @@ const RegistrationForm = () => {
                             {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
                         </div>
 
+                        {/* Profile Picture */}
                         <div className="form-group">
                             <label className="form-label">الصورة الشخصية</label>
                             <div className="photo-upload" onClick={triggerFileInput}>
@@ -452,6 +471,7 @@ const RegistrationForm = () => {
                             {errors.photo && <span className="error-message">{errors.photo}</span>}
                         </div>
 
+                        {/* Skills Section */}
                         <div className="form-group">
                             <label className="form-label">المهارات</label>
                             <div className="skills-container">
@@ -486,6 +506,7 @@ const RegistrationForm = () => {
                             <small className="form-note">اختر من القائمة المنسدلة</small>
                         </div>
 
+                        {/* GPA Section */}
                         <div className="form-group">
                             <label className="form-label">المعدل التراكمي</label>
                             <div className="gpa-container">
@@ -508,32 +529,43 @@ const RegistrationForm = () => {
                             </div>
                         </div>
 
+                        {/* Experiences Section */}
                         <div className="form-group">
-    <label className="form-label">الخبرات الأكاديمية</label>
-    <div id="experiencesContainer">
-        {experiences.map((exp, index) => {
-            try {
-                const content = JSON.parse(exp.content);
-                return (
-                    <div key={index} className="experience-item">
-                        <div className="experience-header">
-                            <span className="experience-title">{content.title}</span>
-                            <span className="experience-date">{content.date}</span>
+                            <label className="form-label">الخبرات الأكاديمية</label>
+                            <div id="experiencesContainer">
+                                {experiences.map((exp, index) => {
+                                    try {
+                                        const content = JSON.parse(exp.content);
+                                        return (
+                                            <div key={index} className="experience-item">
+                                                <div className="experience-header">
+                                                    <span className="experience-title">{content.title}</span>
+                                                    <span className="experience-date">{content.date}</span>
+                                                    <button 
+                                                        className="remove-experience-btn"
+                                                        onClick={() => removeExperience(index)}
+                                                    >
+                                                        <FontAwesomeIcon icon={faTimes} />
+                                                    </button>
+                                                </div>
+                                                <p className="experience-description">{content.description}</p>
+                                            </div>
+                                        );
+                                    } catch (e) {
+                                        console.error('Error parsing experience content:', e);
+                                        return null;
+                                    }
+                                })}
+                                {experiences.length < 5 && (
+                                    <div className="add-experience-btn" onClick={() => setShowModal(true)}>
+                                        <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
+                                    </div>
+                                )}
+                            </div>
+                            <small className="form-note">الحد الأقصى 5 خبرات ({5 - experiences.length} متبقية)</small>
                         </div>
-                        <p className="experience-description">{content.description}</p>
-                    </div>
-                );
-            } catch (e) {
-                console.error('Error parsing experience content:', e);
-                return null;
-            }
-        })}
-        <div className="add-experience-btn" onClick={() => setShowModal(true)}>
-            <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
-        </div>
-    </div>
-    <small className="form-note">الحد الأقصى 5 خبرات</small>
-</div>
+
+                        {/* Terms and Conditions */}
                         <div className="form-group terms-group">
                             <label>
                                 <input
@@ -547,55 +579,142 @@ const RegistrationForm = () => {
                             {errors.agreeTerms && <span className="error-message">{errors.agreeTerms}</span>}
                         </div>
 
+                        {/* Submit Button */}
                         <button type="submit" className="submit-btn">
                             <FontAwesomeIcon icon={faUserGraduate} /> تسجيل الحساب
                         </button>
                     </div>
                 </form>
             </div>
- {showModal && (
-                <div className="modal-overlay" onClick={() => setShowModal(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <span className="close-modal" onClick={() => setShowModal(false)}>
-                            <FontAwesomeIcon icon={faTimes} />
-                        </span>
-                        <h2 className="modal-title">إضافة خبرة جديدة</h2>
-                        <div className="form-group">
-                            <input
-                                type="text"
-                                name="title"
-                                className="form-input"
-                                placeholder="عنوان الخبرة"
-                                value={newExperience.title}
-                                onChange={handleExperienceChange}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <input
-                                type="text"
-                                name="date"
-                                className="form-input"
-                                placeholder="الفترة الزمنية"
-                                value={newExperience.date}
-                                onChange={handleExperienceChange}
-                            />
-                        </div>
-                        <div className="form-group">
-                            <textarea
-                                name="description"
-                                className="form-textarea"
-                                rows="4"
-                                placeholder="وصف الخبرة"
-                                value={newExperience.description}
-                                onChange={handleExperienceChange}
-                            ></textarea>
-                        </div>
-                        <button className="save-experience-btn" onClick={saveExperience}>
-                            <FontAwesomeIcon icon={faSave} /> حفظ
-                        </button>
+
+            {/* Experience Modal */}
+            {showModal && (
+    <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <span className="close-modal" onClick={() => setShowModal(false)}>
+                <FontAwesomeIcon icon={faTimes} />
+            </span>
+            <h2 className="modal-title">إضافة خبرة جديدة</h2>
+            
+            {/* نوع الخبرة */}
+            <div className="form-group">
+                <label className="form-label">نوع الخبرة</label>
+                <select 
+                    className="form-input"
+                    value={newExperience.type || 'text'}
+                    onChange={(e) => setNewExperience({...newExperience, type: e.target.value})}
+                >
+                    <option value="text">نص</option>
+                    <option value="image">صورة</option>
+                    <option value="video">فيديو</option>
+                </select>
+            </div>
+            
+            {/* حقول النص */}
+            {newExperience.type === 'text' && (
+                <>
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            name="title"
+                            className="form-input"
+                            placeholder="عنوان الخبرة"
+                            value={newExperience.title || ''}
+                            onChange={handleExperienceChange}
+                        />
                     </div>
+                    <div className="form-group">
+                        <input
+                            type="text"
+                            name="date"
+                            className="form-input"
+                            placeholder="الفترة الزمنية"
+                            value={newExperience.date || ''}
+                            onChange={handleExperienceChange}
+                        />
+                    </div>
+                    <div className="form-group">
+                        <textarea
+                            name="description"
+                            className="form-textarea"
+                            rows="4"
+                            placeholder="وصف الخبرة"
+                            value={newExperience.description || ''}
+                            onChange={handleExperienceChange}
+                        ></textarea>
+                    </div>
+                </>
+            )}
+            
+            {/* حقل الصورة */}
+            {newExperience.type === 'image' && (
+                <div className="form-group">
+                    <label className="form-label">رفع صورة</label>
+                    <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                const reader = new FileReader();
+                                reader.onload = (event) => {
+                                    setNewExperience({
+                                        ...newExperience,
+                                        content: event.target.result
+                                    });
+                                };
+                                reader.readAsDataURL(file);
+                            }
+                        }}
+                    />
+                    {newExperience.content && (
+                        <div className="image-preview">
+                            <img 
+                                src={newExperience.content} 
+                                alt="معاينة الصورة" 
+                                className="preview-image"
+                            />
+                        </div>
+                    )}
                 </div>
             )}
+            
+            {/* حقل الفيديو */}
+            {newExperience.type === 'video' && (
+                <div className="form-group">
+                    <label className="form-label">رابط الفيديو (يوتيوب فقط)</label>
+                    <input
+                        type="text"
+                        name="content"
+                        className="form-input"
+                        placeholder="https://www.youtube.com/watch?v=..."
+                        value={newExperience.content || ''}
+                        onChange={(e) => setNewExperience({
+                            ...newExperience,
+                            content: e.target.value
+                        })}
+                    />
+                    <small className="form-note">يجب أن يكون الرابط من يوتيوب</small>
+                </div>
+            )}
+            
+            <button 
+                className="save-experience-btn" 
+                onClick={saveExperience}
+                disabled={
+                    (newExperience.type === 'text' && (!newExperience.title || !newExperience.description)) ||
+                    (newExperience.type === 'image' && !newExperience.content) ||
+                    (newExperience.type === 'video' && !newExperience.content)
+                }
+            >
+                <FontAwesomeIcon icon={faSave} /> حفظ
+            </button>
+        </div>
+    </div>
+)}
+
+
+            {/* Success Message */}
             {showSuccess && (
                 <div className="success-message">
                     <FontAwesomeIcon icon={faCheckCircle} className="success-icon" />

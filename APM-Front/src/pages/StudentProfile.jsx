@@ -1,12 +1,13 @@
- import React, { useState, useEffect } from 'react';
- import './StudentProfile.css';
+import React, { useState, useEffect } from 'react';
+import './StudentProfile.css';
+import Header from '../components/Header/Header';
 
 const StudentProfile = () => {
   const [showNotification, setShowNotification] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [showTasksPage, setShowTasksPage] = useState(false);
-  const [studentData, setStudentData] = useState({
+  const [studentData] = useState({
     name: "أحمد محمد علي",
     email: "ahmed.mohammed@uni.edu.sa",
     phone: "+966 50 123 4567",
@@ -36,7 +37,6 @@ const StudentProfile = () => {
   ]);
 
   useEffect(() => {
-    // تأثيرات التمرير للعناصر
     const animateElements = document.querySelectorAll('.animate');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -47,37 +47,22 @@ const StudentProfile = () => {
       });
     }, { threshold: 0.1 });
 
-    animateElements.forEach(el => {
-      observer.observe(el);
-    });
+    animateElements.forEach(el => observer.observe(el));
 
-    // تحريك أشرطة التقدم
     document.querySelectorAll('.progress-fill').forEach(bar => {
       const width = bar.style.width;
       bar.style.width = '0';
-
-      setTimeout(() => {
-        bar.style.width = width;
-      }, 300);
+      setTimeout(() => bar.style.width = width, 300);
     });
 
-    // إضافة متابعة لعلامات المهام
     document.querySelectorAll('.task-checkbox').forEach(checkbox => {
       checkbox.addEventListener('change', function() {
         const taskItem = this.closest('.task-item');
-        if (this.checked) {
-          taskItem.style.opacity = '0.7';
-        } else {
-          taskItem.style.opacity = '1';
-        }
+        taskItem.style.opacity = this.checked ? '0.7' : '1';
       });
     });
 
-    return () => {
-      animateElements.forEach(el => {
-        observer.unobserve(el);
-      });
-    };
+    return () => animateElements.forEach(el => observer.unobserve(el));
   }, []);
 
   const toggleNotification = () => {
@@ -92,7 +77,6 @@ const StudentProfile = () => {
 
   return (
     <div className="student-profile-container">
-      {/* الهيدر */}
       <Header 
         showNotification={showNotification}
         showChat={showChat}
@@ -100,173 +84,38 @@ const StudentProfile = () => {
         toggleChat={toggleChat}
       />
 
-      {/* المحتوى الرئيسي */}
-      <div className="container">
+      <div className="container-profile">
         <div className="profile-container">
-          {/* الجانب الأيمن */}
           <ProfileSidebar 
             studentData={studentData}
             skills={skills}
             experiences={experiences}
           />
 
-          {/* المحتوى الرئيسي */}
           <div className="profile-content">
-            {/* الإحصائيات */}
             <StatsCard />
 
-            {/* مشاريعي الحالية */}
             <ProjectsCard 
               showTasksPage={showTasksPage}
               setShowTasksPage={setShowTasksPage}
               setShowProjectModal={setShowProjectModal}
             />
 
-            {/* صفحة مهام مشروع (تمثيلية) */}
-            {showTasksPage && (
-              <TasksPage setShowTasksPage={setShowTasksPage} />
-            )}
+            {showTasksPage && <TasksPage setShowTasksPage={setShowTasksPage} />}
 
-            {/* الإنجازات */}
             <AchievementsCard />
           </div>
         </div>
 
-        {/* الفوتر */}
         <footer>
           <p>© 2023 نظام إدارة المشاريع الأكاديمية. جميع الحقوق محفوظة.</p>
         </footer>
       </div>
 
-      {/* نموذج إنشاء مشروع */}
-      {showProjectModal && (
-        <ProjectModal setShowProjectModal={setShowProjectModal} />
-      )}
+      {showProjectModal && <ProjectModal setShowProjectModal={setShowProjectModal} />}
     </div>
   );
 };
-
-// مكونات فرعية
-
-const Header = ({ showNotification, showChat, toggleNotification, toggleChat }) => (
-  <header className="header">
-    <div className="header-content">
-      <div className="logo">
-        <i className="fas fa-graduation-cap"></i>
-        نظام إدارة المشاريع الأكاديمية
-      </div>
-      <div className="nav-links">
-        <div className="notifications-wrapper">
-          {/* زر الإشعارات */}
-          <div className="notification-icon" onClick={toggleNotification}>
-            <i className="fas fa-bell"></i>
-            <div className="notification-badge">3</div>
-          </div>
-          
-          {/* قائمة الإشعارات */}
-          <div className={`notification-dropdown ${showNotification ? 'show' : ''}`}>
-            <div className="notification-header">
-              <div className="notification-title">الإشعارات</div>
-              <div className="mark-all-read">تعيين الكل كمقروء</div>
-            </div>
-            <div className="notification-item unread">
-              <div className="notification-icon-small">
-                <i className="fas fa-exclamation"></i>
-              </div>
-              <div className="notification-content">
-                <div className="notification-text">تم قبول مشروعك "نظام المكتبة الرقمية" للتقييم النهائي</div>
-                <div className="notification-time">منذ ساعتين</div>
-              </div>
-            </div>
-            <div className="notification-item">
-              <div className="notification-icon-small">
-                <i className="fas fa-calendar-check"></i>
-              </div>
-              <div className="notification-content">
-                <div className="notification-text">موعد تسليم مشروع الذكاء الاصطناعي بعد 5 أيام</div>
-                <div className="notification-time">منذ يوم</div>
-              </div>
-            </div>
-            <div className="notification-item unread">
-              <div className="notification-icon-small">
-                <i className="fas fa-comments"></i>
-              </div>
-              <div className="notification-content">
-                <div className="notification-text">لديك رسالة جديدة من الدكتور أحمد</div>
-                <div className="notification-time">منذ 3 أيام</div>
-              </div>
-            </div>
-            <div className="notification-item">
-              <div className="notification-icon-small">
-                <i className="fas fa-tasks"></i>
-              </div>
-              <div className="notification-content">
-                <div className="notification-text">تم تعيين مهمة جديدة لك في مشروع التخرج</div>
-                <div className="notification-time">منذ أسبوع</div>
-              </div>
-            </div>
-            <div className="notification-footer">
-              <div className="view-all">عرض جميع الإشعارات</div>
-            </div>
-          </div>
-          
-          {/* زر الدردشة */}
-          <div className="message-icon" onClick={toggleChat}>
-            <i className="fas fa-comment-dots"></i>
-            <div className="notification-badge">1</div>
-          </div>
-          
-          {/* قائمة الدردشة */}
-          <div className={`chat-dropdown ${showChat ? 'show' : ''}`}>
-            <div className="chat-header">
-              <div className="chat-title">الدردشة الأكاديمية</div>
-              <div className="chat-close" onClick={toggleChat}>
-                <i className="fas fa-times"></i>
-              </div>
-            </div>
-            <div className="chat-body">
-              <div className="message-item received">
-                <div className="message-content">
-                  مرحباً أحمد، كيف مشروع التخرج؟ هل تحتاج مساعدة في أي جزء؟
-                </div>
-                <div className="message-time">10:30 ص</div>
-              </div>
-              <div className="message-item sent">
-                <div className="message-content">
-                  السلام عليكم دكتور، شكراً لسؤالك. التقدم جيد ولكن عندي استفسار بخصوص قاعدة البيانات
-                </div>
-                <div className="message-time">10:35 ص</div>
-              </div>
-              <div className="message-item received">
-                <div className="message-content">
-                  يمكنك تحديد موعد خلال الساعات القادمة وسأساعدك في ذلك
-                </div>
-                <div className="message-time">10:36 ص</div>
-              </div>
-              <div className="message-item sent">
-                <div className="message-content">
-                  ممتاز، أشكرك دكتور. سأراسلك لاحقاً لتحديد الموعد
-                </div>
-                <div className="message-time">10:38 ص</div>
-              </div>
-            </div>
-            <div className="chat-input">
-              <input type="text" placeholder="اكتب رسالتك هنا..." />
-              <button className="chat-send-btn">
-                <i className="fas fa-paper-plane"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-        
-        <a href="#" className="nav-link active"><i className="fas fa-user"></i> الصفحة الشخصية</a>
-        <a href="#" className="nav-link"><i className="fas fa-project-diagram"></i> المشاريع</a>
-        <a href="#" className="nav-link"><i className="fas fa-calendar-alt"></i> الجدول الزمني</a>
-        <a href="#" className="nav-link"><i className="fas fa-sign-out-alt"></i> تسجيل خروج</a>
-      </div>
-    </div>
-  </header>
-);
 
 const ProfileSidebar = ({ studentData, skills, experiences }) => (
   <div className="profile-sidebar animate delay-1">
@@ -275,12 +124,10 @@ const ProfileSidebar = ({ studentData, skills, experiences }) => (
       <h2 className="profile-name">{studentData.name}</h2>
       <p className="profile-title">طالب علوم حاسوب - السنة الرابعة</p>
       <span className="verified-badge">
-        <i className="fas fa-check-circle"></i>
-        حساب موثق
+        <i className="fas fa-check-circle"></i> حساب موثق
       </span>
     </div>
 
-    {/* المعلومات الشخصية */}
     <div className="profile-info-section">
       <h3 className="info-title"><i className="fas fa-info-circle"></i> المعلومات الشخصية</h3>
       <div className="info-item">
@@ -327,7 +174,6 @@ const ProfileSidebar = ({ studentData, skills, experiences }) => (
       </div>
     </div>
 
-    {/* المهارات */}
     <div className="profile-info-section">
       <h3 className="info-title"><i className="fas fa-lightbulb"></i> المهارات</h3>
       <div className="skills-container">
@@ -339,7 +185,6 @@ const ProfileSidebar = ({ studentData, skills, experiences }) => (
       </div>
     </div>
 
-    {/* الخبرات الأكاديمية */}
     <div className="profile-info-section">
       <h3 className="info-title"><i className="fas fa-briefcase"></i> الخبرات الأكاديمية</h3>
       {experiences.map((exp, index) => (
@@ -361,18 +206,18 @@ const StatsCard = () => (
       <h2 className="card-title">إحصائياتي</h2>
     </div>
     <div className="card-body">
-      <div className="stats-grid">
-        <div className="stat-card">
+      <div className="stats-grid-profile">
+        <div className="stat-card-profile">
           <i className="fas fa-project-diagram stat-icon"></i>
           <div className="stat-value">12</div>
           <div className="stat-label">المشاريع الكلية</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card-profile">
           <i className="fas fa-check-circle stat-icon"></i>
           <div className="stat-value">5</div>
           <div className="stat-label">مشاريع مكتملة</div>
         </div>
-        <div className="stat-card">
+        <div className="stat-card-profile">
           <i className="fas fa-clock stat-icon"></i>
           <div className="stat-value">7</div>
           <div className="stat-label">مشاريع قيد العمل</div>
@@ -392,7 +237,6 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => (
     </div>
     <div className="card-body">
       <div className="projects-grid">
-        {/* مشروع 1 */}
         <div className="project-card">
           <div className="project-header">
             <span>مشروع التخرج</span>
@@ -425,7 +269,6 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => (
           </div>
         </div>
 
-        {/* مشروع 2 */}
         <div className="project-card">
           <div className="project-header">
             <span>مادة الذكاء الاصطناعي</span>
@@ -458,7 +301,6 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => (
           </div>
         </div>
 
-        {/* زر إضافة مشروع جديد */}
         <div className="add-project" onClick={() => setShowProjectModal(true)}>
           <i className="fas fa-plus-circle"></i>
           <h3>إضافة مشروع جديد</h3>
@@ -480,7 +322,6 @@ const TasksPage = ({ setShowTasksPage }) => (
       </div>
 
       <div className="task-list">
-        {/* مهمة 1 */}
         <div className="task-item">
           <input type="checkbox" className="task-checkbox" />
           <div className="task-details">
@@ -494,7 +335,6 @@ const TasksPage = ({ setShowTasksPage }) => (
           <span className="task-priority priority-high">عالي</span>
         </div>
 
-        {/* مهمة 2 */}
         <div className="task-item">
           <input type="checkbox" className="task-checkbox" defaultChecked />
           <div className="task-details">
@@ -508,7 +348,6 @@ const TasksPage = ({ setShowTasksPage }) => (
           <span className="task-priority priority-high">عالي</span>
         </div>
 
-        {/* مهمة 3 */}
         <div className="task-item">
           <input type="checkbox" className="task-checkbox" />
           <div className="task-details">
@@ -522,7 +361,6 @@ const TasksPage = ({ setShowTasksPage }) => (
           <span className="task-priority priority-medium">متوسط</span>
         </div>
 
-        {/* مهمة 4 */}
         <div className="task-item">
           <input type="checkbox" className="task-checkbox" />
           <div className="task-details">
@@ -536,7 +374,6 @@ const TasksPage = ({ setShowTasksPage }) => (
           <span className="task-priority priority-low">منخفض</span>
         </div>
 
-        {/* مهمة 5 */}
         <div className="task-item">
           <input type="checkbox" className="task-checkbox" />
           <div className="task-details">
@@ -561,7 +398,6 @@ const AchievementsCard = () => (
     </div>
     <div className="card-body">
       <div className="achievements-grid">
-        {/* إنجاز 1 */}
         <div className="achievement-item">
           <div className="achievement-icon">
             <i className="fas fa-trophy"></i>
@@ -572,7 +408,6 @@ const AchievementsCard = () => (
           </div>
         </div>
 
-        {/* إنجاز 2 */}
         <div className="achievement-item">
           <div className="achievement-icon">
             <i className="fas fa-medal"></i>
@@ -583,7 +418,6 @@ const AchievementsCard = () => (
           </div>
         </div>
 
-        {/* إنجاز 3 */}
         <div className="achievement-item">
           <div className="achievement-icon">
             <i className="fas fa-award"></i>

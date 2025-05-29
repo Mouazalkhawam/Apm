@@ -20,24 +20,15 @@
             color: inherit;
         }
         
-        .container {
-            width: 95%;
-            max-width: 1400px;
-            margin: 0 auto;
+        .container-profile {
+            min-width: 100vh;
+            margin: 20px;
+            
             padding: 20px 0;
         }
         
         /* الهيدر المعدل */
-        .header {
-            background-color: #791770; /* لون أساسي بدل التدرج */
-            color: white;
-            padding: 10px 0;
-            border-radius: 0 0 20px 20px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-            margin-bottom: 30px;
-            position: relative;
-            overflow: hidden;
-        }
+      
         
         .header::before {
             content: '';
@@ -57,6 +48,8 @@
             padding: 0 30px;
             position: relative;
             z-index: 1;
+            height: 100%;
+            margin-top: 2rem;
         }
         
         .logo {
@@ -378,16 +371,16 @@
         }
         
         /* بطاقات الإحصائيات باستخدام اللون الأصفر فقط */
-        .stat-card {
+        .stat-card-profile {
             background-color: #eab308;
             color: white;
         }
         
-        .stat-card:nth-child(2) {
+        .stat-card-profile:nth-child(2) {
             background-color: #d1a007;
         }
         
-        .stat-card:nth-child(3) {
+        .stat-card-profile:nth-child(3) {
             background-color: #b88c06;
         }
         
@@ -632,13 +625,13 @@
         }
         
         /* الإحصائيات */
-        .stats-grid {
+        .stats-grid-profile {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
         }
         
-        .stat-card {
+        .stat-card-profile {
             color: white;
             padding: 20px;
             border-radius: 12px;
@@ -646,6 +639,8 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            display: block;
+            color: #791770;
         }
         
         .stat-card:hover {
@@ -1105,7 +1100,7 @@
                 margin-top: 15px;
             }
             
-            .stats-grid {
+            .stats-grid-profile {
                 grid-template-columns: 1fr;
             }
             
