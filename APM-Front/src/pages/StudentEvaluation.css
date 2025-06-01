@@ -1,0 +1,352 @@
+/* StudentEvaluation.css */
+
+:root {
+  --gold: #eab307;
+  --purple: #791770;
+  --light-gray: #f5f5f5;
+  --white: #ffffff;
+  --dark-gray: #333333;
+}
+
+.evaluation-system * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.evaluation-system {
+  background-color: var(--light-gray);
+  color: var(--dark-gray);
+  line-height: 1.6;
+}
+
+.evaluation-system header {
+  background: linear-gradient(135deg, var(--purple), #4a0d66);
+  color: var(--white);
+  text-align: center;
+  padding: 2rem 0;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.evaluation-system h1 {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.evaluation-system .container {
+  width: 90%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.evaluation-system .tabs {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 2rem;
+  border-bottom: 2px solid #ddd;
+}
+
+.evaluation-system .tab-btn {
+  padding: 1rem 2rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  position: relative;
+  color: var(--dark-gray);
+}
+
+.evaluation-system .tab-btn.active {
+  color: var(--purple);
+}
+
+.evaluation-system .tab-btn.active::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 4px;
+  background-color: var(--purple);
+}
+
+.evaluation-system .tab-btn:not(.active):hover {
+  color: var(--gold);
+}
+
+.evaluation-system .tab-content {
+  display: none;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+.evaluation-system .tab-content.active {
+  display: block;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* بطاقة التقييم */
+.evaluation-system .evaluation-card {
+  background-color: var(--white);
+  border-radius: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  transition: transform 0.3s ease;
+}
+
+.evaluation-system .evaluation-card:hover {
+  transform: translateY(-5px);
+}
+
+.evaluation-system .evaluation-card.gold-theme {
+  border-top: 5px solid var(--gold);
+}
+
+.evaluation-system .evaluation-card.purple-theme {
+  border-top: 5px solid var(--purple);
+}
+
+.evaluation-system .card-title {
+  font-size: 1.5rem;
+  margin-bottom: 1.5rem;
+  color: var(--purple);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.evaluation-system .gold-theme .card-title {
+  color: var(--gold);
+}
+
+.evaluation-system .evaluation-item {
+  margin-bottom: 1.5rem;
+}
+
+.evaluation-system .evaluation-item:last-child {
+  margin-bottom: 0;
+}
+
+.evaluation-system .evaluation-label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.evaluation-system .select-box {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  transition: border-color 0.3s ease;
+}
+
+.evaluation-system .select-box:focus {
+  outline: none;
+  border-color: var(--purple);
+}
+
+.evaluation-system .gold-theme .select-box:focus {
+  border-color: var(--gold);
+}
+
+.evaluation-system .rating-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.evaluation-system .rating-options {
+  display: flex;
+  gap: 5px;
+}
+
+.evaluation-system .rating-option {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #eee;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.evaluation-system .rating-option:hover {
+  transform: scale(1.1);
+}
+
+.evaluation-system .rating-option.selected {
+  background-color: var(--purple);
+  color: white;
+  transform: scale(1.1);
+}
+
+.evaluation-system .gold-theme .rating-option.selected {
+  background-color: var(--gold);
+}
+
+.evaluation-system textarea {
+  width: 100%;
+  padding: 0.8rem;
+  border: 2px solid #ddd;
+  border-radius: 5px;
+  font-size: 1rem;
+  min-height: 100px;
+  resize: vertical;
+  transition: border-color 0.3s ease;
+}
+
+.evaluation-system textarea:focus {
+  outline: none;
+  border-color: var(--purple);
+}
+
+.evaluation-system .gold-theme textarea:focus {
+  border-color: var(--gold);
+}
+
+.evaluation-system .btn {
+  padding: 0.8rem 1.5rem;
+  border: none;
+  border-radius: 5px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.evaluation-system .btn-gold {
+  background-color: var(--gold);
+  color: white;
+}
+
+.evaluation-system .btn-gold:hover {
+  background-color: #d4a006;
+  transform: translateY(-2px);
+}
+
+.evaluation-system .btn-purple {
+  background-color: var(--purple);
+  color: white;
+}
+
+.evaluation-system .btn-purple:hover {
+  background-color: #5e1259;
+  transform: translateY(-2px);
+}
+
+.evaluation-system .students-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.evaluation-system .student-card {
+  background-color: var(--white);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.evaluation-system .student-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.evaluation-system .student-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--purple);
+}
+
+.evaluation-system .student-role {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.evaluation-system .supervisors-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.evaluation-system .supervisor-card {
+  background-color: var(--white);
+  border-radius: 8px;
+  padding: 1.5rem;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  border-top: 3px solid var(--purple);
+}
+
+.evaluation-system .supervisor-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.evaluation-system .supervisor-name {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--purple);
+  font-size: 1.2rem;
+}
+
+.evaluation-system .supervisor-department {
+  color: #666;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+/* تصميم متجاوب */
+@media (max-width: 768px) {
+  .evaluation-system .tabs {
+    flex-direction: column;
+  }
+
+  .evaluation-system .tab-btn {
+    width: 100%;
+    text-align: center;
+    border-bottom: 1px solid #eee;
+  }
+
+  .evaluation-system .tab-btn.active::after {
+    display: none;
+  }
+
+  .evaluation-system .students-list,
+  .evaluation-system .supervisors-list {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .evaluation-system h1 {
+    font-size: 2rem;
+  }
+
+  .evaluation-system .students-list,
+  .evaluation-system .supervisors-list {
+    grid-template-columns: 1fr;
+  }
+}

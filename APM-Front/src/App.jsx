@@ -7,6 +7,8 @@ import ProposalForm from './pages/ProposalForm';
 import NewProjectForm from './pages/NewProjectForm';
 import AcademicDashboard from './pages/AcademicDashboard';
 import HonorBoard from './pages/HonorBoard';
+import StudentEvaluation from './pages/StudentEvaluation';
+
 import { AuthProvider } from './context/AuthContext';
 
 function App() {
@@ -57,6 +59,15 @@ function App() {
                             </ProtectedRoute>
                           } 
                />
+               <Route 
+                 path="/student-evaluation" 
+                 element={
+                  <ProtectedRoute>
+                    <StudentEvaluation />
+                            </ProtectedRoute>
+                          } 
+               />
+              
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
     
