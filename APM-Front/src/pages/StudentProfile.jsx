@@ -130,18 +130,19 @@
         return null;
       }
       
-      // إذا كان الرابط يحتوي على http (مخزن في السحابة)
+      // إذا كان الرابط يحتوي على http (رابط كامل)
       if (studentData.profile_picture.startsWith('http')) {
         return studentData.profile_picture;
       }
       
       // إذا كان المسار يبدأ بـ images/ (المجلد العام)
-      if (studentData.profile_picture.startsWith('images/')) {
+      if (studentData.profile_picture.includes('images/users/')) {
         return `http://127.0.0.1:8000/${studentData.profile_picture}`;
       }
       
-      // إذا كان المسار مخزناً بشكل نسبي
-      return `http://127.0.0.1:8000/images/users/${studentData.profile_picture}`;};
+      // أي حالة أخرى
+      return studentData.profile_picture;
+    };
       const profileImageUrl = getProfileImageUrl();
     // تحويل بيانات الخبرات
     const parseExperiences = () => {

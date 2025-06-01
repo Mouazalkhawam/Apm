@@ -261,10 +261,10 @@ class AuthController extends Controller
             'email' => $user->email,
             'phone' => $user->phone,
             'role' => $user->role,
-            'profile_picture_url' => $user->profile_picture 
-                ? asset("storage/{$user->profile_picture}") 
-                : null,
-            'student' => null
+            'profile_picture' => $user->profile_picture 
+            ? asset($user->profile_picture) // استخدم asset() بدلاً من storage
+            : null,
+             'student' => null
         ];
 
         if ($user->student) {
