@@ -7,6 +7,18 @@ const StudentEvaluation = () => {
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
   const [workQuality, setWorkQuality] = useState(0);
   const [technicalSupport, setTechnicalSupport] = useState(0);
+  
+  // حالة جديدة لإدارة قيم النماذج
+  const [formValues, setFormValues] = useState({
+    teamwork: '',
+    deadlines: '',
+    initiative: '',
+    comments: '',
+    supervisionQuality: '',
+    feedback: '',
+    availability: '',
+    supervisorComments: ''
+  });
 
   const students = {
     'student1': { name: 'أحمد محمد', role: 'مبرمج الواجهة الأمامية' },
@@ -35,10 +47,28 @@ const StudentEvaluation = () => {
     setter(value);
   };
 
+  // معالج جديد لتغيير القيم
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormValues({
+      ...formValues,
+      [name]: value
+    });
+  };
+
   const handleStudentSubmit = (e) => {
     e.preventDefault();
     alert('تم إرسال تقييم الطالب بنجاح. شكرًا لك!');
-    e.target.reset();
+    setFormValues({
+      teamwork: '',
+      deadlines: '',
+      initiative: '',
+      comments: '',
+      supervisionQuality: '',
+      feedback: '',
+      availability: '',
+      supervisorComments: ''
+    });
     setWorkQuality(0);
     setSelectedStudent(null);
   };
@@ -46,7 +76,16 @@ const StudentEvaluation = () => {
   const handleSupervisorSubmit = (e) => {
     e.preventDefault();
     alert('تم إرسال تقييم المشرف بنجاح. شكرًا لك!');
-    e.target.reset();
+    setFormValues({
+      teamwork: '',
+      deadlines: '',
+      initiative: '',
+      comments: '',
+      supervisionQuality: '',
+      feedback: '',
+      availability: '',
+      supervisorComments: ''
+    });
     setTechnicalSupport(0);
     setSelectedSupervisor(null);
   };
@@ -97,8 +136,15 @@ const StudentEvaluation = () => {
                 <form id="student-evaluation" onSubmit={handleStudentSubmit}>
                   <div className="evaluation-item">
                     <label htmlFor="teamwork" className="evaluation-label">مستوى التعاون والعمل الجماعي</label>
-                    <select id="teamwork" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="teamwork" 
+                      className="select-box" 
+                      name="teamwork"
+                      value={formValues.teamwork}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">ممتاز - التعاون دائمًا وبناء</option>
                       <option value="4">جيد جدًا - متعاون معظم الوقت</option>
                       <option value="3">جيد - تعاون بشكل مقبول</option>
@@ -128,8 +174,15 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="deadlines" className="evaluation-label">الإلتزام بالمواعيد النهائية</label>
-                    <select id="deadlines" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="deadlines" 
+                      className="select-box" 
+                      name="deadlines"
+                      value={formValues.deadlines}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">دائمًا يلتزم بالمواعيد</option>
                       <option value="4">غالبًا يلتزم بالمواعيد</option>
                       <option value="3">أحيانًا يتأخر قليلاً</option>
@@ -140,8 +193,15 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="initiative" className="evaluation-label">المبادرة وتحمل المسؤولية</label>
-                    <select id="initiative" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="initiative" 
+                      className="select-box" 
+                      name="initiative"
+                      value={formValues.initiative}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">قائد ويمتلك روح المبادرة</option>
                       <option value="4">يظهر مبادرات جيدة</option>
                       <option value="3">يقوم بما يُطلب منه</option>
@@ -152,7 +212,13 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="comments" className="evaluation-label">ملاحظات إضافية</label>
-                    <textarea id="comments" placeholder="أي ملاحظات إضافية أو نقاط تستحق التقدير..."></textarea>
+                    <textarea 
+                      id="comments" 
+                      name="comments"
+                      value={formValues.comments}
+                      onChange={handleInputChange}
+                      placeholder="أي ملاحظات إضافية أو نقاط تستحق التقدير..."
+                    ></textarea>
                   </div>
 
                   <button type="submit" className="btn btn-gold">إرسال التقييم</button>
@@ -185,8 +251,15 @@ const StudentEvaluation = () => {
                 <form id="supervisor-evaluation-form-content" onSubmit={handleSupervisorSubmit}>
                   <div className="evaluation-item">
                     <label htmlFor="supervision-quality" className="evaluation-label">جودة الإشراف والمتابعة</label>
-                    <select id="supervision-quality" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="supervision-quality" 
+                      className="select-box" 
+                      name="supervisionQuality"
+                      value={formValues.supervisionQuality}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">إشراف ممتاز ومتابعة دقيقة</option>
                       <option value="4">إشراف جيد جدًا</option>
                       <option value="3">إشراف جيد</option>
@@ -216,8 +289,15 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="feedback" className="evaluation-label">جودة الملاحظات والتغذية الراجعة</label>
-                    <select id="feedback" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="feedback" 
+                      className="select-box" 
+                      name="feedback"
+                      value={formValues.feedback}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">ملاحظات بناءة وقيمة للغاية</option>
                       <option value="4">ملاحظات جيدة ومفيدة</option>
                       <option value="3">ملاحظات مقبولة</option>
@@ -228,8 +308,15 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="availability" className="evaluation-label">التوافر والاستجابة</label>
-                    <select id="availability" className="select-box" required>
-                      <option value="" disabled selected>اختر التقييم</option>
+                    <select 
+                      id="availability" 
+                      className="select-box" 
+                      name="availability"
+                      value={formValues.availability}
+                      onChange={handleInputChange}
+                      required
+                    >
+                      <option value="">اختر التقييم</option>
                       <option value="5">دائمًا متاح ومستجيب بسرعة</option>
                       <option value="4">غالبًا متاح</option>
                       <option value="3">متاح في الأوقات المتفق عليها</option>
@@ -240,7 +327,13 @@ const StudentEvaluation = () => {
 
                   <div className="evaluation-item">
                     <label htmlFor="supervisor-comments" className="evaluation-label">ملاحظات إضافية</label>
-                    <textarea id="supervisor-comments" placeholder="أي ملاحظات إضافية أو اقتراحات للتحسين..."></textarea>
+                    <textarea 
+                      id="supervisor-comments" 
+                      name="supervisorComments"
+                      value={formValues.supervisorComments}
+                      onChange={handleInputChange}
+                      placeholder="أي ملاحظات إضافية أو اقتراحات للتحسين..."
+                    ></textarea>
                   </div>
 
                   <button type="submit" className="btn btn-purple">إرسال التقييم</button>
