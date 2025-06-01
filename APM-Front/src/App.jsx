@@ -8,6 +8,7 @@ import NewProjectForm from './pages/NewProjectForm';
 import AcademicDashboard from './pages/AcademicDashboard';
 import HonorBoard from './pages/HonorBoard';
 import StudentEvaluation from './pages/StudentEvaluation';
+import ResourcesLibrary from './pages/ResourcesLibrary'; 
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -64,6 +65,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <StudentEvaluation />
+                            </ProtectedRoute>
+                          } 
+               />
+                 <Route 
+                 path="/Resources-Library" 
+                 element={
+                  <ProtectedRoute>
+                    <ResourcesLibrary />
                             </ProtectedRoute>
                           } 
                />
