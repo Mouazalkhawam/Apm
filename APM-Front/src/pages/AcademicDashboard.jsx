@@ -115,8 +115,8 @@ const AcademicDashboard = () => {
         <div className="sidebar-profile">
           <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" className="profile-image" />
           <div className="profile-info">
-            <div className="sidebar-text profile-name">د. سارة أحمد</div>
-            <div className="sidebar-text profile-role">أستاذ مشارك</div>
+            <div className="sidebar-text profile-name-dashboard">د. سارة أحمد</div>
+            <div className="sidebar-text profile-role">منسق المشاريع</div>
           </div>
         </div>
         

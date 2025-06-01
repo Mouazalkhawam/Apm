@@ -413,12 +413,12 @@
             color: inherit;
         }
         
-        .container {
+       /* .container {
             width: 95%;
             max-width: 1400px;
             margin: 0 auto;
             padding: 20px 0;
-        }
+        }*/
         
         /* الملف الشخصي */
         .profile-container {

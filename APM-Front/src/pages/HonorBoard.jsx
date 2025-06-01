@@ -151,7 +151,7 @@ const HonorBoard = () => {
           {topProjects.map(project => (
             <div 
               key={project.id} 
-              className="project-card"
+              className="project-card-honor"
               style={{ borderLeft: `4px solid ${project.rank === 1 ? '#FFD700' : project.rank === 2 ? '#C0C0C0' : '#CD7F32'}` }}
             >
               <div className="project-content">
@@ -159,7 +159,7 @@ const HonorBoard = () => {
                   {project.rank === 1 ? <FaCrown /> : <FaMedal />}
                   {project.rank === 1 ? 'المركز الأول' : project.rank === 2 ? 'المركز الثاني' : 'المركز الثالث'}
                 </div>
-                <div className="project-header">
+                <div className="project-header-honor">
                   <h3 className="project-title">{project.title}</h3>
                   <span className="project-category">{project.category}</span>
                 </div>
@@ -249,19 +249,7 @@ const HonorBoard = () => {
       </section>
       
       {/* قسم الشركاء */}
-      <section className="partners-section">
-        <div className="partners-title">
-          <h3>بالشراكة مع</h3>
-          <p>الجهات الأكاديمية والشركات الداعمة</p>
-        </div>
-        
-        <div className="partners-logos">
-          <div className="partner-logo"></div>
-          <div className="partner-logo"></div>
-          <div className="partner-logo"></div>
-          <div className="partner-logo"></div>
-        </div>
-      </section>
+      
     </div>
   );
 };

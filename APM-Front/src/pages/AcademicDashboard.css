@@ -92,7 +92,7 @@
             margin-right: 0.75rem;
         }
         
-        .profile-name {
+        .profile-name-dashboard {
             font-weight: 500;
         }
         
@@ -267,6 +267,7 @@
             color: #6b7280;
             position: relative;
             margin: 0 0.5rem;
+            border-radius: 50%;
         }
         
         .notification-button:hover {
@@ -332,10 +333,10 @@
             background-color: #f9fafb;
         }
         
-        .container {
+        /*.container {
             max-width: 1200px;
             margin: 0 auto;
-        }
+        }*/
         
         /* Welcome Header */
         .welcome-header {

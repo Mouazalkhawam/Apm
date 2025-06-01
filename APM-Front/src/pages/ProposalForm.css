@@ -17,9 +17,9 @@
     line-height: 1.6;
 }*/
 
-.container {
+.container-proposal {
     width: 100%;
-    max-width: 1200px;
+    min-width: 100vh;
     margin: 0 auto;
     padding: 0 20px;
 }
@@ -28,10 +28,11 @@
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    min-width: fit-content;
 }
 
 /* الرأس */
-header {
+header:not(.top-nav) {
     background: linear-gradient(135deg, #791770 0%, #791770 100%);
     color: white;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -160,11 +161,11 @@ main {
     animation: slideUp 0.5s ease-out;
 }
 
-.form-section {
+.form-section-proposal {
     margin-bottom: 40px;
 }
 
-.section-title {
+.section-title-proposal {
     font-size: 20px;
     font-weight: 700;
     margin-bottom: 24px;
@@ -191,7 +192,7 @@ main {
     }
 }
 
-.form-group {
+.form-group-proposal {
     margin-bottom: 16px;
 }
 
@@ -203,7 +204,7 @@ label {
     margin-bottom: 4px;
 }
 
-/*input:not([type="checkbox"]),
+.input-proposal:not([type="checkbox"]),
 select,
 textarea {
     width: 100%;
@@ -213,9 +214,9 @@ textarea {
     font-family: 'Tajawal', sans-serif;
     font-size: 14px;
     transition: all 0.3s;
-}*/
+}
 
-input:focus,
+.input-proposal:focus,
 select:focus,
 textarea:focus {
     outline: none;
@@ -248,7 +249,7 @@ textarea {
     background-color: #eab307;
     color: white;
     border: none;
-    border-radius: 0 8px 8px 0;
+    border-radius: 8px 0 0 8px;
     cursor: pointer;
     transition: background-color 0.3s;
 }
@@ -311,7 +312,7 @@ textarea {
     background-color: #e2e8f0;
     color: #334155;
     border: none;
-    border-radius: 0 8px 8px 0;
+    border-radius: 8px 0 0 8px;
     cursor: pointer;
     transition: background-color 0.3s;
 }

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './ProposalForm.css';
+import Header from '../components/Header/Header';
 
 const ProposalForm = () => {
   const navigate = useNavigate();
@@ -25,7 +26,22 @@ const ProposalForm = () => {
     timeline: '',
     deliverables: '',
     teamRoles: ''
+
+    
   });
+  const [showNotification, setShowNotification] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+
+  const toggleNotification = () => {
+    setShowNotification(!showNotification);
+    if (showChat) setShowChat(false);
+  };
+  
+  const toggleChat = () => {
+    setShowChat(!showChat);
+    if (showNotification) setShowNotification(false);
+  };
+
 
   // بيانات الأعضاء
   const membersData = [
@@ -115,22 +131,14 @@ const ProposalForm = () => {
   return (
     <div className="min-height-wrapper">
       {/* الرأس */}
-      <header>
-        <div className="container header-content">
-          <div className="logo">
-            <i className="fas fa-lightbulb"></i>
-            <h1>نظام مقترحات المشاريع</h1>
-          </div>
-          <div>
-            <button className="login-btn">
-              <i className="fas fa-user"></i>تسجيل الدخول
-            </button>
-          </div>
-        </div>
-      </header>
-
+      <Header 
+        showNotification={showNotification}
+        showChat={showChat}
+        toggleNotification={toggleNotification}
+        toggleChat={toggleChat}
+      />
       {/* المحتوى الرئيسي */}
-      <main className="container">
+      <main className="container-proposal">
         {/* اختيار نوع المشروع */}
         <div className="project-type-card">
           <h2>نوع المشروع</h2>
@@ -159,17 +167,18 @@ const ProposalForm = () => {
         {/* نموذج المقترح */}
         <form id="project-proposal-form" className="proposal-form" onSubmit={handleSubmit}>
           {/* المعلومات الأساسية */}
-          <div className="form-section">
-            <h2 className="section-title">المعلومات الأساسية</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">المعلومات الأساسية</h2>
             <div className="form-grid">
               {/* عنوان المشروع */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="project-title">عنوان المشروع</label>
                 <input 
                   type="text" 
                   id="project-title" 
                   name="projectTitle"
                   placeholder="أدخل عنوان المشروع" 
+                  className='input-proposal'
                   value={formData.projectTitle}
                   onChange={handleInputChange}
                   required 
@@ -177,7 +186,7 @@ const ProposalForm = () => {
               </div>
               
               {/* المشرف */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="supervisor">المشرف على المشروع</label>
                 <select 
                   id="supervisor" 
@@ -197,10 +206,10 @@ const ProposalForm = () => {
           </div>
 
           {/* وصف المشكلة */}
-          <div className="form-section">
-            <h2 className="section-title">وصف المشكلة</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">وصف المشكلة</h2>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="problem-description">وصف المشكلة</label>
               <textarea 
                 id="problem-description" 
@@ -212,7 +221,7 @@ const ProposalForm = () => {
               ></textarea>
             </div>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="problem-studies">الدراسات المرجعية للمشكلة</label>
               <textarea 
                 id="problem-studies" 
@@ -226,10 +235,10 @@ const ProposalForm = () => {
           </div>
 
           {/* الحل المقترح */}
-          <div className="form-section">
-            <h2 className="section-title">الحل المقترح</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">الحل المقترح</h2>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="solution-studies">دراسة مرجعية للحلول</label>
               <textarea 
                 id="solution-studies" 
@@ -241,7 +250,7 @@ const ProposalForm = () => {
               ></textarea>
             </div>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="proposed-solution">الحل المقترح</label>
               <textarea 
                 id="proposed-solution" 
@@ -255,19 +264,19 @@ const ProposalForm = () => {
           </div>
 
           {/* متطلبات المشروع */}
-          <div className="form-section">
-            <h2 className="section-title">متطلبات المشروع</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">متطلبات المشروع</h2>
             
             <div className="form-grid">
               <div>
-                <h3 className="section-title">
+                <h3 className="section-title-proposal">
                   <i className="fas fa-cogs" style={{color: "#3b82f6", marginLeft: "8px"}}></i>المتطلبات الوظيفية
                 </h3>
                 <div id="functional-req-container">
                   <div className="req-input-group">
                     <input 
                       type="text" 
-                      className="req-input" 
+                      className="req-input input-proposal" 
                       placeholder="أدخل متطلب وظيفي"
                       id="functional-req-input"
                     />
@@ -283,14 +292,14 @@ const ProposalForm = () => {
               </div>
               
               <div>
-                <h3 className="section-title">
+                <h3 className="section-title-proposal">
                   <i className="fas fa-chart-line" style={{color: "#10b981", marginLeft: "8px"}}></i>المتطلبات غير الوظيفية
                 </h3>
                 <div id="non-functional-req-container">
-                  <div className="req-input-group">
+                  <div className="req-input-group ">
                     <input 
                       type="text" 
-                      className="req-input" 
+                      className="req-input input-proposal" 
                       placeholder="أدخل متطلب غير وظيفي"
                       id="non-functional-req-input"
                     />
@@ -309,12 +318,12 @@ const ProposalForm = () => {
           </div>
 
           {/* المواصفات الفنية */}
-          <div className="form-section">
-            <h2 className="section-title">المواصفات الفنية</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">المواصفات الفنية</h2>
             
             <div className="form-grid form-grid-4">
               {/* المنصة */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="platform">المنصة</label>
                 <select 
                   id="platform" 
@@ -332,12 +341,13 @@ const ProposalForm = () => {
               </div>
               
               {/* الأدوات */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="tools">الأدوات</label>
                 <input 
                   type="text" 
                   id="tools" 
                   name="tools"
+                  className='input-proposal'
                   placeholder="أدخل الأدوات المستخدمة"
                   value={formData.tools}
                   onChange={handleInputChange}
@@ -345,12 +355,13 @@ const ProposalForm = () => {
               </div>
               
               {/* لغات البرمجة */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="languages">لغات البرمجة</label>
                 <input 
                   type="text" 
                   id="languages" 
                   name="languages"
+                  className='input-proposal'
                   placeholder="أدخل لغات البرمجة"
                   value={formData.languages}
                   onChange={handleInputChange}
@@ -358,11 +369,12 @@ const ProposalForm = () => {
               </div>
               
               {/* قاعدة البيانات */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="database">قاعدة البيانات</label>
                 <input 
                   type="text" 
                   id="database" 
+                  className='input-proposal'
                   name="database"
                   placeholder="أدخل نظام قاعدة البيانات"
                   value={formData.database}
@@ -372,7 +384,7 @@ const ProposalForm = () => {
             </div>
             
             {/* الحزم والمكتبات */}
-            <div className="form-group" style={{marginTop: "24px"}}>
+            <div className="form-group-proposal" style={{marginTop: "24px"}}>
               <label htmlFor="packages">الحزم والمكتبات</label>
               <textarea 
                 id="packages" 
@@ -385,10 +397,10 @@ const ProposalForm = () => {
           </div>
 
           {/* إدارة المشروع */}
-          <div className="form-section">
-            <h2 className="section-title">إدارة المشروع</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">إدارة المشروع</h2>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="management-plan">خطة إدارة المشروع</label>
               <textarea 
                 id="management-plan" 
@@ -402,7 +414,7 @@ const ProposalForm = () => {
             
             <div className="form-grid">
               {/* الجدول الزمني */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="timeline">الجدول الزمني</label>
                 <textarea 
                   id="timeline" 
@@ -414,7 +426,7 @@ const ProposalForm = () => {
               </div>
               
               {/* المخرجات المتوقعة */}
-              <div className="form-group">
+              <div className="form-group-proposal">
                 <label htmlFor="deliverables">المخرجات المتوقعة</label>
                 <textarea 
                   id="deliverables" 
@@ -428,14 +440,15 @@ const ProposalForm = () => {
           </div>
 
           {/* أعضاء الفريق */}
-          <div className="form-section">
-            <h2 className="section-title">أعضاء الفريق</h2>
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">أعضاء الفريق</h2>
             
             <div className="team-search-container">
               <div className="search-group">
                 <input 
                   type="text" 
                   id="member-search" 
+                  className='input-proposal'
                   placeholder="ابحث عن أعضاء..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
@@ -508,7 +521,7 @@ const ProposalForm = () => {
               </div>
             </div>
             
-            <div className="form-group">
+            <div className="form-group-proposal">
               <label htmlFor="team-roles">توزيع الأدوار</label>
               <textarea 
                 id="team-roles" 
@@ -531,24 +544,7 @@ const ProposalForm = () => {
       </main>
 
       {/* التذييل */}
-      <footer>
-        <div className="container">
-          <div className="footer-content">
-            <div className="footer-info">
-              <h3>نظام مقترحات المشاريع</h3>
-              <p>منصة متكاملة لإدارة مقترحات المشاريع الأكاديمية</p>
-            </div>
-            <div className="social-links">
-              <a href="#" className="social-link"><i className="fab fa-twitter"></i></a>
-              <a href="#" className="social-link"><i className="fab fa-facebook"></i></a>
-              <a href="#" className="social-link"><i className="fab fa-linkedin"></i></a>
-            </div>
-          </div>
-          <div className="footer-copyright">
-            © 2023 نظام مقترحات المشاريع. جميع الحقوق محفوظة.
-          </div>
-        </div>
-      </footer>
+     
     </div>
   );
 };
