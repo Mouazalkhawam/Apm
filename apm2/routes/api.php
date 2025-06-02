@@ -1,17 +1,17 @@
 <?php
 
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\MeetingController;
 use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProjectController;
 use App\Http\Controllers\ProjectProposalController;
 use App\Http\Controllers\StudentProfileController;
+use App\Http\Controllers\API\ProjectStageController;
+use App\Http\Controllers\API\TaskController;
+use App\Http\Controllers\API\ResourceController;
+use App\Http\Controllers\API\EvaluationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
-use App\Http\Controllers\Admin\HonorBoardController;
-use App\Http\Controllers\MessageController;
-use App\Http\Controllers\MeetingController;
-
-
 use Illuminate\Support\Facades\Route;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;
@@ -20,12 +20,15 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/all-skills', [StudentProfileController::class, 'getAllSkills']);
 
+
 // مسارات محمية تحتاج إلى Access Token
 Route::middleware('auth:api')->group(function () {
     // مسارات المستخدم
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'userProfile']);
     Route::get('/users', [AuthController::class, 'getUsersByRole']);
+    Route::get('/students', [AuthController::class, 'getStudentsForDropdown']);
+    Route::get('/supervisors', [AuthController::class, 'getSupervisorsForDropdown']);
     Route::post('/refresh', [AuthController::class, 'refreshToken']);
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
@@ -34,6 +37,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
     Route::post('/projects/create', [ProjectController::class, 'createProject']);
+    Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
+    Route::post('/projects/recommendations', [ProjectController::class, 'getRecommendations']);
+    Route::post('/project-stages', [ProjectStageController::class, 'store']); // إنشاء مرحلة
+    Route::get('/project-stages/{project_id}', [ProjectStageController::class, 'getByProject']); // عرض مراحل مشروع
+    Route::delete('/project-stages/{id}', [ProjectStageController::class, 'destroy']); // حذف مرحلة
     Route::delete('/messages/{messageId}', [MessageController::class, 'destroy']);
     Route::get('/messages/conversation/{userId}', [MessageController::class, 'chatMessages']);
     Route::post('/messages', [MessageController::class, 'send']);
@@ -41,6 +49,11 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead']);
     Route::patch('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
+    Route::post('/tasks', [TaskController::class, 'store']);
+    Route::get('/stages/{stage}/tasks', [TaskController::class, 'getStageTasks']);
+    Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
+    Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask']);
+    Route::patch('/submissions/{submission}/grade', [TaskController::class, 'gradeTask']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)
         Route::get('/', [HonorBoardController::class, 'indexApi']);
@@ -55,10 +68,11 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/{id}', [HonorBoardController::class, 'destroyApi']);
     });
     
+    
     // مسارات المنسق
     Route::get('/admin/trash', [AuthController::class, 'viewTrash']);
     Route::delete('/admin/trash/{id}', [AuthController::class, 'forceDeleteAccount']);
-    Route::put('/admin/user/role/{id}', [AuthController::class, 'changeRole']);
+    Route::put('/admin/user/role/{id}', [AuthController::class, 'changeRole']); 
 
     // مسارات مقترحات المشاريع
     Route::prefix('proposals')->group(function () {
@@ -74,6 +88,26 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
     });
+
+    Route::get('/resources', [ResourceController::class, 'index']);
+    Route::get('/resources/{id}', [ResourceController::class, 'show']);
+    
+    // إنشاء مورد جديد (مشرف أو منسق فقط - الصلاحية داخل الكونترولر)
+    Route::post('/resources', [ResourceController::class, 'store']);
+    
+    // تحديث المورد (المنشئ أو المنسق - الصلاحية داخل الكونترولر)
+    Route::put('/resources/{id}', [ResourceController::class, 'update']);
+    
+    // حذف المورد (المنسق فقط - الصلاحية داخل الكونترولر)
+    Route::delete('/resources/{id}', [ResourceController::class, 'destroy']);
+    
+    // تحديث حالة المورد (المنسق فقط - الصلاحية داخل الكونترولر)
+    Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
+
+    Route::post('/evaluations', [EvaluationController::class, 'store']);
+    Route::get('/evaluations', [EvaluationController::class, 'index']);
+
+
     Route::prefix('supervisors/{supervisor}')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'supervisorIndex']);
         Route::post('/meetings/propose', [MeetingController::class, 'storeProposed']);
@@ -94,5 +128,5 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/info', [StudentProfileController::class, 'getProfile']);
     });
     
-  
+    
 });

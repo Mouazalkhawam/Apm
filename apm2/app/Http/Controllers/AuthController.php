@@ -287,4 +287,31 @@ class AuthController extends Controller
         return response()->json($response);
     }
 
+    public function getStudentsForDropdown()
+    {
+        $students = User::where('role', 'student')
+            ->join('students', 'users.userId', '=', 'students.userId')
+            ->select('users.userId as id', 'students.studentId', 'users.name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $students
+        ]);
+    }
+
+
+    public function getSupervisorsForDropdown()
+    {
+        $supervisors = User::where('role', 'supervisor')
+            ->join('supervisors', 'users.userId', '=', 'supervisors.userId')
+            ->select('users.userId as id', 'supervisors.supervisorId', 'users.name')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $supervisors
+        ]);
+    }
+
 }
