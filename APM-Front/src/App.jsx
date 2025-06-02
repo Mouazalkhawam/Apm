@@ -9,6 +9,7 @@ import AcademicDashboard from './pages/AcademicDashboard';
 import HonorBoard from './pages/HonorBoard';
 import StudentEvaluation from './pages/StudentEvaluation';
 import ResourcesLibrary from './pages/ResourcesLibrary'; 
+import StudentProjectManagement  from './pages/StudentProjectManagement'; 
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -76,7 +77,14 @@ function App() {
                             </ProtectedRoute>
                           } 
                />
-              
+              <Route 
+                 path="/student-project-management" 
+                 element={
+                  <ProtectedRoute>
+                    <StudentProjectManagement />
+                            </ProtectedRoute>
+                          } 
+               />
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
     
