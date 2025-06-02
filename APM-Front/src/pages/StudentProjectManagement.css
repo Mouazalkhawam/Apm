@@ -1,5 +1,5 @@
      /* Base Styles */
-        * {
+       /* * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
@@ -20,7 +20,7 @@
         }
         
         /* Header Styles - New Design */
-        header {
+       /* header {
             background: #791770;
             color: white;
             padding: 50px 0 60px;
@@ -29,9 +29,9 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
             position: relative;
             overflow: hidden;
-        }
+        }*/
         
-        .header-content {
+   /*     .header-content {
             position: relative;
             z-index: 2;
             max-width: 1200px;
@@ -108,7 +108,7 @@
         }
         
         /* Stages Section */
-        .stages-container {
+       /*.stages-container {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
             gap: 30px;
@@ -161,7 +161,7 @@
         }
         
         /* Task Styles */
-        .task {
+       /* .task {
             background-color: white;
             border-left: 4px solid #eab307;
             padding: 20px;
@@ -301,7 +301,7 @@
         }
         
         /* Add Task Form */
-        .add-task-form {
+       /* .add-task-form {
             display: none;
             padding: 20px;
             background-color: #f8f9fa;
@@ -415,7 +415,7 @@
         }
         
         /* File Upload Area */
-        .file-upload-area {
+      /*  .file-upload-area {
             border: 2px dashed #e1e5ee;
             border-radius: 12px;
             padding: 20px;
@@ -486,7 +486,7 @@
         }
         
         /* Task Actions */
-        .task-actions {
+      /*  .task-actions {
             display: flex;
             justify-content: space-between;
             margin-top: 20px;
@@ -530,7 +530,7 @@
         }
         
         /* Submission Modal */
-        .modal-overlay {
+     /*   .modal-overlay {
             position: fixed;
             top: 0;
             left: 0;
@@ -613,7 +613,7 @@
         }
         
         /* Responsive Styles */
-        @media (max-width: 768px) {
+      /*  @media (max-width: 768px) {
             .project-title {
                 font-size: 1.8rem;
             }
@@ -639,7 +639,7 @@
         }
         
         /* Animations */
-        @keyframes fadeInDown {
+    /*    @keyframes fadeInDown {
             from { opacity: 0; transform: translateY(-20px); }
             to { opacity: 1; transform: translateY(0); }
         }
@@ -659,7 +659,7 @@
         }
         
         /* Custom Scrollbar */
-        ::-webkit-scrollbar {
+    /*    ::-webkit-scrollbar {
             width: 8px;
         }
         
@@ -678,8 +678,8 @@
         }
         
         /* Icons */
-        .task-icon {
+      /*  .task-icon {
             font-size: 1.2rem;
             margin-left: 5px;
             vertical-align: middle;
-        }
+        }*/
