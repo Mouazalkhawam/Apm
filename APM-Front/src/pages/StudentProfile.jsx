@@ -578,9 +578,7 @@ const ProjectModal = ({ setShowProjectModal }) => {
       const token = localStorage.getItem('access_token');
       const currentUser = JSON.parse(localStorage.getItem('user'));
       
-      if (!currentUser || currentUser.role !== 'student') {
-        throw new Error('فقط الطلاب يمكنهم إنشاء مشاريع جديدة');
-      }
+      
 
       // إعداد البيانات مع التحويل الصحيح للأنواع
       const requestData = {

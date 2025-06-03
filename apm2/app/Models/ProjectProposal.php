@@ -12,7 +12,7 @@ class ProjectProposal extends Model
     protected $primaryKey = 'proposalId';
 
     protected $fillable = [
-        'leader_id',
+        'group_id',
         'title',
         'problem_statement',
         'problem_background',
@@ -28,10 +28,9 @@ class ProjectProposal extends Model
         'technology_stack' => 'array'
     ];
 
-    // علاقة مع قائد الفريق (طالب)
-    public function leader()
+    public function group()
     {
-        return $this->belongsTo(Student::class, 'leader_id');
+        return $this->belongsTo(Group::class, 'group_id', 'groupid');
     }
 
     // علاقة مع أعضاء الفريق (طلاب)

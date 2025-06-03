@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\ProjectProposal;
+use App\Models\Group;
+use App\Models\GroupStudent;
+use App\Models\GroupSupervisor;
 use App\Models\Student;
 use App\Models\Supervisor;
 use Illuminate\Http\Request;
@@ -12,26 +15,59 @@ use Illuminate\Support\Facades\Storage;
 
 class ProjectProposalController extends Controller
 {
+    /**
+     * عرض نموذج إنشاء مقترح جديد
+     */
     public function create()
     {
-        $student = Student::where('userId', Auth::id())->firstOrFail();
-        $students = Student::where('userId', '!=', Auth::id())->get();
-        $supervisors = Supervisor::all();
+        $user = Auth::user();
+        $student = $user->student;
+        
+        if (!$student) {
+            return response()->json(['message' => 'يجب أن تكون طالباً لإنشاء مقترح'], 403);
+        }
+
+        // التحقق من أن الطالب عضو في مجموعة معتمدة
+        $group = $student->groups()->where('status', 'approved')->first();
+        
+        if (!$group) {
+            return response()->json(['message' => 'يجب أن تكون عضوًا في مجموعة معتمدة لإنشاء مقترح'], 403);
+        }
+
+        // جلب أعضاء المجموعة الآخرين
+        $groupMembers = $group->students()->where('students.userId', '!=', $user->id)->get();
 
         return response()->json([
-            'student' => $student,
-            'students' => $students,
-            'supervisors' => $supervisors
+            'group' => $group,
+            'group_members' => $groupMembers,
+            'supervisors' => $group->supervisors
         ], 200, [], JSON_UNESCAPED_UNICODE);
     }
 
+    /**
+     * حفظ المقترح الجديد
+     */
     public function store(Request $request)
     {
+        $user = Auth::user();
+        $student = $user->student;
+
+        if (!$student) {
+            return response()->json(['message' => 'يجب أن تكون طالباً لإنشاء مقترح'], 403);
+        }
+
+        // التحقق من أن الطالب عضو في مجموعة معتمدة
+        $group = $student->groups()->where('status', 'approved')->first();
+        
+        if (!$group) {
+            return response()->json(['message' => 'يجب أن تكون عضوًا في مجموعة معتمدة لإنشاء مقترح'], 403);
+        }
+
         $validated = $this->validateRequest($request);
         $mindmapPath = $this->handleFileUpload($request);
 
         $proposalData = [
-            'leader_id' => Student::where('userId', Auth::id())->first()->studentId,
+            'group_id' => $group->groupid,
             'title' => $validated['title'],
             'problem_mindmap_path' => $mindmapPath,
             'problem_statement' => $validated['problem_statement'],
@@ -44,7 +80,7 @@ class ProjectProposalController extends Controller
         ];
 
         $proposal = ProjectProposal::create($proposalData);
-        $this->attachRelations($proposal, $request);
+        $this->attachRelations($proposal, $request, $group);
 
         return response()->json([
             'message' => 'تم تقديم المقترح بنجاح!',
@@ -52,34 +88,160 @@ class ProjectProposalController extends Controller
         ], 201, [], JSON_UNESCAPED_UNICODE);
     }
 
-    private function validateRequest(Request $request): array
+    /**
+     * التحقق من صلاحية المستخدم للوصول للمقترح
+     */
+    private function checkUserAccess(ProjectProposal $proposal)
     {
-        return $request->validate([
+        $user = Auth::user();
+        $groupId = $proposal->group_id;
+
+        // إذا كان المستخدم طالباً
+        if ($user->student) {
+            return GroupStudent::where('studentId', $user->student->studentId)
+                ->where('groupid', $groupId)
+                ->where('status', 'approved')
+                ->exists();
+        }
+        
+        // إذا كان المستخدم مشرفاً
+        if ($user->supervisor) {
+            return GroupSupervisor::where('supervisorId', $user->supervisor->supervisorId)
+                ->where('groupid', $groupId)
+                ->where('status', 'approved')
+                ->exists();
+        }
+
+        return false;
+    }
+
+    /**
+     * عرض المقترح
+     */
+    public function show($id)
+    {
+        $proposal = ProjectProposal::with([
+            'group.students.user',
+            'group.supervisors.user',
+            'experts'
+        ])->findOrFail($id);
+
+        if (!$this->checkUserAccess($proposal)) {
+            return response()->json(['message' => 'غير مصرح لك بمشاهدة هذا المقترح'], 403);
+        }
+
+        return response()->json([
+            'data' => $this->formatProposalData($proposal)
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * تحديث المقترح
+     */
+    public function update(Request $request, $id)
+    {
+        $proposal = ProjectProposal::findOrFail($id);
+        $user = Auth::user();
+
+        // فقط الطلاب يمكنهم التعديل
+        if (!$user->student) {
+            return response()->json(['message' => 'فقط الطلاب يمكنهم تعديل المقترحات'], 403);
+        }
+
+        if (!$this->checkUserAccess($proposal)) {
+            return response()->json(['message' => 'غير مصرح لك بتعديل هذا المقترح'], 403);
+        }
+
+        $validated = $this->validateRequest($request, true);
+        $mindmapPath = $this->handleFileUpload($request, $proposal);
+
+        $updateData = [
+            'title' => $validated['title'],
+            'problem_statement' => $validated['problem_statement'],
+            'problem_background' => $validated['problem_background'],
+            'proposed_solution' => $validated['proposed_solution'],
+            'functional_requirements' => $validated['functional_requirements'],
+            'non_functional_requirements' => $validated['non_functional_requirements'],
+            'technology_stack' => $validated['tech_stack'] ?? [],
+        ];
+
+        if ($mindmapPath) {
+            $updateData['problem_mindmap_path'] = $mindmapPath;
+        }
+
+        $proposal->update($updateData);
+        $this->syncRelations($proposal, $request);
+
+        return response()->json([
+            'message' => 'تم تحديث المقترح بنجاح!',
+            'data' => $this->prepareResponseData($proposal, $mindmapPath)
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * حذف المقترح
+     */
+    public function destroy($id)
+    {
+        $proposal = ProjectProposal::findOrFail($id);
+        $user = Auth::user();
+
+        // التحقق من أن المستخدم هو قائد المجموعة
+        if (!$user->student || !$user->student->isTeamLeader($proposal->group_id)) {
+            return response()->json(['message' => 'فقط قائد المجموعة يمكنه حذف المقترح'], 403);
+        }
+
+        // حذف الملف المرفوع إذا كان موجوداً
+        if ($proposal->problem_mindmap_path) {
+            Storage::disk('public')->delete($proposal->problem_mindmap_path);
+        }
+
+        $proposal->delete();
+
+        return response()->json([
+            'message' => 'تم حذف المقترح بنجاح!'
+        ], 200, [], JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * التحقق من صحة البيانات
+     */
+    private function validateRequest(Request $request, $isUpdate = false): array
+    {
+        $rules = [
             'title' => 'required|string|max:255',
             'problem_statement' => 'required|string',
             'problem_background' => 'required|string',
-            'problem_mindmap' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'proposed_solution' => 'required|string',
             'functional_requirements' => 'required|string',
             'non_functional_requirements' => 'required|string',
-            'team_members' => 'nullable|array',
-            'team_members.*' => 'exists:students,studentId',
-            'supervisors' => 'nullable|array',
-            'supervisors.*' => 'exists:supervisors,supervisorId',
-            'experts' => 'nullable|array',
-            'experts.*.name' => 'required_with:experts|string',
-            'experts.*.phone' => 'nullable|string',
             'tech_stack' => 'nullable|array',
-        ]);
+        ];
+
+        if (!$isUpdate) {
+            $rules['problem_mindmap'] = 'nullable|image|mimes:jpeg,png,jpg|max:2048';
+        } else {
+            $rules['problem_mindmap'] = 'sometimes|image|mimes:jpeg,png,jpg|max:2048';
+        }
+
+        return $request->validate($rules);
     }
 
-    private function handleFileUpload(Request $request): ?string
+    /**
+     * معالجة رفع الملف
+     */
+    private function handleFileUpload(Request $request, $proposal = null): ?string
     {
         if (!$request->hasFile('problem_mindmap')) {
             return null;
         }
 
         try {
+            // حذف الملف القديم إذا كان موجوداً
+            if ($proposal && $proposal->problem_mindmap_path) {
+                Storage::disk('public')->delete($proposal->problem_mindmap_path);
+            }
+
             return $request->file('problem_mindmap')->store('mindmaps', 'public');
         } catch (\Exception $e) {
             Log::error('File upload failed: ' . $e->getMessage());
@@ -87,17 +249,13 @@ class ProjectProposalController extends Controller
         }
     }
 
-    private function attachRelations(ProjectProposal $proposal, Request $request): void
+    /**
+     * إرفاق العلاقات (لإنشاء مقترح جديد)
+     */
+    private function attachRelations(ProjectProposal $proposal, Request $request, Group $group): void
     {
         try {
-            if ($request->team_members) {
-                $proposal->teamMembers()->attach($request->team_members);
-            }
-
-            if ($request->supervisors) {
-                $proposal->supervisors()->attach($request->supervisors);
-            }
-
+            // إرفاق الخبراء فقط (المشرفين يأتون من المجموعة)
             if ($request->experts) {
                 foreach ($request->experts as $expert) {
                     if (!empty($expert['name'])) {
@@ -114,6 +272,33 @@ class ProjectProposalController extends Controller
         }
     }
 
+    /**
+     * مزامنة العلاقات (لتحديث المقترح)
+     */
+    private function syncRelations(ProjectProposal $proposal, Request $request): void
+    {
+        try {
+            // تحديث الخبراء فقط (المشرفين يأتون من المجموعة)
+            if ($request->has('experts')) {
+                $proposal->experts()->delete();
+                foreach ($request->experts as $expert) {
+                    if (!empty($expert['name'])) {
+                        $proposal->experts()->create([
+                            'name' => $expert['name'],
+                            'phone' => $expert['phone'] ?? null,
+                            'specialization' => $expert['specialization'] ?? null,
+                        ]);
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error('Relations sync failed: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * تحضير بيانات الاستجابة
+     */
     private function prepareResponseData(ProjectProposal $proposal, ?string $mindmapPath): array
     {
         return [
@@ -124,20 +309,9 @@ class ProjectProposalController extends Controller
         ];
     }
 
-    public function show($id)
-    {
-        $proposal = ProjectProposal::with([
-            'leader.user',
-            'teamMembers.user',
-            'supervisors.user',
-            'experts'
-        ])->findOrFail($id);
-
-        return response()->json([
-            'data' => $this->formatProposalData($proposal)
-        ], 200, [], JSON_UNESCAPED_UNICODE);
-    }
-
+    /**
+     * تنسيق بيانات المقترح
+     */
     private function formatProposalData(ProjectProposal $proposal): array
     {
         return [
@@ -150,9 +324,12 @@ class ProjectProposalController extends Controller
             'non_functional_requirements' => $proposal->non_functional_requirements,
             'methodology' => $proposal->methodology,
             'technology_stack' => $proposal->technology_stack,
-            'leader' => $proposal->leader,
-            'team_members' => $proposal->teamMembers,
-            'supervisors' => $proposal->supervisors,
+            'group' => [
+                'id' => $proposal->group->groupid,
+                'name' => $proposal->group->name,
+                'students' => $proposal->group->students,
+                'supervisors' => $proposal->group->supervisors
+            ],
             'experts' => $proposal->experts,
             'mindmap_url' => $proposal->problem_mindmap_path ? url('storage/' . $proposal->problem_mindmap_path) : null
         ];

@@ -23,16 +23,19 @@ class Group extends Model
 
     // العلاقة مع الطلاب (معدلة)
 // في App\Models\Group
-    public function students() 
+  // في App\Models\Group
+    public function students()
     {
         return $this->belongsToMany(Student::class, 'group_student', 'groupid', 'studentId')
-                    ->withPivot('status');
+                    ->withPivot('status', 'is_leader')
+                    ->wherePivot('status', 'approved');
     }
 
-    public function supervisors() 
+    public function supervisors()
     {
         return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
-                    ->withPivot('status');
+                    ->withPivot('status')
+                    ->wherePivot('status', 'approved');
     }
 
     public function groupStudents()
@@ -57,4 +60,23 @@ class Group extends Model
         return $this->hasMany(EvaluationCriterion::class);
     }
     
+
+    public function approvedStudents()
+    {
+        return $this->belongsToMany(Student::class, 'group_student', 'groupid', 'studentId')
+                    ->wherePivot('status', 'approved')
+                    ->withPivot('is_leader');
+    }
+
+    public function approvedSupervisors()
+    {
+        return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
+                    ->wherePivot('status', 'approved');
+    }
+
+
+    public function proposal()
+    {
+        return $this->hasOne(ProjectProposal::class, 'group_id', 'groupid');
+    }   
 }
