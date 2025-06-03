@@ -416,7 +416,7 @@
        /* .container {
             width: 95%;
             max-width: 1400px;
-            margin: 0 auto;
+            margin: 0 auto;a
             padding: 20px 0;
         }*/
         
@@ -1211,7 +1211,7 @@
             font-weight: 500;
         }
         
-        .form-input, .form-textarea {
+        .form-input-profile, .form-textarea {
             width: 100%;
             padding: 12px 15px;
             border: 1px solid #ddd;
@@ -1226,7 +1226,7 @@
             resize: vertical;
         }
         
-        .form-input:focus, .form-textarea:focus {
+        .form-input-profile:focus, .form-textarea:focus {
             outline: none;
             border-color: #791770;
             box-shadow: 0 0 0 3px rgba(121, 23, 112, 0.1);
