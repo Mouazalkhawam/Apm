@@ -24,8 +24,8 @@ class ProjectController extends Controller
             'title' => 'required|string',
             'description' => 'nullable|string',
             'startdate' => 'required|date',
-            'enddate' => 'required|date|after:startdate',
-            'students' => 'required|array|min:1|exists:students,studentId',
+            'enddate' => 'nullable|date|after:startdate',
+            'students' => 'nullable|array|min:1|exists:students,studentId',
             'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId'
         ]);
 

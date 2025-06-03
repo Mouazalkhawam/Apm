@@ -1,259 +1,379 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faProjectDiagram, faAlignLeft, faUserTie, faUsers, faPlus, faTimes, faCheck } from '@fortawesome/free-solid-svg-icons';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import './NewProjectForm.css';
 
 const NewProjectForm = () => {
-    const navigate = useNavigate();
-    
-    // Sample students data
-    const allStudents = [
-        "أحمد محمد", "سارة عبدالله", "خالد علي", 
-        "نورا أحمد", "ياسر خالد", "فاطمة عبدالعزيز",
-        "سعيد ناصر", "ريم خالد", "عبدالرحمن سليمان",
-        "مها عادل", "وليد حسن", "هند وسام"
-    ];
-    
-    // State management
-    const [formData, setFormData] = useState({
-        projectName: '',
-        projectDesc: '',
-        supervisor: ''
-    });
-    
-    const [selectedStudents, setSelectedStudents] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [showSuggestions, setShowSuggestions] = useState(false);
-    
-    // Handle input changes
-    const handleInputChange = (e) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: value
-        }));
-    };
-    
-    // Handle student search input
-    const handleStudentSearch = (e) => {
-        const term = e.target.value;
-        setSearchTerm(term);
-        setShowSuggestions(term.length > 0);
-    };
-    
-    // Add student to the list
-    const addStudent = (student) => {
-        if (!selectedStudents.includes(student)) {
-            setSelectedStudents(prev => [...prev, student]);
-        }
-        setSearchTerm('');
-        setShowSuggestions(false);
-    };
-    
-    // Remove student from the list
-    const removeStudent = (student) => {
-        setSelectedStudents(prev => prev.filter(name => name !== student));
-    };
-    
-    // Filter students based on search term
-    const getFilteredStudents = () => {
-        return allStudents.filter(student => 
-            student.toLowerCase().includes(searchTerm.toLowerCase()) && 
-            !selectedStudents.includes(student)
-        );
-    };
-    
-    // Handle form submission
-    const handleSubmit = (e) => {
-        e.preventDefault();
+  // الحالات (States)
+  const [projectName, setProjectName] = useState('');
+  const [projectDesc, setProjectDesc] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [supervisors, setSupervisors] = useState([]);
+  const [selectedSupervisors, setSelectedSupervisors] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  // جلب البيانات من الباكند
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
         
-        // Validate form
-        if (!formData.projectName || !formData.projectDesc || !formData.supervisor) {
-            alert('الرجاء تعبئة جميع الحقول المطلوبة');
-            return;
-        }
-        
-        // Here you would typically send data to server
-        console.log('Project Data:', {
-            name: formData.projectName,
-            description: formData.projectDesc, 
-            supervisor: formData.supervisor,
-            students: selectedStudents
+        // جلب قائمة الطلاب للقائمة المنسدلة
+        const studentsResponse = await axios.get('/api/students', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
         });
+        setStudents(studentsResponse.data || []);
         
-        // Show success message and reset form (or redirect)
-        alert('تم إنشاء المشروع بنجاح!');
-        resetForm();
-    };
-    
-    // Handle cancel
-    const handleCancel = () => {
-        if (confirm('هل أنت متأكد أنك تريد إلغاء إنشاء المشروع؟ سيتم فقدان جميع البيانات المدخلة.')) {
-            resetForm();
-            navigate(-1); // Go back to previous page
-        }
-    };
-    
-    // Reset form
-    const resetForm = () => {
-        setFormData({
-            projectName: '',
-            projectDesc: '',
-            supervisor: ''
+        // جلب قائمة المشرفين للقائمة المنسدلة
+        const supervisorsResponse = await axios.get('/api/supervisors', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+          }
         });
-        setSelectedStudents([]);
-        setSearchTerm('');
+        setSupervisors(supervisorsResponse.data || []);
+        
+      } catch (err) {
+        setError('فشل في جلب البيانات من الخادم');
+        console.error('حدث خطأ أثناء جلب البيانات:', err);
+      } finally {
+        setLoading(false);
+      }
     };
+
+    fetchData();
+  }, []);
+
+  // إضافة طالب إلى القائمة المختارة
+  const addStudent = (studentId) => {
+    if (!studentId) return;
     
+    const student = students.find(s => s.id == studentId);
+    if (student && !selectedStudents.some(s => s.id == studentId)) {
+      setSelectedStudents([...selectedStudents, student]);
+    }
+  };
+
+  // إضافة مشرف إلى القائمة المختارة
+  const addSupervisor = (supervisorId) => {
+    if (!supervisorId) return;
+    
+    const supervisor = supervisors.find(s => s.id == supervisorId);
+    if (supervisor && !selectedSupervisors.some(s => s.id == supervisorId)) {
+      setSelectedSupervisors([...selectedSupervisors, supervisor]);
+    }
+  };
+
+  // إزالة طالب من القائمة المختارة
+  const removeStudent = (studentId) => {
+    setSelectedStudents(selectedStudents.filter(s => s.id !== studentId));
+  };
+
+  // إزالة مشرف من القائمة المختارة
+  const removeSupervisor = (supervisorId) => {
+    setSelectedSupervisors(selectedSupervisors.filter(s => s.id !== supervisorId));
+  };
+
+  // إرسال النموذج
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!projectName || !projectDesc || !startDate) {
+      alert('الرجاء إكمال جميع الحقول المطلوبة');
+      return;
+    }
+    
+    if (selectedStudents.length === 0) {
+      alert('الرجاء اختيار طلاب على الأقل للمشروع');
+      return;
+    }
+    
+    if (selectedSupervisors.length === 0) {
+      alert('الرجاء اختيار مشرف على الأقل للمشروع');
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await axios.post('/api/projects/create', {
+        title: projectName,
+        description: projectDesc,
+        startdate: startDate,
+        enddate: endDate || null,
+        students: selectedStudents.map(s => s.id),
+        supervisors: selectedSupervisors.map(s => s.id)
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`
+        }
+      });
+      
+      setShowSuccessModal(true);
+    } catch (err) {
+      setError('فشل في إنشاء المشروع');
+      console.error('حدث خطأ أثناء إنشاء المشروع:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // إعادة تعيين النموذج
+  const resetForm = () => {
+    setProjectName('');
+    setProjectDesc('');
+    setStartDate('');
+    setEndDate('');
+    setSelectedStudents([]);
+    setSelectedSupervisors([]);
+  };
+
+  // إلغاء النموذج
+  const handleCancel = () => {
+    const confirmCancel = window.confirm('هل أنت متأكد من إلغاء إنشاء المشروع؟ سيتم فقدان جميع البيانات المدخلة.');
+    if (confirmCancel) {
+      resetForm();
+    }
+  };
+
+  if (loading && students.length === 0 && supervisors.length === 0) {
+    return <div className="loading">جاري تحميل البيانات...</div>;
+  }
+
+  if (error) {
     return (
-        <div className="new-project-container">
-            <header className="primary-bg">
-                <div className="header-container">
-                    <h1>إنشاء مشروع جديد</h1>
-                    <div className="profile-actions">
-                        <div className="profile-img-container">
-                            <img src="https://via.placeholder.com/40" alt="Profile" className="profile-img" />
-                        </div>
-                    </div>
-                </div>
-            </header>
-            
-            <main>
-                <div className="project-card fade-in">
-                    <div className="project-header">
-                        <h2>معلومات المشروع الأساسية</h2>
-                    </div>
-                    
-                    <form onSubmit={handleSubmit} className="project-form">
-                        <div className="form-group">
-                            <label htmlFor="projectName">
-                                <FontAwesomeIcon icon={faProjectDiagram} className="icon" /> اسم المشروع
-                            </label>
-                            <input 
-                                type="text" 
-                                id="projectName" 
-                                name="projectName"
-                                value={formData.projectName}
-                                onChange={handleInputChange}
-                                placeholder="أدخل اسم المشروع هنا..." 
-                                required 
-                            />
-                        </div>
-                        
-                        <div className="form-group">
-                            <label htmlFor="projectDesc">
-                                <FontAwesomeIcon icon={faAlignLeft} className="icon" /> وصف المشروع
-                            </label>
-                            <textarea 
-                                id="projectDesc" 
-                                name="projectDesc"
-                                rows="5" 
-                                value={formData.projectDesc}
-                                onChange={handleInputChange}
-                                placeholder="أدخل وصفاً مفصلاً للمشروع..." 
-                                required
-                            ></textarea>
-                        </div>
-                        
-                        <div className="form-group">
-                            <label htmlFor="supervisor">
-                                <FontAwesomeIcon icon={faUserTie} className="icon" /> اسم المشرف
-                            </label>
-                            <input 
-                                type="text" 
-                                id="supervisor" 
-                                name="supervisor"
-                                value={formData.supervisor}
-                                onChange={handleInputChange}
-                                placeholder="أدخل اسم المشرف على المشروع..." 
-                                required 
-                            />
-                        </div>
-                        
-                        <div className="form-group">
-                            <label>
-                                <FontAwesomeIcon icon={faUsers} className="icon" /> الطلاب المشتركين
-                            </label>
-                            <div className="student-search-container">
-                                <input 
-                                    type="text" 
-                                    id="studentSearch" 
-                                    value={searchTerm}
-                                    onChange={handleStudentSearch}
-                                    placeholder="ابحث عن طلاب لإضافتهم للمشروع..." 
-                                />
-                                <button 
-                                    type="button" 
-                                    id="addStudentBtn" 
-                                    className="add-student-btn"
-                                    onClick={() => {
-                                        if (allStudents.includes(searchTerm)) {
-                                            addStudent(searchTerm);
-                                        }
-                                    }}
-                                >
-                                    <FontAwesomeIcon icon={faPlus} /> إضافة
-                                </button>
-                            </div>
-                            
-                            <div id="suggestions" className={`suggestions-container ${showSuggestions ? 'show' : ''}`}>
-                                <h4>اقتراحات:</h4>
-                                <div id="suggestionList" className="suggestion-list">
-                                    {getFilteredStudents().map(student => (
-                                        <button
-                                            key={student}
-                                            type="button"
-                                            className="suggestion-btn"
-                                            onClick={() => addStudent(student)}
-                                        >
-                                            {student}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            
-                            <div className="students-container">
-                                <h4>الطلاب المضافين:</h4>
-                                <div id="studentsList" className="students-list">
-                                    {selectedStudents.length > 0 ? (
-                                        selectedStudents.map(student => (
-                                            <div key={student} className="student-tag">
-                                                <button 
-                                                    type="button"
-                                                    className="remove-btn"
-                                                    onClick={() => removeStudent(student)}
-                                                >
-                                                    <FontAwesomeIcon icon={faTimes} />
-                                                </button>
-                                                <span className="student-name">{student}</span>
-                                            </div>
-                                        ))
-                                    ) : (
-                                        <p id="noStudents" className="no-students">لم يتم إضافة أي طلاب حتى الآن</p>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="form-actions">
-                            <button 
-                                type="button" 
-                                id="cancelBtn" 
-                                className="cancel-btn"
-                                onClick={handleCancel}
-                            >
-                                <FontAwesomeIcon icon={faTimes} className="icon" /> إلغاء
-                            </button>
-                            <button type="submit" className="submit-btn">
-                                <FontAwesomeIcon icon={faCheck} className="icon" /> إنشاء المشروع
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </main>
-        </div>
+      <div className="error">
+        <p>{error}</p>
+        <button onClick={() => window.location.reload()}>إعادة المحاولة</button>
+      </div>
     );
+  }
+
+  return (
+    <div className="page-container">
+      {/* Header */}
+      <header className="primary-bg">
+        <div className="header-container">
+          <div className="header-content">
+            <h1 className="header-title">إنشاء مشروع جديد</h1>
+            <div className="header-actions">
+              <div className="profile-container">
+                <div className="profile-avatar">
+                  {localStorage.getItem('userName')?.charAt(0) || ''}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main>
+        <div className="project-form-container fade-in">
+          <div className="form-header">
+            <h2>معلومات المشروع الأساسية</h2>
+          </div>
+
+          <form onSubmit={handleSubmit} className="form-content">
+            <div className="form-group">
+              <label htmlFor="projectName">
+                <i className="fas fa-project-diagram"></i> اسم المشروع
+              </label>
+              <input 
+                type="text" 
+                id="projectName" 
+                value={projectName}
+                onChange={(e) => setProjectName(e.target.value)}
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="projectDesc">
+                <i className="fas fa-align-left"></i> وصف المشروع
+              </label>
+              <textarea 
+                id="projectDesc" 
+                rows="5" 
+                value={projectDesc}
+                onChange={(e) => setProjectDesc(e.target.value)}
+                required
+              ></textarea>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="startDate">
+                <i className="fas fa-calendar-alt"></i> تاريخ البدء
+              </label>
+              <input 
+                type="date" 
+                id="startDate" 
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                required 
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="endDate">
+                <i className="fas fa-calendar-alt"></i> تاريخ الانتهاء (اختياري)
+              </label>
+              <input 
+                type="date" 
+                id="endDate" 
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+              />
+            </div>
+
+            <div className="form-group">
+              <label>
+                <i className="fas fa-user-tie"></i> المشرفون
+              </label>
+              
+              <div className="dropdown-selection">
+                <select 
+                  className="form-dropdown"
+                  onChange={(e) => addSupervisor(e.target.value)}
+                  defaultValue=""
+                >
+                  <option value="" disabled>اختر مشرف...</option>
+                  {supervisors.map(supervisor => (
+                    <option key={supervisor.id} value={supervisor.id}>
+                      {supervisor.name} - {supervisor.specialization || 'غير محدد'}
+                    </option>
+                  ))}
+                </select>
+                
+                <div className="selected-items">
+                  <h4 className="selected-header">
+                    <i className="fas fa-user-check"></i>
+                    المشرفون المختارون:
+                    <span className="selected-count">{selectedSupervisors.length}</span>
+                  </h4>
+                  <div className="selected-list">
+                    {selectedSupervisors.length === 0 ? (
+                      <p className="no-items">لم يتم اختيار أي مشرفين حتى الآن</p>
+                    ) : (
+                      <ul>
+                        {selectedSupervisors.map(supervisor => (
+                          <li key={supervisor.id} className="selected-item">
+                            <span>{supervisor.name} - {supervisor.specialization || 'غير محدد'}</span>
+                            <button 
+                              className="remove-btn"
+                              onClick={() => removeSupervisor(supervisor.id)}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label>
+                <i className="fas fa-users"></i> الطلاب المشتركين
+              </label>
+              
+              <div className="dropdown-selection">
+                <select 
+                  className="form-dropdown"
+                  onChange={(e) => addStudent(e.target.value)}
+                  defaultValue=""
+                >
+                  <option value="" disabled>اختر طالب...</option>
+                  {students.map(student => (
+                    <option key={student.id} value={student.id}>
+                      {student.name} - {student.student_id} - {student.major || 'غير محدد'}
+                    </option>
+                  ))}
+                </select>
+                
+                <div className="selected-items">
+                  <h4 className="selected-header">
+                    <i className="fas fa-user-check"></i>
+                    الطلاب المختارون:
+                    <span className="selected-count">{selectedStudents.length}</span>
+                  </h4>
+                  <div className="selected-list">
+                    {selectedStudents.length === 0 ? (
+                      <p className="no-items">لم يتم اختيار أي طلاب حتى الآن</p>
+                    ) : (
+                      <ul>
+                        {selectedStudents.map(student => (
+                          <li key={student.id} className="selected-item">
+                            <span>{student.name} - {student.student_id} - {student.major || 'غير محدد'}</span>
+                            <button 
+                              className="remove-btn"
+                              onClick={() => removeStudent(student.id)}
+                            >
+                              <i className="fas fa-times"></i>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="form-actions">
+              <button type="button" onClick={handleCancel} className="btn btn-cancel" disabled={loading}>
+                <i className="fas fa-times"></i> إلغاء
+              </button>
+              <button type="submit" className="btn btn-submit" disabled={loading}>
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> جاري الحفظ...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-check"></i> إنشاء المشروع
+                  </>
+                )}
+              </button>
+            </div>
+          </form>
+        </div>
+      </main>
+
+      {showSuccessModal && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div className="modal-icon">
+              <i className="fas fa-check-circle"></i>
+            </div>
+            <h3 className="modal-title">تم بنجاح!</h3>
+            <p className="modal-message">
+              تم إنشاء المشروع "<span className="project-name">{projectName}</span>" بنجاح
+            </p>
+            <button 
+              className="modal-close-btn"
+              onClick={() => {
+                setShowSuccessModal(false);
+                resetForm();
+              }}
+            >
+              <i className="fas fa-check"></i> تم
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default NewProjectForm;

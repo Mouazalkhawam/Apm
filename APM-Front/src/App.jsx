@@ -96,7 +96,10 @@ function App() {
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem('access_token');
-  return token ? children : <Navigate to="/login" />;
+  if (!token) {
+    return <Navigate to="/login" replace />;
+  }
+  return children;
 };
 
 export default App;
