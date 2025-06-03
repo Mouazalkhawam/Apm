@@ -281,7 +281,7 @@
         
                 localStorage.setItem('access_token', access_token);
                 setShowSuccess(true);
-                setTimeout(() => navigate('/dashboard'), 3000);
+                setTimeout(() => navigate('/profile'), 3000);
         
             } catch (error) {
                 console.error('Registration error:', error);

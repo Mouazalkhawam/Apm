@@ -9,17 +9,15 @@ return new class extends Migration
 {
     public function up()
     {
-        // 1. أولاً نغير اسم الحقل القديم مؤقتاً
-        Schema::table('students', function (Blueprint $table) {
-            $table->renameColumn('experience', 'old_experience');
-        });
+        // For older MariaDB versions, use raw SQL to rename the column
+        DB::statement('ALTER TABLE students CHANGE experience old_experience TEXT NULL');
 
-        // 2. ننشئ الحقل الجديد كـ JSON
+        // Create the new JSON column
         Schema::table('students', function (Blueprint $table) {
             $table->json('experience')->nullable()->after('userId');
         });
 
-        // 3. ننقل البيانات القديمة مع التحويل إلى JSON
+        // Migrate the data
         $students = DB::table('students')->whereNotNull('old_experience')->get();
         
         foreach ($students as $student) {
@@ -27,12 +25,10 @@ return new class extends Migration
                 $jsonData = json_decode($student->old_experience, true);
                 
                 if (json_last_error() === JSON_ERROR_NONE) {
-                    // إذا كانت البيانات بالفعل JSON
                     DB::table('students')
                         ->where('studentId', $student->studentId)
                         ->update(['experience' => $student->old_experience]);
                 } else {
-                    // إذا كانت بيانات نصية عادية
                     DB::table('students')
                         ->where('studentId', $student->studentId)
                         ->update([
@@ -45,7 +41,6 @@ return new class extends Migration
                         ]);
                 }
             } catch (\Exception $e) {
-                // معالجة البيانات التالفة
                 DB::table('students')
                     ->where('studentId', $student->studentId)
                     ->update([
@@ -59,12 +54,12 @@ return new class extends Migration
             }
         }
 
-        // 4. أخيراً نحذف الحقل القديم
+        // Drop the old column
         Schema::table('students', function (Blueprint $table) {
             $table->dropColumn('old_experience');
         });
 
-        // 5. إضافة حقل نوع الوسائط
+        // Add media type column
         Schema::table('students', function (Blueprint $table) {
             $table->string('experience_media_type')->nullable()
                   ->comment('text, image, video, mixed')
