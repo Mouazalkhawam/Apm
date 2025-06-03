@@ -12,7 +12,6 @@ const ProposalForm = () => {
   const [selectedMembers, setSelectedMembers] = useState([]);
   const [formData, setFormData] = useState({
     projectTitle: '',
-    supervisor: '',
     problemDescription: '',
     problemStudies: '',
     solutionStudies: '',
@@ -24,7 +23,6 @@ const ProposalForm = () => {
     packages: '',
     managementPlan: '',
     timeline: '',
-    deliverables: '',
     teamRoles: ''
 
     
@@ -184,24 +182,7 @@ const ProposalForm = () => {
                   required 
                 />
               </div>
-              
-              {/* المشرف */}
-              <div className="form-group-proposal">
-                <label htmlFor="supervisor">المشرف على المشروع</label>
-                <select 
-                  id="supervisor" 
-                  name="supervisor"
-                  value={formData.supervisor}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="" selected disabled>اختر المشرف</option>
-                  <option value="dr-ahmed">د. أحمد محمد</option>
-                  <option value="dr-sara">د. سارة عبد الله</option>
-                  <option value="dr-khalid">د. خالد حسن</option>
-                  <option value="dr-layla">د. ليلى عمر</option>
-                </select>
-              </div>
+            
             </div>
           </div>
 
@@ -439,87 +420,8 @@ const ProposalForm = () => {
             </div>
           </div>
 
-          {/* أعضاء الفريق */}
-          <div className="form-section-proposal">
-            <h2 className="section-title-proposal">أعضاء الفريق</h2>
-            
-            <div className="team-search-container">
-              <div className="search-group">
-                <input 
-                  type="text" 
-                  id="member-search" 
-                  className='input-proposal'
-                  placeholder="ابحث عن أعضاء..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <button 
-                  type="button" 
-                  id="search-btn"
-                  onClick={handleSearch}
-                >
-                  <i className="fas fa-search"></i>
-                </button>
-              </div>
-              
-              {showResults && (
-                <div id="search-results" className="custom-scrollbar">
-                  {searchResults.length > 0 ? (
-                    searchResults.map(member => (
-                      <div key={member.id} className="member-result">
-                        <img src={member.image} alt={member.name} />
-                        <div className="member-info">
-                          <div className="member-name">{member.name}</div>
-                          <div className="member-department">{member.department}</div>
-                        </div>
-                        <button 
-                          type="button" 
-                          className="add-member-btn"
-                          onClick={() => addTeamMember(member.id)}
-                        >
-                          <i className="fas fa-plus"></i>
-                        </button>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="member-result">لا توجد نتائج</div>
-                  )}
-                </div>
-              )}
-            </div>
-            
-            <div>
-              <label style={{display: "block", fontSize: "14px", fontWeight: "500", color: "#334155", marginBottom: "8px"}}>
-                أعضاء الفريق المختارون
-              </label>
-              <div id="selected-members" className="selected-members">
-                {selectedMembers.map(member => (
-                  <div key={member.id} className="member-chip" data-member-id={member.id}>
-                    <img src={member.image} alt={member.name} />
-                    <span className="member-chip-name">{member.name}</span>
-                    <select 
-                      className="member-role"
-                      value={member.role}
-                      onChange={(e) => changeMemberRole(member.id, e.target.value)}
-                    >
-                      <option value="عضو">عضو</option>
-                      <option value="قائد الفريق">قائد الفريق</option>
-                      <option value="مبرمج">مبرمج</option>
-                      <option value="مصمم">مصمم</option>
-                      <option value="محلل">محلل</option>
-                      <option value="مدير مشروع">مدير مشروع</option>
-                    </select>
-                    <button 
-                      type="button" 
-                      className="remove-member-btn"
-                      onClick={() => removeTeamMember(member.id)}
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+         
+
             
             <div className="form-group-proposal">
               <label htmlFor="team-roles">توزيع الأدوار</label>
@@ -532,7 +434,7 @@ const ProposalForm = () => {
                 required
               ></textarea>
             </div>
-          </div>
+          
 
           {/* زر الإرسال */}
           <div className="submit-container">
