@@ -21,21 +21,17 @@ class Group extends Model
         return $this->belongsTo(Project::class, 'projectid', 'projectid');
     }
 
-    // العلاقة مع الطلاب (معدلة)
-// في App\Models\Group
-  // في App\Models\Group
+
     public function students()
     {
         return $this->belongsToMany(Student::class, 'group_student', 'groupid', 'studentId')
-                    ->withPivot('status', 'is_leader')
-                    ->wherePivot('status', 'approved');
+                    ->withPivot('status', 'is_leader');
     }
 
     public function supervisors()
     {
         return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
-                    ->withPivot('status')
-                    ->wherePivot('status', 'approved');
+                    ->withPivot('status');
     }
 
     public function groupStudents()
@@ -49,7 +45,7 @@ class Group extends Model
     }
     
 
-    // app/Models/Group.php
+    
     public function peerEvaluations()
     {
         return $this->hasMany(PeerEvaluation::class, 'group_id');
@@ -67,7 +63,6 @@ class Group extends Model
                     ->wherePivot('status', 'approved')
                     ->withPivot('is_leader');
     }
-
     public function approvedSupervisors()
     {
         return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')

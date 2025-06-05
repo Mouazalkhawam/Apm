@@ -309,7 +309,7 @@
                     <form id="registrationForm" onSubmit={handleSubmit} encType="multipart/form-data">
                         <div className="form-row">
                             {/* Personal Information Section */}
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="name" className="form-label">الاسم الكامل</label>
                                 <input
                                     type="text"
@@ -324,7 +324,7 @@
                                 {errors.name && <span className="error-message">{errors.name}</span>}
                             </div>
 
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="email" className="form-label">البريد الجامعي</label>
                                 <input
                                     type="email"
@@ -339,7 +339,7 @@
                                 {errors.email && <span className="error-message">{errors.email}</span>}
                             </div>
                             
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="phone" className="form-label">رقم الجوال</label>
                                 <input
                                     type="tel"
@@ -354,7 +354,7 @@
                             </div>
                             
                             {/* Academic Information Section */}
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="universityNumber" className="form-label">الرقم الجامعي</label>
                                 <input
                                     type="text"
@@ -369,7 +369,7 @@
                                 {errors.universityNumber && <span className="error-message">{errors.universityNumber}</span>}
                             </div>
                             
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="major" className="form-label">التخصص</label>
                                 <input
                                     type="text"
@@ -384,7 +384,7 @@
                                 {errors.major && <span className="error-message">{errors.major}</span>}
                             </div>
 
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="academicYear" className="form-label">السنة الدراسية</label>
                                 <select
                                     id="academicYear"
@@ -403,7 +403,7 @@
                             </div>
 
                             {/* Security Section */}
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="password" className="form-label">كلمة المرور</label>
                                 <input
                                     type="password"
@@ -420,7 +420,7 @@
                                 {errors.password && <span className="error-message">{errors.password}</span>}
                             </div>
 
-                            <div className="form-group half-width">
+                            <div className="form-group-register half-width">
                                 <label htmlFor="confirmPassword" className="form-label">تأكيد كلمة المرور</label>
                                 <input
                                     type="password"
@@ -436,7 +436,7 @@
                             </div>
 
                             {/* Profile Picture */}
-                            <div className="form-group">
+                            <div className="form-group-register">
                                 <label className="form-label">الصورة الشخصية</label>
                                 <div className="photo-upload" onClick={triggerFileInput}>
                                     {photoPreview ? (
@@ -459,9 +459,9 @@
                             </div>
 
                             {/* Skills Section */}
-                            <div className="form-group">
+                            <div className="form-group-register">
                                 <label className="form-label">المهارات</label>
-                                <div className="skills-container">
+                                <div className="skills-container-register">
                                     {skills.map((skill, index) => (
                                         <div key={skill.id} className="skill-tag">
                                             <span className="remove-skill" onClick={() => removeSkill(index)}>&times;</span>
@@ -469,7 +469,7 @@
                                         </div>
                                     ))}
                                 </div>
-                                <div className="add-skill-container">
+                                <div className="add-skill-container-register">
                                     <select
                                         value={selectedSkillId}
                                         onChange={(e) => setSelectedSkillId(e.target.value)}
@@ -494,7 +494,7 @@
                             </div>
 
                             {/* GPA Section */}
-                            <div className="form-group">
+                            <div className="form-group-register">
                                 <label className="form-label">المعدل التراكمي</label>
                                 <div className="gpa-container">
                                     <div className="gpa-bar">
@@ -517,7 +517,7 @@
                             </div>
 
                             {/* Experiences Section */}
-                            <div className="form-group">
+                            <div className="form-group-register">
                                 <label className="form-label">الخبرات الأكاديمية</label>
                                 <div id="experiencesContainer">
                                     {experiences.map((exp, index) => {
@@ -578,7 +578,7 @@
                             </div>
 
                             {/* Terms and Conditions */}
-                            <div className="form-group terms-group">
+                            <div className="form-group-register terms-group">
                                 <label>
                                     <input
                                         type="checkbox"
@@ -609,7 +609,7 @@
                             <h2 className="modal-title">إضافة خبرة جديدة</h2>
                             
                             {/* نوع الخبرة */}
-                            <div className="form-group">
+                            <div className="form-group-register">
                                 <label className="form-label">نوع الخبرة</label>
                                 <select 
                                     className="form-input"
@@ -625,7 +625,7 @@
                             {/* حقول النص */}
                             {newExperience.type === 'text' && (
                                 <>
-                                    <div className="form-group">
+                                    <div className="form-group-register">
                                         <input
                                             type="text"
                                             name="title"
@@ -635,7 +635,7 @@
                                             onChange={handleExperienceChange}
                                         />
                                     </div>
-                                    <div className="form-group">
+                                    <div className="form-group-register">
                                         <input
                                             type="text"
                                             name="date"
@@ -645,7 +645,7 @@
                                             onChange={handleExperienceChange}
                                         />
                                     </div>
-                                    <div className="form-group">
+                                    <div className="form-group-regiter">
                                         <textarea
                                             name="description"
                                             className="form-textarea"
@@ -660,7 +660,7 @@
                             
                             {/* حقل الصورة */}
                             {newExperience.type === 'image' && (
-                                <div className="form-group">
+                                <div className="form-group-register">
                                     <label className="form-label">رفع صورة</label>
                                     <input
                                         type="file"
@@ -693,7 +693,7 @@
                             
                             {/* حقل الفيديو */}
                             {newExperience.type === 'video' && (
-                                <div className="form-group">
+                                <div className="form-group-register">
                                     <label className="form-label">رابط الفيديو (يوتيوب فقط)</label>
                                     <input
                                         type="text"

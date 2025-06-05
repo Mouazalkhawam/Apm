@@ -370,7 +370,7 @@
             background-color: #5d0e56;
         }
         
-        .progress-fill {
+        .progress-fill-profile{
             background-color: #791770;
         }
         
@@ -389,7 +389,7 @@
         }
         
         /* تعديل رأس المشروع */
-        .project-header {
+        .project-header-profile {
             background-color: #791770;
         }
         
@@ -669,7 +669,7 @@
         }
         
         /* المشاريع */
-        .projects-grid {
+        .projects-grid-profile {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
             gap: 20px;
@@ -688,7 +688,7 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
         
-        .project-header {
+        .project-header-profile {
             height: 40px;
             background-color: #791770;
             display: flex;
@@ -711,14 +711,14 @@
             padding: 20px;
         }
         
-        .project-title {
+        .project-title-profile {
             font-size: 18px;
             font-weight: 700;
             margin-bottom: 10px;
             color: #444;
         }
         
-        .project-description {
+        .project-description-profile{
             color: #666;
             font-size: 14px;
             line-height: 1.6;
@@ -750,14 +750,14 @@
             color: #666;
         }
         
-        .progress-bar {
+        .progress-bar-profile {
             height: 6px;
             background-color: #eee;
             border-radius: 3px;
             overflow: hidden;
         }
         
-        .progress-fill {
+        .progress-fill-profile {
             height: 100%;
             background-color: #791770;
             border-radius: 3px;
@@ -998,6 +998,7 @@
             display: flex;
             align-items: center;
             margin-left: auto;
+            margin-right: 20px;
             box-shadow: 0 5px 15px rgba(121, 23, 112, 0.3);
         }
         
@@ -1131,7 +1132,7 @@
                 grid-template-columns: 1fr;
             }
             
-            .projects-grid {
+            .projects-grid-profile{
                 grid-template-columns: 1fr;
             }
             

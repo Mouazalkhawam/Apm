@@ -24,14 +24,22 @@ class ProjectController extends Controller
             'title' => 'required|string',
             'description' => 'nullable|string',
             'startdate' => 'required|date',
-            'enddate' => 'nullable|date|after:startdate',
-            'students' => 'nullable|array|min:1|exists:students,studentId',
-            'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId'
+            'enddate' => 'required|date|after:startdate',
+            'students' => 'required|array|min:1|exists:students,studentId',
+            'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId',
+            'type' => 'required|in:semester,graduation'
         ]);
 
         return DB::transaction(function () use ($request) {
             $creator = Student::where('userId', Auth::id())->firstOrFail();
             
+            // التحقق من شروط المشاريع
+            if ($request->type === 'graduation') {
+                $this->validateGraduationProject($creator);
+            } else {
+                $this->validateSemesterProject($creator);
+            }
+
             // إضافة المنشئ تلقائيًا إلى قائمة الطلاب
             $studentsList = array_unique(
                 array_merge($request->students, [$creator->studentId])
@@ -44,6 +52,7 @@ class ProjectController extends Controller
                 'startdate' => $request->startdate,
                 'enddate' => $request->enddate,
                 'headid' => Auth::id(),
+                'type' => $request->type
             ]);
 
             // إنشاء الفريق
@@ -79,6 +88,48 @@ class ProjectController extends Controller
                 ]
             ], 201);
         });
+    }
+
+    protected function validateGraduationProject(Student $student)
+    {
+        // التحقق من وجود مشروع فصلي مكتمل
+        $hasCompletedSemesterProject = $student->groups()
+            ->whereHas('project', function($query) {
+                $query->where('type', 'semester')
+                      ->where('status', 'completed');
+            })
+            ->exists();
+
+        if (!$hasCompletedSemesterProject) {
+            abort(403, 'يجب أن يكون لديك مشروع فصلي مكتمل قبل إنشاء مشروع تخرج');
+        }
+
+        // التحقق من عدم وجود مشروع تخرج قيد التنفيذ
+        $hasActiveGraduationProject = $student->groups()
+            ->whereHas('project', function($query) {
+                $query->where('type', 'graduation')
+                      ->whereIn('status', ['pending', 'in_progress']);
+            })
+            ->exists();
+
+        if ($hasActiveGraduationProject) {
+            abort(403, 'لديك بالفعل مشروع تخرج قيد التنفيذ');
+        }
+    }
+
+    protected function validateSemesterProject(Student $student)
+    {
+        // التحقق من عدم وجود مشروع فصلي قيد التنفيذ
+        $hasActiveSemesterProject = $student->groups()
+            ->whereHas('project', function($query) {
+                $query->where('type', 'semester')
+                      ->whereIn('status', ['pending', 'in_progress']);
+            })
+            ->exists();
+
+        if ($hasActiveSemesterProject) {
+            abort(403, 'لديك بالفعل مشروع فصلي قيد التنفيذ');
+        }
     }
     private function sendNotifications(Group $group, $students, $supervisors)
     {
@@ -138,45 +189,92 @@ class ProjectController extends Controller
     {
         $validated = $request->validate([
             'query' => 'nullable|string',
-            'top_n' => 'nullable|integer|min:1|max:20'
+            'top_n' => 'nullable|integer|min:1|max:20',
+            'min_gpa' => 'nullable|numeric|min:0|max:4',
+            'max_gpa' => 'nullable|numeric|min:0|max:4'
         ]);
 
         $students = Student::with(['skills', 'user', 'groups'])
             ->get()
             ->map(function ($student) {
+                // معالجة الخبرات لاستخراج النص والوسائط
+                $experience_data = [
+                    'text' => '',
+                    'media' => []
+                ];
+                
+                if (!empty($student->experience) && is_array($student->experience)) {
+                    foreach ($student->experience as $item) {
+                        if (is_array($item) && isset($item['type'], $item['content'])) {
+                            if ($item['type'] === 'text') {
+                                $experience_data['text'] .= ' ' . $item['content'];
+                            } else {
+                                $experience_data['media'][] = [
+                                    'type' => $item['type'],
+                                    'content' => $item['content']
+                                ];
+                            }
+                        }
+                    }
+                    $experience_data['text'] = trim($experience_data['text']);
+                }
+                
+                // معالجة المهارات
+                $skills = $student->skills->pluck('name')->toArray();
+                $skills_str = !empty($skills) ? implode(', ', $skills) : '';
+                
                 return [
                     'student_id' => $student->studentId,
                     'name' => $student->user->name,
-                    'leadership_score' => $student->groups->where('pivot.is_leader', true)->count(),
-                    'skills' => $student->skills->pluck('name'),
-                    'projects_count' => $student->groups->count()
+                    'skills' => $skills_str,
+                    'experience' => $experience_data['text'], // إرسال النص فقط للتوصية
+                    'experience_full' => $student->experience, // إرسال كل بيانات الخبرة
+                    'gpa' => (float)($student->gpa ?? 0.0)
                 ];
             });
 
-        // في الدالة getRecommendations for rranim
-        $response = Http::withOptions([
-            'verify' => false // ⚠️ لا تستخدم هذا في الإنتاج!
-        ])->post('http://localhost:5001/recommend', [
+        $requestData = [
             'students' => $students,
             'query' => $validated['query'] ?? '',
-            'top_n' => $validated['top_n'] ?? 10
-        ]);
+            'top_n' => $validated['top_n'] ?? 20
+        ];
 
-        return response()->json($response->json());
-    }
+        // إضافة فلاتر GPA إذا كانت موجودة
+        if (isset($validated['min_gpa'])) {
+            $requestData['min_gpa'] = (float)$validated['min_gpa'];
+        }
+        if (isset($validated['max_gpa'])) {
+            $requestData['max_gpa'] = (float)$validated['max_gpa'];
+        }
 
-    // دالة جديدة للحصول على القائد
-    public function getGroupLeader($groupId)
-    {
-        $leader = Group::findOrFail($groupId)
-            ->students()
-            ->wherePivot('is_leader', true)
-            ->with('user')
-            ->firstOrFail();
+        $response = Http::post('http://localhost:5001/recommend', $requestData);
+
+        if ($response->failed()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to get recommendations',
+                'error' => $response->json()
+            ], 500);
+        }
+
+        // معالجة النتائج لإضافة الوسائط المرتبطة
+        $recommendations = $response->json()['data'] ?? [];
+        $studentsMap = collect($students)->keyBy('student_id');
+        
+        $processedRecommendations = array_map(function($item) use ($studentsMap) {
+            $studentId = $item['student_id'];
+            $originalStudent = $studentsMap[$studentId] ?? null;
+            
+            if ($originalStudent) {
+                $item['experience_media'] = $originalStudent['experience_full'] ?? [];
+            }
+            
+            return $item;
+        }, $recommendations);
 
         return response()->json([
-            'success' => true,
-            'data' => $leader
+            'status' => 'success',
+            'data' => $processedRecommendations
         ]);
     }
 }

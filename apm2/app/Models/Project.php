@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\HonorBoardProject;
 
 class Project extends Model
 {
@@ -18,7 +17,8 @@ class Project extends Model
         'startdate',
         'enddate',
         'status',
-        'headid'
+        'headid',
+        'type' 
     ];
 
     // قائد الفريق (الطالب المسؤول عن المشروع)
@@ -47,9 +47,5 @@ class Project extends Model
         return $this->belongsToMany(Student::class, 'group_student', 'project_id', 'student_id')
                     ->withPivot('status') // pending, approved, rejected
                     ->withTimestamps();
-    }
-    public function honorBoard()
-    {
-        return $this->hasOne(HonorBoardProject::class, 'project_id', 'projectid');
     }
 }

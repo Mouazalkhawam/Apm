@@ -313,15 +313,15 @@
         </button>
       </div>
       <div className="card-body">
-        <div className="projects-grid">
+        <div className="projects-grid-profile">
           <div className="project-card">
-            <div className="project-header">
+            <div className="project-header-profile">
               <span>مشروع التخرج</span>
               <span className="project-status">قيد التنفيذ</span>
             </div>
             <div className="project-body">
-              <h3 className="project-title">نظام إدارة المكتبة الرقمية</h3>
-              <p className="project-description">نظام متكامل لإدارة الكتب والإعارة في المكتبة الجامعية مع لوحة تحكم متقدمة وواجهة مستخدم سهلة.</p>
+              <h3 className="project-title-profile">نظام إدارة المكتبة الرقمية</h3>
+              <p className="project-description-profile">نظام متكامل لإدارة الكتب والإعارة في المكتبة الجامعية مع لوحة تحكم متقدمة وواجهة مستخدم سهلة.</p>
               <div className="project-deadline">
                 <i className="fas fa-clock"></i>
                 <span>30 يوم متبقي للتسليم</span>
@@ -331,8 +331,8 @@
                   <span>التقدم</span>
                   <span>82%</span>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '82%'}}></div>
+                <div className="progress-bar-profile">
+                  <div className="progress-fill-profile" style={{width: '82%'}}></div>
                 </div>
               </div>
               <div className="project-actions">
@@ -347,13 +347,13 @@
           </div>
 
           <div className="project-card">
-            <div className="project-header">
+            <div className="project-header-profile">
               <span>مشروع فصلي</span>
               <span className="project-status">قيد التنفيذ</span>
             </div>
             <div className="project-body">
-              <h3 className="project-title">روبوت الدردشة الذكية</h3>
-              <p className="project-description">روبوت محادثة يعتمد على الذكاء الاصطناعي للرد على استفسارات الطلاب حول المقررات الدراسية.</p>
+              <h3 className="project-title-profile">روبوت الدردشة الذكية</h3>
+              <p className="project-description-profile">روبوت محادثة يعتمد على الذكاء الاصطناعي للرد على استفسارات الطلاب حول المقررات الدراسية.</p>
               <div className="project-deadline">
                 <i className="fas fa-clock"></i>
                 <span>45 يوم متبقي للتسليم</span>
@@ -363,8 +363,8 @@
                   <span>التقدم</span>
                   <span>65%</span>
                 </div>
-                <div className="progress-bar">
-                  <div className="progress-fill" style={{width: '65%'}}></div>
+                <div className="progress-bar-profile">
+                  <div className="progress-fill-profile" style={{width: '65%'}}></div>
                 </div>
               </div>
               <div className="project-actions">

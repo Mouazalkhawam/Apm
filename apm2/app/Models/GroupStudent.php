@@ -19,4 +19,15 @@ class GroupStudent extends Pivot
     ];
 
     public $timestamps = true;
+
+    public function student()
+    {
+        return $this->belongsTo(Student::class, 'studentId', 'studentId');
+    }
+
+    
+    public function group()
+    {
+        return $this->belongsTo(Group::class, 'groupid', 'groupid');
+    }
 }
