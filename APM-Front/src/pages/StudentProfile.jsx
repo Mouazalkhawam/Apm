@@ -115,7 +115,7 @@
           </div>
 
           <footer>
-            <p>© 2023 نظام إدارة المشاريع الأكاديمية. جميع الحقوق محفوظة.</p>
+            <p>© 2025 نظام إدارة المشاريع الأكاديمية. جميع الحقوق محفوظة.</p>
           </footer>
         </div>
 
@@ -287,17 +287,17 @@
           <div className="stat-card-profile">
             <i className="fas fa-project-diagram stat-icon"></i>
             <div className="stat-value">12</div>
-            <div className="stat-label">المشاريع الكلية</div>
+            <div className="stat-label">المهام الكلية</div>
           </div>
           <div className="stat-card-profile">
             <i className="fas fa-check-circle stat-icon"></i>
             <div className="stat-value">5</div>
-            <div className="stat-label">مشاريع مكتملة</div>
+            <div className="stat-label">مهام مكتملة</div>
           </div>
           <div className="stat-card-profile">
             <i className="fas fa-clock stat-icon"></i>
             <div className="stat-value">7</div>
-            <div className="stat-label">مشاريع قيد العمل</div>
+            <div className="stat-label">مهام قيد العمل</div>
           </div>
         </div>
       </div>
@@ -348,7 +348,7 @@
 
           <div className="project-card">
             <div className="project-header">
-              <span>مادة الذكاء الاصطناعي</span>
+              <span>مشروع فصلي</span>
               <span className="project-status">قيد التنفيذ</span>
             </div>
             <div className="project-body">
@@ -480,8 +480,8 @@
               <i className="fas fa-trophy"></i>
             </div>
             <div className="achievement-info">
-              <h4>جائزة أفضل مشروع تخرج</h4>
-              <p>مسابقة جامعة الملك سعود للتميز التقني 2023</p>
+              <h4> أفضل مشروع تخرج</h4>
+              <p>مسابقة جامعة الشام الخاصة للتميز التقني 2023</p>
             </div>
           </div>
 
@@ -490,20 +490,12 @@
               <i className="fas fa-medal"></i>
             </div>
             <div className="achievement-info">
-              <h4>المركز الأول في مسابقة البرمجة</h4>
-              <p>مسابقة جامعية للبرمجة التنافسية 2022</p>
+              <h4>المركز الأول في المشاريع الفصلية</h4>
+              <p>المشاريع الفصلية</p>
             </div>
           </div>
 
-          <div className="achievement-item">
-            <div className="achievement-icon">
-              <i className="fas fa-award"></i>
-            </div>
-            <div className="achievement-info">
-              <h4>أفضل مشروع مفتوح المصدر</h4>
-              <p>مبادرة سوفتوير السعودية 2021</p>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>

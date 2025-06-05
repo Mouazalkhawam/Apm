@@ -376,16 +376,16 @@
         
         /* بطاقات الإحصائيات باستخدام اللون الأصفر فقط */
         .stat-card-profile {
-            background-color: #eab308;
+            background-color: #ece4eb;
             color: white;
         }
         
         .stat-card-profile:nth-child(2) {
-            background-color: #d1a007;
+            background-color: #fff2cb;
         }
         
         .stat-card-profile:nth-child(3) {
-            background-color: #b88c06;
+            background-color: #fff1f7 ;
         }
         
         /* تعديل رأس المشروع */

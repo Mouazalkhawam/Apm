@@ -106,7 +106,7 @@ const HonorBoard = () => {
           </p>
           <div className="hero-buttons">
             <a href="#" className="hero-btn primary-btn">تصفح المشاريع</a>
-            <a href="#" className="hero-btn secondary-btn">كيفية المشاركة</a>
+            
           </div>
         </div>
       </section>
@@ -134,8 +134,8 @@ const HonorBoard = () => {
             <div className="stat-icon">
               <FaUniversity />
             </div>
-            <h3 className="stat-number">15</h3>
-            <p className="stat-text">كلية مشاركة</p>
+            <h3 className="stat-number">3</h3>
+            <p className="stat-text">اختصاصات</p>
           </div>
         </div>
       </section>
@@ -143,7 +143,7 @@ const HonorBoard = () => {
       {/* قسم المشاريع المميزة */}
       <section className="projects-section">
         <div className="section-title">
-          <h2>المشاريع المتميزة لهذا الشهر</h2>
+          <h2>المشاريع المتميزة لهذا الفصل</h2>
         </div>
         
         {/* أفضل 3 مشاريع */}
@@ -217,39 +217,9 @@ const HonorBoard = () => {
         </div>
       </section>
       
-      {/* قسم آراء المشرفين */}
-      <section className="testimonials-section">
-        <div className="section-title">
-          <h2>آراء المشرفين</h2>
-        </div>
-        
-        <div className="testimonials-container">
-          {testimonials.map(testimonial => (
-            <div key={testimonial.id} className="testimonial-card">
-              <div className="testimonial-header">
-                <div className="testimonial-avatar"></div>
-                <div className="testimonial-info">
-                  <h4 className="testimonial-name">{testimonial.name}</h4>
-                  <p className="testimonial-position">{testimonial.position}</p>
-                </div>
-                <div className="testimonial-rating">
-                  {[...Array(5)].map((_, i) => (
-                    i < Math.floor(testimonial.rating) ? 
-                      <FaStar key={i} /> : 
-                      (i === Math.floor(testimonial.rating) && testimonial.rating % 1 >= 0.5) ? 
-                      <FaStarHalfAlt key={i} /> : 
-                      <FaStar key={i} style={{opacity: 0.3}} />
-                  ))}
-                </div>
-              </div>
-              <p className="testimonial-text">"{testimonial.text}"</p>
-            </div>
-          ))}
-        </div>
-      </section>
+     
       
-      {/* قسم الشركاء */}
-      
+     
     </div>
   );
 };

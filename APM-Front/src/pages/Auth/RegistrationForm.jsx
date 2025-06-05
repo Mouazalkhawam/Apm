@@ -334,7 +334,7 @@
                                     required
                                     value={formData.email}
                                     onChange={handleInputChange}
-                                    placeholder="example@university.edu.sa"
+                                    placeholder="example@university.edu.sy"
                                 />
                                 {errors.email && <span className="error-message">{errors.email}</span>}
                             </div>

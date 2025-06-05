@@ -306,19 +306,15 @@ const ProposalForm = () => {
               {/* المنصة */}
               <div className="form-group-proposal">
                 <label htmlFor="platform">المنصة</label>
-                <select 
+                <input 
+                  type="text" 
                   id="platform" 
                   name="platform"
+                  className='input-proposal'
+                  placeholder="أدخل الأدوات المستخدمة"
                   value={formData.platform}
                   onChange={handleInputChange}
-                >
-                  <option value="" selected disabled>اختر المنصة</option>
-                  <option value="web">ويب</option>
-                  <option value="mobile">جوال</option>
-                  <option value="desktop">سطح المكتب</option>
-                  <option value="iot">إنترنت الأشياء</option>
-                  <option value="ai">الذكاء الاصطناعي</option>
-                </select>
+                />
               </div>
               
               {/* الأدوات */}
@@ -395,28 +391,7 @@ const ProposalForm = () => {
             
             <div className="form-grid">
               {/* الجدول الزمني */}
-              <div className="form-group-proposal">
-                <label htmlFor="timeline">الجدول الزمني</label>
-                <textarea 
-                  id="timeline" 
-                  name="timeline"
-                  placeholder="اذكر المراحل الرئيسية للمشروع مع تواريخ تقديرية"
-                  value={formData.timeline}
-                  onChange={handleInputChange}
-                ></textarea>
-              </div>
               
-              {/* المخرجات المتوقعة */}
-              <div className="form-group-proposal">
-                <label htmlFor="deliverables">المخرجات المتوقعة</label>
-                <textarea 
-                  id="deliverables" 
-                  name="deliverables"
-                  placeholder="اذكر المخرجات المتوقعة من المشروع"
-                  value={formData.deliverables}
-                  onChange={handleInputChange}
-                ></textarea>
-              </div>
             </div>
           </div>
 

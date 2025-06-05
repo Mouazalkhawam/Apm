@@ -115,7 +115,7 @@ const AcademicDashboard = () => {
         <div className="sidebar-profile">
           <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" className="profile-image" />
           <div className="profile-info">
-            <div className="sidebar-text profile-name-dashboard">د. سارة أحمد</div>
+            <div className="sidebar-text profile-name-dashboard">د.عفاف</div>
             <div className="sidebar-text profile-role">منسق المشاريع</div>
           </div>
         </div>
@@ -200,7 +200,7 @@ const AcademicDashboard = () => {
               <div className="divider"></div>
               <div className="user-area">
                 <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" className="user-image" />
-                <span className="user-name">د. سارة أحمد</span>
+                <span className="user-name">د. عفاف </span>
                 <FontAwesomeIcon icon={faChevronDown} className="user-dropdown" />
               </div>
             </div>
@@ -212,7 +212,7 @@ const AcademicDashboard = () => {
           <div className="container">
             {/* Welcome Header */}
             <div className="welcome-header">
-              <h1 className="welcome-title">مرحباً د. سارة 👋</h1>
+              <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             
@@ -222,7 +222,7 @@ const AcademicDashboard = () => {
                 <div className="stat-info">
                   <p className="stat-desc">إجمالي المشاريع</p>
                   <h3 className="stat-value">24</h3>
-                  <p className="stat-trend green"><FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الأسبوع</p>
+                  <p className="stat-trend green"><FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الفصل</p>
                 </div>
                 <div className="stat-icon-container">
                   <FontAwesomeIcon icon={faProjectDiagram} />

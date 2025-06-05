@@ -407,11 +407,11 @@ const StudentProjectManagement = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container-tasks">
       {/* Header */}
-      <header>
+      <header className='header-tasks'>
         <div className="header-bg"></div>
-        <div className="header-content">
+        <div className="header-content-tasks">
           <h1 className="project-title">{projectData.title}</h1>
           <p className="project-description">
             {projectData.description}
@@ -531,7 +531,7 @@ const StudentProjectManagement = () => {
               {showForms[stage.id] ? 'إخفاء النموذج' : 'إضافة مهمة جديدة'}
             </button>
             <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
-              <div className="form-group">
+              <div className="form-group-tasks">
                 <label htmlFor={`task-title-${stage.id}`}>عنوان المهمة:</label>
                 <input 
                   type="text" 
@@ -541,7 +541,7 @@ const StudentProjectManagement = () => {
                   onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
                 />
               </div>
-              <div className="form-group">
+              <div className="form-group-tasks">
                 <label htmlFor={`task-description-${stage.id}`}>وصف المهمة (اختياري):</label>
                 <textarea 
                   id={`task-description-${stage.id}`} 
@@ -550,8 +550,8 @@ const StudentProjectManagement = () => {
                   onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
                 ></textarea>
               </div>
-              <div className="form-row">
-                <div className="form-group">
+              <div className="form-row-tasks">
+                <div className="form-group-tasks">
                   <label htmlFor={`task-responsible-${stage.id}`}>المسؤول:</label>
                   <input 
                     type="text" 
@@ -561,7 +561,7 @@ const StudentProjectManagement = () => {
                     onChange={(e) => handleNewTaskChange(stage.id, 'responsible', e.target.value)}
                   />
                 </div>
-                <div className="form-group">
+                <div className="form-group-tasks">
                   <label htmlFor={`task-deadline-${stage.id}`}>موعد التسليم:</label>
                   <input 
                     type="date" 
@@ -630,13 +630,13 @@ const StudentProjectManagement = () => {
       </div>
       
       {/* Submission Modal */}
-      <div className={`modal-overlay ${showModal ? 'show' : ''}`}>
-        <div className="modal-content">
+      <div className={`modal-overlay-tasks ${showModal ? 'show' : ''}`}>
+        <div className="modal-content-tasks">
           <div className="modal-header">
             إعلام بإكمال المهمة
           </div>
           <div className="modal-body">
-            <div className="form-group">
+            <div className="form-group-tasks">
               <label htmlFor="submissionNotes">ملاحظات حول الإنجاز:</label>
               <textarea 
                 id="submissionNotes" 
