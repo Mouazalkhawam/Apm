@@ -1,0 +1,306 @@
+/* SupervisorsManagement.css */
+
+/* Base Styles */
+.supervisors-management {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: #f9fafb;
+  direction: rtl;
+  text-align: right;
+}
+
+.container {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* Section Header */
+.section-header {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.section-description {
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+/* Add Supervisor Button */
+.add-supervisor-btn {
+  background: #791770;
+  color: white;
+  padding: 0.5rem 1.5rem;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.875rem;
+  gap: 0.5rem;
+}
+
+.add-supervisor-btn:hover {
+  background: #5e1258;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Supervisors Grid */
+.supervisors-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 640px) {
+  .supervisors-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .supervisors-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 1280px) {
+  .supervisors-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* Supervisor Card */
+.supervisor-card {
+  background: white;
+  border-radius: 1rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.supervisor-card:hover {
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+.supervisor-card:hover .supervisor-actions {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.supervisor-card .crown-badge {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background-color: #f3e8ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.supervisor-card .crown-badge svg {
+  color: #9333ea;
+}
+
+.supervisor-content {
+  padding: 1.5rem;
+  padding-top: 3.5rem;
+}
+
+.supervisor-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.supervisor-avatar {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 50%;
+  background-color: #f5f3ff;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 4px solid #faf5ff;
+  overflow: hidden;
+}
+
+.supervisor-avatar svg {
+  font-size: 1.75rem;
+  color: #7c3aed;
+}
+
+.supervisor-name {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.supervisor-role {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+.supervisor-email {
+  display: flex;
+  align-items: center;
+  color: #6b7280;
+  font-size: 0.875rem;
+  gap: 0.25rem;
+}
+
+.supervisor-footer {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f3f4f6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.supervisor-date {
+  font-size: 0.875rem;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.supervisor-actions {
+  display: flex;
+  gap: 0.5rem;
+  opacity: 1;
+  transition: all 0.3s ease;
+}
+
+@media (min-width: 768px) {
+  .supervisor-actions {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+.action-btn {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.edit-btn {
+  background-color: #f5f3ff;
+  color: #7c3aed;
+}
+
+.edit-btn:hover {
+  background-color: #ede9fe;
+}
+
+.delete-btn {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.delete-btn:hover {
+  background-color: #fecaca;
+}
+
+/* Add New Card */
+.add-new-card {
+  border: 2px dashed #d1d5db;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.add-new-card:hover {
+  background-color: #f9fafb;
+}
+
+.add-new-content {
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.add-icon {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background-color: #e5e7eb;
+  margin: 0 auto 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+}
+
+.add-icon svg {
+  font-size: 1.25rem;
+}
+
+.add-title {
+  font-size: 1.125rem;
+  font-weight: 500;
+  color: #4b5563;
+  margin-bottom: 0.25rem;
+}
+
+.add-description {
+  font-size: 0.875rem;
+  color: #9ca3af;
+}
+
+/* Role-specific colors */
+.role-quality {
+  color: #2563eb;
+}
+
+.bg-quality {
+  background-color: #dbeafe;
+}
+
+.border-quality {
+  border-color: #bfdbfe;
+}
+
+.role-development {
+  color: #059669;
+}
+
+.bg-development {
+  background-color: #d1fae5;
+}
+
+.border-development {
+  border-color: #a7f3d0;
+}
