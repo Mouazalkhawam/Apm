@@ -13,6 +13,7 @@ import StudentProjectManagement  from './pages/StudentProjectManagement';
 import GroupProjectManagement  from './pages/GroupProjectManagement';
 import SupervisorsManagement from './pages/SupervisorsManagement';
 import TeamMembers from './pages/TeamMembers';
+import SchedulingStudentMeetings from './pages/SchedulingStudentMeetings';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -109,6 +110,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <TeamMembers />
+                            </ProtectedRoute>
+                          } 
+               />
+               <Route 
+                 path="/scheduling-student-meetings" 
+                 element={
+                  <ProtectedRoute>
+                    <SchedulingStudentMeetings />
                             </ProtectedRoute>
                           } 
                />
