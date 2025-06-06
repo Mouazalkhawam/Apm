@@ -75,6 +75,7 @@
             opacity: 0.9;
             line-height: 1.8;
             animation: fadeInUp 0.8s ease;
+            color: #f7f7f794;
         }
         
         .project-meta {
