@@ -2,6 +2,10 @@
   import './StudentProfile.css';
   import Header from '../components/Header/Header';
   import axios from 'axios';
+  import Select from 'react-select';
+  import makeAnimated from 'react-select/animated';
+
+  const animatedComponents = makeAnimated();
 
   const StudentProfile = () => {
     const [showNotification, setShowNotification] = useState(false);
@@ -236,7 +240,7 @@
             <div className="info-text">
               <p className="info-label">المعدل التراكمي</p>
               <p className="info-value">
-                <span>{studentData.student?.gpa || '0.00'}</span> من 5
+                <span>{studentData.student?.gpa || '0.00'}</span> من 4
               </p>
             </div>
           </div>
@@ -505,17 +509,18 @@
     const [formData, setFormData] = useState({
       title: '',
       description: '',
-      students: [],
-      supervisors: [],
       startdate: new Date().toISOString().split('T')[0],
-      enddate: ''
+      enddate: '',
+      type: 'semester' // إضافة نوع المشروع
     });
-
+  
+    const [selectedStudents, setSelectedStudents] = useState([]);
+    const [selectedSupervisors, setSelectedSupervisors] = useState([]);
     const [studentsList, setStudentsList] = useState([]);
     const [supervisorsList, setSupervisorsList] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
-
+  
     useEffect(() => {
       const fetchDropdownData = async () => {
         try {
@@ -530,17 +535,29 @@
             })
           ]);
           
-          setStudentsList(studentsResponse.data.data || []);
-          setSupervisorsList(supervisorsResponse.data.data || []);
+          // تحويل بيانات الطلاب إلى تنسيق react-select
+          const formattedStudents = (studentsResponse.data.data || []).map(student => ({
+            value: student.studentId,
+            label: `${student.name}`
+          }));
+          
+          // تحويل بيانات المشرفين إلى تنسيق react-select
+          const formattedSupervisors = (supervisorsResponse.data.data || []).map(supervisor => ({
+            value: supervisor.supervisorId,
+            label: `${supervisor.name}`
+          }));
+          
+          setStudentsList(formattedStudents);
+          setSupervisorsList(formattedSupervisors);
         } catch (err) {
           console.error('Error fetching dropdown data:', err);
           setError('فشل في تحميل قوائم الطلاب والمشرفين');
         }
       };
-
+  
       fetchDropdownData();
     }, []);
-
+  
     const handleInputChange = (e) => {
       const { name, value } = e.target;
       setFormData(prev => ({
@@ -548,40 +565,26 @@
         [name]: value
       }));
     };
-
-    const handleSelectChange = (e) => {
-      const { name, options } = e.target;
-      const selectedValues = Array.from(options)
-        .filter(option => option.selected)
-        .map(option => option.value);
-      
-      setFormData(prev => ({
-        ...prev,
-        [name]: selectedValues
-      }));
-    };
-
+  
     const handleSubmit = async (e) => {
       e.preventDefault();
       setLoading(true);
       setError(null);
-
+  
       try {
         const token = localStorage.getItem('access_token');
-        const currentUser = JSON.parse(localStorage.getItem('user'));
         
-        
-
         // إعداد البيانات مع التحويل الصحيح للأنواع
         const requestData = {
           title: formData.title,
           description: formData.description || null,
           startdate: formData.startdate,
           enddate: formData.enddate || null,
-          students: formData.students.map(Number),
-          supervisors: formData.supervisors.map(Number)
+          type: formData.type,
+          students: selectedStudents.map(item => item.value),
+          supervisors: selectedSupervisors.map(item => item.value)
         };
-
+  
         const response = await axios.post(
           'http://127.0.0.1:8000/api/projects/create',
           requestData,
@@ -592,11 +595,10 @@
             }
           }
         );
-
+  
         if (response.data.success) {
           setShowProjectModal(false);
-          // يمكنك هنا إضافة أي تفاعل بعد النجاح مثل تحديث قائمة المشاريع
-          window.location.reload(); // أو استخدام state لإدارة المشاريع
+          window.location.reload();
         } else {
           throw new Error(response.data.message || 'فشل في إنشاء المشروع');
         }
@@ -605,7 +607,6 @@
         let errorMessage = 'حدث خطأ أثناء إنشاء المشروع';
         
         if (err.response?.data?.errors) {
-          // معالجة أخطاء التحقق من الصحة من Laravel
           errorMessage = Object.values(err.response.data.errors)
             .flat()
             .join(', ');
@@ -620,127 +621,139 @@
         setLoading(false);
       }
     };
+  
+  
 
-    return (
-      <div className="modal-overlay">
-        <div className="modal-content">
-          <span className="close-modal" onClick={() => setShowProjectModal(false)}>
-            <i className="fas fa-times"></i>
-          </span>
-          <h2 className="modal-title">إنشاء مشروع جديد</h2>
-          
-          {error && (
-            <div className="alert alert-danger">
-              <i className="fas fa-exclamation-circle"></i> {error}
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>اسم المشروع *</label>
-              <input 
-                type="text" 
-                className="form-input-profile" 
-                name="title"
-                value={formData.title}
-                onChange={handleInputChange}
-                required
-                placeholder="أدخل اسم المشروع"
-              />
-            </div>
+      return (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <span className="close-modal" onClick={() => setShowProjectModal(false)}>
+              <i className="fas fa-times"></i>
+            </span>
+            <h2 className="modal-title">إنشاء مشروع جديد</h2>
             
-            <div className="form-group">
-              <label>وصف المشروع</label>
-              <textarea 
-                className="form-textarea" 
-                name="description"
-                value={formData.description}
-                onChange={handleInputChange}
-                placeholder="أدخل وصف المشروع (اختياري)"
-                rows="4"
-              ></textarea>
-            </div>
+            {error && (
+              <div className="alert alert-danger">
+                <i className="fas fa-exclamation-circle"></i> {error}
+              </div>
+            )}
             
-            <div className="form-group">
-              <label>تاريخ البدء *</label>
-              <input 
-                type="date" 
-                className="form-input-profile" 
-                name="startdate"
-                value={formData.startdate}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>تاريخ الانتهاء (اختياري)</label>
-              <input 
-                type="date" 
-                className="form-input-profile" 
-                name="enddate"
-                value={formData.enddate}
-                onChange={handleInputChange}
-                min={formData.startdate}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>اختر الطلاب (اختياري)</label>
-              <select 
-                className="form-input-profile"
-                name="students"
-                multiple
-                onChange={handleSelectChange}
-                size="4"
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>اسم المشروع *</label>
+                <input 
+                  type="text" 
+                  className="form-input-profile" 
+                  name="title"
+                  value={formData.title}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="أدخل اسم المشروع"
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>وصف المشروع</label>
+                <textarea 
+                  className="form-textarea" 
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="أدخل وصف المشروع (اختياري)"
+                  rows="4"
+                ></textarea>
+              </div>
+    
+              <div className="form-group">
+                <label>نوع المشروع *</label>
+                <select
+                  className="form-input-profile"
+                  name="type"
+                  value={formData.type}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="semester">مشروع فصلي</option>
+                  <option value="graduation">مشروع تخرج</option>
+                </select>
+              </div>
+              
+              <div className="form-group">
+                <label>تاريخ البدء *</label>
+                <input 
+                  type="date" 
+                  className="form-input-profile" 
+                  name="startdate"
+                  value={formData.startdate}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>تاريخ الانتهاء (اختياري)</label>
+                <input 
+                  type="date" 
+                  className="form-input-profile" 
+                  name="enddate"
+                  value={formData.enddate}
+                  onChange={handleInputChange}
+                  min={formData.startdate}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>اختر الطلاب (اختياري)</label>
+                <Select
+                  closeMenuOnSelect={false}
+                  components={animatedComponents}
+                  isMulti
+                  options={studentsList}
+                  onChange={setSelectedStudents}
+                  placeholder="ابحث واختر الطلاب..."
+                  noOptionsMessage={() => "لا توجد خيارات متاحة"}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  isRtl={true}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>اختر المشرفين *</label>
+                <Select
+                  closeMenuOnSelect={false}
+                  components={animatedComponents}
+                  isMulti
+                  options={supervisorsList}
+                  onChange={setSelectedSupervisors}
+                  placeholder="ابحث واختر المشرفين..."
+                  noOptionsMessage={() => "لا توجد خيارات متاحة"}
+                  className="react-select-container"
+                  classNamePrefix="react-select"
+                  isRtl={true}
+                  required
+                />
+              </div>
+              
+              <button 
+                className="btn btn-primary" 
+                type="submit"
+                disabled={loading}
               >
-                {studentsList.map(student => (
-                  <option key={student.id} value={student.studentId}>
-                    {student.name} - {student.university_number}
-                  </option>
-                ))}
-              </select>
-              <small className="form-text">اضغط مع الاستمرار على Ctrl لتحديد أكثر من طالب</small>
-            </div>
-            
-            <div className="form-group">
-              <label>اختر المشرفين *</label>
-              <select 
-                className="form-input-profile"
-                name="supervisors"
-                multiple
-                onChange={handleSelectChange}
-                required
-                size="4"
-              >
-                {supervisorsList.map(supervisor => (
-                  <option key={supervisor.id} value={supervisor.supervisorId}>
-                    {supervisor.name} - {supervisor.department}
-                  </option>
-                ))}
-              </select>
-              <small className="form-text">اختر مشرف واحد على الأقل</small>
-            </div>
-            
-            <button 
-              className="btn btn-primary" 
-              type="submit"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <i className="fas fa-spinner fa-spin"></i> جاري الإنشاء...
-                </>
-              ) : (
-                <>
-                  <i className="fas fa-plus"></i> إنشاء المشروع
-                </>
-              )}
-            </button>
-          </form>
+                {loading ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i> جاري الإنشاء...
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-plus"></i> إنشاء المشروع
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
         </div>
-      </div>
-    );
-  };
-
+      );
+    };
+    
   export default StudentProfile;

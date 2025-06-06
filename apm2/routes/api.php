@@ -8,6 +8,7 @@ use App\Http\Controllers\ProjectProposalController;
 use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\API\ProjectStageController;
 use App\Http\Controllers\API\TaskController;
+use App\Http\Controllers\API\AcademicPeriodController;
 use App\Http\Controllers\API\ResourceController;
 use App\Http\Controllers\API\EvaluationController;
 use App\Http\Controllers\DashboardController;
@@ -127,6 +128,15 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/skills', [StudentProfileController::class, 'getSkills']);
         Route::get('/info', [StudentProfileController::class, 'getProfile']);
     });
+
     
+     // مسارات إدارة الفصول الدراسية (للمنسق فقط)
+    Route::prefix('academic-periods')->group(function () {
+        Route::get('/', [AcademicPeriodController::class, 'index']);
+        Route::post('/', [AcademicPeriodController::class, 'store']);
+        Route::post('/{id}/set-current', [AcademicPeriodController::class, 'setCurrentPeriod']);
+    });
+
+    Route::get('/current-academic-period', [AcademicPeriodController::class, 'getCurrentPeriod']);
     
 });
