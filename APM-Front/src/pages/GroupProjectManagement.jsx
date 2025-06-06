@@ -47,6 +47,7 @@ const GroupProjectManagement = () => {
         teamMembers={5}
         startDate="01/01/2023"
         endDate="15/06/2023"
+         backRoute="/profile"
       />
       
       {/* Navigation Cards Section */}
