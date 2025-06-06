@@ -13,19 +13,33 @@ class ProjectProposal extends Model
 
     protected $fillable = [
         'group_id',
+        'project_type',
         'title',
-        'problem_statement',
+        'problem_description',
+        'problem_studies',
         'problem_background',
-        'problem_mindmap_path',
+        'solution_studies',
         'proposed_solution',
+        'platform',
+        'tools',
+        'programming_languages',
+        'database',
+        'packages',
+        'management_plan',
+        'team_roles',
         'methodology',
+        'functional_requirements',
+        'non_functional_requirements',
         'technology_stack',
-        'functional_requirements', 
-        'non_functional_requirements'
+        'problem_mindmap_path'
     ];
 
     protected $casts = [
-        'technology_stack' => 'array'
+        'technology_stack' => 'array',
+        'functional_requirements' => 'array',
+        'non_functional_requirements' => 'array',
+        'tools' => 'array',
+        'programming_languages' => 'array'
     ];
 
     public function group()
@@ -33,21 +47,41 @@ class ProjectProposal extends Model
         return $this->belongsTo(Group::class, 'group_id', 'groupid');
     }
 
-    // علاقة مع أعضاء الفريق (طلاب)
     public function teamMembers()
     {
-        return $this->belongsToMany(Student::class, 'proposal_team_members', 'proposal_id', 'student_id');
+        return $this->belongsToMany(
+            Student::class,
+            'proposal_team_members',
+            'proposal_id',
+            'student_id'
+        )->withTimestamps();
     }
 
-    // علاقة مع المشرفين
     public function supervisors()
     {
-        return $this->belongsToMany(Supervisor::class, 'proposal_supervisors', 'proposal_id', 'supervisor_id');
+        return $this->belongsToMany(
+            Supervisor::class,
+            'proposal_supervisors',
+            'proposal_id',
+            'supervisor_id'
+        )->withTimestamps();
     }
 
-    // علاقة مع الخبراء
     public function experts()
     {
         return $this->hasMany(ProposalExpert::class, 'proposal_id');
+    }
+
+    public function getProjectTypeNameAttribute()
+    {
+        return [
+            'term-project' => 'مشروع فصلي',
+            'grad-project' => 'مشروع تخرج'
+        ][$this->project_type] ?? 'غير محدد';
+    }
+
+    public function isGraduationProject()
+    {
+        return $this->project_type === 'grad-project';
     }
 }
