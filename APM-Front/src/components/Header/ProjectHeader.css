@@ -9,7 +9,7 @@
     overflow: hidden;
 }
 
-.header-bg {
+.header-bg-project{
     position: absolute;
     top: 0;
     left: 0;
@@ -23,7 +23,7 @@
     background-size: cover;
 }
 
-.header-content {
+.header-content-project {
     position: relative;
     z-index: 2;
     max-width: 1200px;
@@ -31,7 +31,7 @@
     padding: 0 20px;
 }
 
-.project-title {
+.project-title-project {
     font-size: 2.5rem;
     margin-bottom: 15px;
     color: white;
@@ -41,7 +41,7 @@
     animation: fadeInDown 0.8s ease;
 }
 
-.project-title::after {
+.project-title-project::after {
     content: '';
     display: block;
     width: 80px;
@@ -51,7 +51,7 @@
     border-radius: 2px;
 }
 
-.project-description {
+.project-description-project {
     max-width: 800px;
     margin: 0 auto 15px;
     font-size: 1.1rem;
@@ -61,7 +61,7 @@
     color: #f7f7f794;
 }
 
-.project-meta {
+.project-meta-project {
     display: flex;
     justify-content: center;
     gap: 30px;
@@ -69,7 +69,7 @@
     flex-wrap: wrap;
 }
 
-.meta-item {
+.meta-item-project {
     background-color: rgba(234, 179, 7, 0.2);
     padding: 10px 20px;
     border-radius: 50px;
@@ -81,7 +81,7 @@
     border: 1px solid rgba(234, 179, 7, 0.3);
 }
 
-.meta-item i {
+.meta-item-project i {
     margin-left: 8px;
     font-size: 1.1rem;
 }
@@ -104,20 +104,20 @@
 
 /* Responsive */
 @media (max-width: 768px) {
-    .project-title {
+    .project-title-project {
         font-size: 1.8rem;
     }
     
-    .project-description {
+    .project-description-project{
         font-size: 1rem;
         padding: 0 10px;
     }
     
-    .project-meta {
+    .project-meta-project {
         gap: 15px;
     }
     
-    .meta-item {
+    .meta-item-project {
         padding: 8px 15px;
         font-size: 0.85rem;
     }

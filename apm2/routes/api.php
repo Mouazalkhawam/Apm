@@ -131,11 +131,13 @@ Route::middleware('auth:api')->group(function () {
 
     
      // مسارات إدارة الفصول الدراسية (للمنسق فقط)
-    Route::prefix('academic-periods')->group(function () {
+     Route::prefix('academic-periods')->group(function () {
         Route::get('/', [AcademicPeriodController::class, 'index']);
         Route::post('/', [AcademicPeriodController::class, 'store']);
+        Route::put('/{id}', [AcademicPeriodController::class, 'update']);
         Route::post('/{id}/set-current', [AcademicPeriodController::class, 'setCurrentPeriod']);
     });
+    
 
     Route::get('/current-academic-period', [AcademicPeriodController::class, 'getCurrentPeriod']);
     
