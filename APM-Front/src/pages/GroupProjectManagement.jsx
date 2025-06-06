@@ -9,33 +9,19 @@ import {
   faCalendarAlt, 
   faComments 
 } from '@fortawesome/free-solid-svg-icons';
+import { useNavigate } from 'react-router-dom';
 import ProjectHeader from '../components/Header/ProjectHeader';
 import './GroupProjectManagement.css';
 
 const GroupProjectManagement = () => {
+  const navigate = useNavigate();
+
   useEffect(() => {
     // Set animation delays programmatically
     const cards = document.querySelectorAll('.group-nav-card');
     cards.forEach((card, index) => {
       card.style.animationDelay = `${0.1 + (index * 0.1)}s`;
     });
-    
-    // Add click handlers for each button
-    const buttons = document.querySelectorAll('.group-nav-button');
-    buttons.forEach(button => {
-      button.addEventListener('click', () => {
-        alert('هذه الوظيفة قيد التطوير');
-      });
-    });
-
-    // Cleanup function
-    return () => {
-      buttons.forEach(button => {
-        button.removeEventListener('click', () => {
-          alert('هذه الوظيفة قيد التطوير');
-        });
-      });
-    };
   }, []);
 
   return (
@@ -47,7 +33,7 @@ const GroupProjectManagement = () => {
         teamMembers={5}
         startDate="01/01/2023"
         endDate="15/06/2023"
-         backRoute="/profile"
+        backRoute="/profile"
       />
       
       {/* Navigation Cards Section */}
@@ -60,7 +46,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">عرض المقترح</h3>
             <p className="group-nav-desc">عرض الوثيقة الكاملة للمقترح البحثي</p>
-            <button className="group-nav-button">عرض المقترح</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض المقترح
+            </button>
           </div>
         </div>
         
@@ -72,7 +63,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">عرض المشرفون</h3>
             <p className="group-nav-desc">قائمة بالمشرفين على المشروع ومعلومات الاتصال بهم</p>
-            <button className="group-nav-button">عرض المشرفون</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => navigate('/supervisors-management')}
+            >
+              عرض المشرفون
+            </button>
           </div>
         </div>
         
@@ -84,7 +80,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">أعضاء المجموعة</h3>
             <p className="group-nav-desc">عرض قائمة أعضاء المجموعة وتخصصاتهم ومهامهم</p>
-            <button className="group-nav-button">عرض المجموعة</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض المجموعة
+            </button>
           </div>
         </div>
         
@@ -96,7 +97,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">تقدم المشروع</h3>
             <p className="group-nav-desc">متابعة تقدم المشروع وإنجازات كل مرحلة</p>
-            <button className="group-nav-button">عرض التقدم</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض التقدم
+            </button>
           </div>
         </div>
         
@@ -108,7 +114,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">المراحل والمهام</h3>
             <p className="group-nav-desc">عرض جميع مراحل المشروع والمهام المطلوبة</p>
-            <button className="group-nav-button">عرض المراحل</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض المراحل
+            </button>
           </div>
         </div>
         
@@ -120,7 +131,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">جدولة الاجتماعات</h3>
             <p className="group-nav-desc">جدولة مواعيد الاجتماعات مع المشرف</p>
-            <button className="group-nav-button">عرض الجدول</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض الجدول
+            </button>
           </div>
         </div>
         
@@ -132,7 +148,12 @@ const GroupProjectManagement = () => {
             </div>
             <h3 className="group-nav-title">المناقشات</h3>
             <p className="group-nav-desc">مواعيد المناقشات المرحلية والنهائية</p>
-            <button className="group-nav-button">عرض المواعيد</button>
+            <button 
+              className="group-nav-button"
+              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+            >
+              عرض المواعيد
+            </button>
           </div>
         </div>
       </div>
