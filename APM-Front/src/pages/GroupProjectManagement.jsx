@@ -9,6 +9,7 @@ import {
   faCalendarAlt, 
   faComments 
 } from '@fortawesome/free-solid-svg-icons';
+import ProjectHeader from '../components/Header/ProjectHeader';
 import './GroupProjectManagement.css';
 
 const GroupProjectManagement = () => {
@@ -19,7 +20,7 @@ const GroupProjectManagement = () => {
       card.style.animationDelay = `${0.1 + (index * 0.1)}s`;
     });
     
-    // Example of adding click handlers for each button
+    // Add click handlers for each button
     const buttons = document.querySelectorAll('.group-nav-button');
     buttons.forEach(button => {
       button.addEventListener('click', () => {
@@ -39,15 +40,14 @@ const GroupProjectManagement = () => {
 
   return (
     <div className="group-project-container" dir="rtl">
-      {/* Header Section */}
-      <header className="group-header-gradient">
-        <div className="group-header-content">
-          <h1 className="group-header-title">مشروع تطوير نظام إدارة المجموعات</h1>
-          <p className="group-header-desc">
-            هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال.
-          </p>
-        </div>
-      </header>
+      {/* Header Component */}
+      <ProjectHeader 
+        title="مشروع تطوير نظام إدارة المجموعات"
+        description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
+        teamMembers={5}
+        startDate="01/01/2023"
+        endDate="15/06/2023"
+      />
       
       {/* Navigation Cards Section */}
       <div className="group-nav-grid">
