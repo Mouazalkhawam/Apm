@@ -66,7 +66,7 @@ const SupervisorsManagement = () => {
     <div className="supervisors-management" dir="rtl">
          {/* Header Component */}
               <ProjectHeader 
-                title="مشروع تطوير نظام إدارة المجموعات"
+                title=" المشرفين على المشروع "
                 description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
                 teamMembers={5}
                 startDate="01/01/2023"
