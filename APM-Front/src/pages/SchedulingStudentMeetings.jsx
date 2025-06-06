@@ -157,7 +157,7 @@ const SchedulingStudentMeetings = () => {
   };
 
   return (
-    <div className="container">
+    <div className="container-meeting">
         {/* Header Component */}
                       <ProjectHeader 
                         title=" أعضاء المجموعة"
@@ -166,14 +166,15 @@ const SchedulingStudentMeetings = () => {
                         startDate="01/01/2023"
                         endDate="15/06/2023"
                       />
+      <div className='container-meeting2'>
       <div className="content">
-        <div className="supervisors-list">
-          <h2 className="selection-title" style={{ padding: '20px 20px 0 20px' }}>اختر مشرفك الأكاديمي</h2>
+        <div className="supervisors-list-meeting">
+          <h2 className="selection-title" >اختر مشرفك الأكاديمي</h2>
           <div className="supervisors-cards">
             {Object.keys(supervisors).map((supervisorId) => (
               <div
                 key={supervisorId}
-                className={`supervisor-card ${parseInt(supervisorId) === currentSupervisorId ? 'selected' : ''}`}
+                className={`supervisor-card-meeting ${parseInt(supervisorId) === currentSupervisorId ? 'selected' : ''}`}
                 onClick={() => handleSupervisorSelect(parseInt(supervisorId))}
               >
                 <div className="supervisor-details">
@@ -278,6 +279,7 @@ const SchedulingStudentMeetings = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
