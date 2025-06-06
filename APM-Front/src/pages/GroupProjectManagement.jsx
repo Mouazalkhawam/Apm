@@ -72,22 +72,22 @@ const GroupProjectManagement = () => {
           </div>
         </div>
         
-        {/* Team Members Card */}
-        <div className="group-nav-card group-card-green" style={{ animationDelay: '0.3s' }}>
-          <div className="group-nav-card-content">
-            <div className="group-icon-container">
-              <FontAwesomeIcon icon={faUserFriends} className="group-nav-icon" />
-            </div>
-            <h3 className="group-nav-title">أعضاء المجموعة</h3>
-            <p className="group-nav-desc">عرض قائمة أعضاء المجموعة وتخصصاتهم ومهامهم</p>
-            <button 
-              className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
-            >
-              عرض المجموعة
-            </button>
-          </div>
-        </div>
+       {/* Team Members Card */}
+<div className="group-nav-card group-card-green" style={{ animationDelay: '0.3s' }}>
+  <div className="group-nav-card-content">
+    <div className="group-icon-container">
+      <FontAwesomeIcon icon={faUserFriends} className="group-nav-icon" />
+    </div>
+    <h3 className="group-nav-title">أعضاء المجموعة</h3>
+    <p className="group-nav-desc">عرض قائمة أعضاء المجموعة وتخصصاتهم ومهامهم</p>
+    <button 
+      className="group-nav-button"
+      onClick={() => navigate('/team-members')}
+    >
+      عرض المجموعة
+    </button>
+  </div>
+</div>
         
         {/* Project Progress Card */}
         <div className="group-nav-card group-card-yellow" style={{ animationDelay: '0.4s' }}>
@@ -116,7 +116,7 @@ const GroupProjectManagement = () => {
             <p className="group-nav-desc">عرض جميع مراحل المشروع والمهام المطلوبة</p>
             <button 
               className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+              onClick={() => navigate('/student-project-management')}
             >
               عرض المراحل
             </button>

@@ -12,6 +12,7 @@ import ResourcesLibrary from './pages/ResourcesLibrary';
 import StudentProjectManagement  from './pages/StudentProjectManagement'; 
 import GroupProjectManagement  from './pages/GroupProjectManagement';
 import SupervisorsManagement from './pages/SupervisorsManagement';
+import TeamMembers from './pages/TeamMembers';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -100,6 +101,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <SupervisorsManagement />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/team-members" 
+                 element={
+                  <ProtectedRoute>
+                    <TeamMembers />
                             </ProtectedRoute>
                           } 
                />
