@@ -1,0 +1,262 @@
+/* GroupProjectManagement.css */
+
+/* Base Styles */
+.group-project-container * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.group-project-container {
+    background-color: #f9fafb;
+    color: #333;
+    line-height: 1.6;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Header Styles */
+.group-header-gradient {
+    background: linear-gradient(135deg, #791770 0%, #3a0e36 100%);
+    color: white;
+    text-align: center;
+    padding: 40px 20px;
+    border-radius: 0;
+    margin-bottom: 40px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    width: 100%;
+}
+
+.group-header-title {
+    font-size: 2.2rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+
+.group-header-desc {
+    font-size: 1.2rem;
+    opacity: 0.9;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Navigation Grid */
+.group-nav-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-bottom: 40px;
+    padding: 0 20px;
+    width: 100%;
+}
+
+/* Card Styles */
+.group-nav-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    opacity: 0;
+    transform: translateY(10px);
+    animation: fadeIn 0.5s ease forwards;
+}
+
+.group-nav-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.group-nav-card-content {
+    padding: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.group-icon-container {
+    background-color: rgba(233, 213, 255, 0.5);
+    padding: 15px;
+    border-radius: 50%;
+    margin-bottom: 15px;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.group-nav-icon {
+    font-size: 30px;
+}
+
+.group-nav-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.group-nav-desc {
+    color: #666;
+    margin-bottom: 20px;
+    font-size: 0.95rem;
+}
+
+.group-nav-button {
+    padding: 10px 25px;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    font-size: 1rem;
+    color: white;
+}
+
+/* Specific Card Colors */
+.group-card-purple .group-icon-container {
+    background-color: rgba(216, 180, 254, 0.3);
+}
+
+.group-card-purple .group-nav-icon {
+    color: #7e22ce;
+}
+
+.group-card-purple .group-nav-button {
+    background-color: #7e22ce;
+}
+
+.group-card-purple .group-nav-button:hover {
+    background-color: #6b21a8;
+}
+
+.group-card-blue .group-icon-container {
+    background-color: rgba(191, 219, 254, 0.3);
+}
+
+.group-card-blue .group-nav-icon {
+    color: #1d4ed8;
+}
+
+.group-card-blue .group-nav-button {
+    background-color: #1d4ed8;
+}
+
+.group-card-blue .group-nav-button:hover {
+    background-color: #1e40af;
+}
+
+.group-card-green .group-icon-container {
+    background-color: rgba(167, 243, 208, 0.3);
+}
+
+.group-card-green .group-nav-icon {
+    color: #047857;
+}
+
+.group-card-green .group-nav-button {
+    background-color: #047857;
+}
+
+.group-card-green .group-nav-button:hover {
+    background-color: #065f46;
+}
+
+.group-card-yellow .group-icon-container {
+    background-color: rgba(253, 230, 138, 0.3);
+}
+
+.group-card-yellow .group-nav-icon {
+    color: #b45309;
+}
+
+.group-card-yellow .group-nav-button {
+    background-color: #b45309;
+}
+
+.group-card-yellow .group-nav-button:hover {
+    background-color: #92400e;
+}
+
+.group-card-red .group-icon-container {
+    background-color: rgba(254, 202, 202, 0.3);
+}
+
+.group-card-red .group-nav-icon {
+    color: #b91c1c;
+}
+
+.group-card-red .group-nav-button {
+    background-color: #b91c1c;
+}
+
+.group-card-red .group-nav-button:hover {
+    background-color: #991b1b;
+}
+
+.group-card-indigo .group-icon-container {
+    background-color: rgba(199, 210, 254, 0.3);
+}
+
+.group-card-indigo .group-nav-icon {
+    color: #4338ca;
+}
+
+.group-card-indigo .group-nav-button {
+    background-color: #4338ca;
+}
+
+.group-card-indigo .group-nav-button:hover {
+    background-color: #3730a3;
+}
+
+.group-card-pink .group-icon-container {
+    background-color: rgba(251, 207, 232, 0.3);
+}
+
+.group-card-pink .group-nav-icon {
+    color: #be185d;
+}
+
+.group-card-pink .group-nav-button {
+    background-color: #be185d;
+}
+
+.group-card-pink .group-nav-button:hover {
+    background-color: #9d174d;
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .group-header-title {
+        font-size: 1.8rem;
+    }
+    
+    .group-header-desc {
+        font-size: 1rem;
+    }
+    
+    .group-nav-grid {
+        grid-template-columns: 1fr;
+        padding: 0 15px;
+    }
+    
+    .group-nav-card {
+        width: 100%;
+    }
+}

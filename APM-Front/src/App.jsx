@@ -10,6 +10,7 @@ import HonorBoard from './pages/HonorBoard';
 import StudentEvaluation from './pages/StudentEvaluation';
 import ResourcesLibrary from './pages/ResourcesLibrary'; 
 import StudentProjectManagement  from './pages/StudentProjectManagement'; 
+import GroupProjectManagement  from './pages/GroupProjectManagement';
 
 import { AuthProvider } from './context/AuthContext';
 
@@ -82,6 +83,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <StudentProjectManagement />
+                            </ProtectedRoute>
+                          } 
+               />
+               <Route 
+                 path="/group-project-management" 
+                 element={
+                  <ProtectedRoute>
+                    <GroupProjectManagement />
                             </ProtectedRoute>
                           } 
                />
