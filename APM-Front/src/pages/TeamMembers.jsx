@@ -103,7 +103,7 @@ const TeamMembers = () => {
   ];
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="container-team mx-auto px-4 py-6">
          {/* Header Component */}
               <ProjectHeader 
                 title=" أعضاء المجموعة"
@@ -113,6 +113,7 @@ const TeamMembers = () => {
                 endDate="15/06/2023"
               />
       {/* Team Section */}
+      <div className='container-team2'>
       <div className="mb-10">
         <div className="flex justify-between items-center mb-4">
           <h2 className="section-title">أعضاء الفريق</h2>
@@ -281,6 +282,7 @@ const TeamMembers = () => {
           </form>
         </div>
       </div>
+    </div>
     </div>
   );
 };

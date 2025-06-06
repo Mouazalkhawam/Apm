@@ -28,7 +28,7 @@ const ProjectHeader = ({
     <header className='project-header'>
       <div className="header-bg-project"></div>
       <button className="back-button-project" onClick={handleGoBack}>
-        <i className="fas fa-arrow-right"></i> رجوع
+        <i className="fas fa-arrow-right"></i> 
       </button>
       <div className="header-content-project">
         <h1 className="project-title-project">{title}</h1>
