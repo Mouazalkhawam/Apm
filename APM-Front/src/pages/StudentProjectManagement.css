@@ -123,6 +123,7 @@
             transition: all 0.3s ease;
             position: relative;
             border: 1px solid #e1e5ee;
+            max-height: fit-content;
         }
         
         .stage:hover {
@@ -158,7 +159,7 @@
         }
         
         /* Task Styles */
-        .task {
+        .task-management {
             background-color: white;
             border-left: 4px solid #eab307;
             padding: 20px;
@@ -175,7 +176,7 @@
             transform: translateX(3px);
         }
         
-        .task-title {
+        .task-title-management {
             font-weight: 700;
             margin-bottom: 10px;
             color: #333;
@@ -219,7 +220,7 @@
             margin-left: 5px;
         }
         
-        .task-description {
+        .task-description-management {
             margin-bottom: 15px;
             color: #555;
             font-size: 0.95rem;
@@ -493,7 +494,7 @@
             gap: 10px;
         }
         
-        .action-btn {
+        .action-btn-management {
             background-color: #f8f9fa;
             border: 1px solid #e1e5ee;
             padding: 8px 15px;
@@ -507,18 +508,18 @@
             color: #4a5568;
         }
         
-        .action-btn:hover {
+        .action-btn-management:hover {
             background-color: #e2e8f0;
             color: #2d3748;
         }
         
-        .action-btn.primary {
+        .action-btn-management.primary {
             background-color: #791770;
             color: white;
             border-color: #791770;
         }
         
-        .action-btn.primary:hover {
+        .action-btn-management.primary:hover {
             background-color: #5a1253;
         }
         

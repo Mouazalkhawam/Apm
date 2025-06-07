@@ -114,24 +114,24 @@ const HonorBoard = () => {
       {/* قسم الإحصائيات */}
       <section className="stats-section">
         <div className="stats-container">
-          <div className="stat-card">
-            <div className="stat-icon">
+          <div className="stat-card-honor">
+            <div className="stat-icon-honor">
               <FaMedal />
             </div>
             <h3 className="stat-number">42</h3>
             <p className="stat-text">مشروع متميز</p>
           </div>
           
-          <div className="stat-card">
-            <div className="stat-icon">
+          <div className="stat-card-honor">
+            <div className="stat-icon-honor">
               <FaUsers />
             </div>
             <h3 className="stat-number">128</h3>
             <p className="stat-text">طالب مشارك</p>
           </div>
           
-          <div className="stat-card">
-            <div className="stat-icon">
+          <div className="stat-card-honor">
+            <div className="stat-icon-honor">
               <FaUniversity />
             </div>
             <h3 className="stat-number">3</h3>
@@ -142,7 +142,7 @@ const HonorBoard = () => {
       
       {/* قسم المشاريع المميزة */}
       <section className="projects-section">
-        <div className="section-title">
+        <div className="section-title-honor">
           <h2>المشاريع المتميزة لهذا الفصل</h2>
         </div>
         
@@ -160,10 +160,10 @@ const HonorBoard = () => {
                   {project.rank === 1 ? 'المركز الأول' : project.rank === 2 ? 'المركز الثاني' : 'المركز الثالث'}
                 </div>
                 <div className="project-header-honor">
-                  <h3 className="project-title">{project.title}</h3>
+                  <h3 className="project-title-honor">{project.title}</h3>
                   <span className="project-category">{project.category}</span>
                 </div>
-                <p className="project-description">{project.description}</p>
+                <p className="project-description-honor">{project.description}</p>
                 <div className="project-footer">
                   <div className="project-author">
                     <div className="author-avatar"></div>
@@ -190,7 +190,7 @@ const HonorBoard = () => {
             <div key={project.id} className="small-project-card">
               <div className="small-project-content">
                 <div className="small-project-header">
-                  <h3 className="small-project-title">{project.title}</h3>
+                  <h3 className="small-project-title-honor">{project.title}</h3>
                   <span className="small-project-category">{project.category}</span>
                 </div>
                 <p className="small-project-description">{project.description}</p>
