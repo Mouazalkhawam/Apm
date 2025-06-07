@@ -134,4 +134,33 @@ class TaskController extends Controller
 
         return response()->json($submission);
     }
+
+    public function getStudentTaskStats()
+    {
+        $user = Auth::user();
+        
+        // التأكد من أن المستخدم طالب
+        if (!$user->student) {
+            return response()->json(['message' => 'User is not a student'], 400);
+        }
+
+        $studentId = $user->student->studentId;
+
+        // عدد المهام الكلية المسندة للطالب
+        $totalTasks = Task::where('assigned_to', $studentId)->count();
+
+        // عدد المهام المكتملة (التي لها submissions)
+        $completedTasks = Task::where('assigned_to', $studentId)
+            ->whereHas('submissions')
+            ->count();
+
+        // عدد المهام غير المكتملة (ليس لها submissions)
+        $incompleteTasks = $totalTasks - $completedTasks;
+
+        return response()->json([
+            'total_tasks' => $totalTasks,
+            'completed_tasks' => $completedTasks,
+            'incomplete_tasks' => $incompleteTasks,
+        ]);
+    }
 }

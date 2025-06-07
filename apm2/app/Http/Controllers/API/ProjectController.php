@@ -10,11 +10,13 @@ use App\Models\Supervisor;
 use App\Models\GroupSupervisor;
 use App\Models\GroupStudent;
 use App\Models\User;
+use App\Models\AcademicPeriod;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Carbon\Carbon;
 
 class ProjectController extends Controller
 {
@@ -23,8 +25,6 @@ class ProjectController extends Controller
         $request->validate([
             'title' => 'required|string',
             'description' => 'nullable|string',
-            'startdate' => 'required|date',
-            'enddate' => 'required|date|after:startdate',
             'students' => 'required|array|min:1|exists:students,studentId',
             'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId',
             'type' => 'required|in:semester,graduation'
@@ -36,8 +36,14 @@ class ProjectController extends Controller
             // التحقق من شروط المشاريع
             if ($request->type === 'graduation') {
                 $this->validateGraduationProject($creator);
+                $periods = $this->getGraduationPeriods();
             } else {
                 $this->validateSemesterProject($creator);
+                $periods = $this->getSemesterPeriod();
+            }
+
+            if (empty($periods)) {
+                abort(400, 'لا يوجد فصل دراسي فعال حاليًا');
             }
 
             // إضافة المنشئ تلقائيًا إلى قائمة الطلاب
@@ -45,15 +51,22 @@ class ProjectController extends Controller
                 array_merge($request->students, [$creator->studentId])
             );
 
+            // حساب تواريخ البدء والانتهاء
+            $startDate = $periods->first()->start_date;
+            $endDate = $periods->last()->end_date;
+
             // إنشاء المشروع
             $project = Project::create([
                 'title' => $request->title,
                 'description' => $request->description,
-                'startdate' => $request->startdate,
-                'enddate' => $request->enddate,
+                'startdate' => $startDate,
+                'enddate' => $endDate,
                 'headid' => Auth::id(),
                 'type' => $request->type
             ]);
+
+            // ربط المشروع بالفصول الدراسية
+            $project->academicPeriods()->attach($periods->pluck('id'));
 
             // إنشاء الفريق
             $group = Group::create([
@@ -89,6 +102,32 @@ class ProjectController extends Controller
             ], 201);
         });
     }
+    protected function getGraduationPeriods()
+    {
+        $currentPeriod = AcademicPeriod::where('is_current', true)->first();
+        
+        if (!$currentPeriod) {
+            return collect();
+        }
+
+        // الحصول على الفصل التالي
+        $nextPeriod = AcademicPeriod::where('start_date', '>', $currentPeriod->end_date)
+            ->orderBy('start_date', 'asc')
+            ->first();
+
+        if (!$nextPeriod) {
+            return collect([$currentPeriod]);
+        }
+
+        return collect([$currentPeriod, $nextPeriod]);
+    }
+
+    // الحصول على الفصل الحالي للمشاريع الفصلية
+    protected function getSemesterPeriod()
+    {
+        return AcademicPeriod::where('is_current', true)->get();
+    }
+
 
     protected function validateGraduationProject(Student $student)
     {
@@ -137,7 +176,7 @@ class ProjectController extends Controller
         $group->students()
             ->whereIn('students.studentId', $students)
             ->with('user')
-            ->each(function ($student) use ($group) { // <-- تم إضافة use ($group) هنا
+            ->each(function ($student) use ($group) {
                 $message = "تمت دعوتك لمشروع {$group->name}";
                 $message .= $student->pivot->is_leader ? ' (أنت القائد)' : '';
                 
@@ -147,7 +186,7 @@ class ProjectController extends Controller
                 );
             });
 
-        // إشعارات للمشرفين (كانت تعمل بشكل صحيح)
+        // إشعارات للمشرفين
         $group->supervisors()
             ->whereIn('supervisors.supervisorId', $supervisors)
             ->with('user')
@@ -275,6 +314,73 @@ class ProjectController extends Controller
         return response()->json([
             'status' => 'success',
             'data' => $processedRecommendations
+        ]);
+    }
+
+
+    // في ProjectController.php
+/**
+ * الحصول على مشاريع الطالب الحالي
+ */
+    public function getStudentProjects()
+    {
+        $user = Auth::user();
+        
+        if (!$user->student) {
+            return response()->json(['message' => 'User is not a student'], 400);
+        }
+
+        $projects = Project::with(['group.students', 'group.supervisors', 'academicPeriods'])
+            ->whereHas('group', function($query) use ($user) {
+                $query->whereHas('students', function($q) use ($user) {
+                    $q->where('students.studentId', $user->student->studentId)
+                    ->where('group_student.status', 'approved');
+                });
+            })
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $projects
+        ]);
+    }
+/**
+ * الحصول على تفاصيل مشروع معين للطالب
+ */
+    public function getStudentProjectDetails($projectId)
+    {
+        $user = Auth::user();
+        
+        if (!$user->student) {
+            return response()->json(['message' => 'User is not a student'], 400);
+        }
+
+        $project = Project::with([
+                'group.students.user', 
+                'group.supervisors.user',
+                'academicPeriods',
+                'stages.tasks' => function($query) use ($user) {
+                    $query->where('assigned_to', $user->student->studentId)
+                        ->with(['submissions', 'assignee.user']);
+                }
+            ])
+            ->where('projectid', $projectId)
+            ->whereHas('group', function($query) use ($user) {
+                $query->whereHas('students', function($q) use ($user) {
+                    $q->where('students.studentId', $user->student->studentId)
+                    ->where('group_student.status', 'approved');
+                });
+            })
+            ->first();
+
+        if (!$project) {
+            return response()->json(['message' => 'Project not found or unauthorized'], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $project
         ]);
     }
 }

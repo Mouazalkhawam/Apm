@@ -27,10 +27,9 @@ class Project extends Model
         return $this->belongsTo(User::class, 'headid', 'userId');
     }
 
-    // علاقة المشروع مع الفريق
     public function group()
     {
-        return $this->hasOne(Group::class, 'project_id', 'projectid');
+        return $this->hasOne(Group::class, 'projectid', 'projectid');
     }
 
     // المشرفين المقترحين (بانتظار الموافقة)
@@ -47,5 +46,16 @@ class Project extends Model
         return $this->belongsToMany(Student::class, 'group_student', 'project_id', 'student_id')
                     ->withPivot('status') // pending, approved, rejected
                     ->withTimestamps();
+    }
+   
+    public function academicPeriods()
+    {
+        return $this->belongsToMany(AcademicPeriod::class, 'academic_period_project', 'project_projectid', 'academic_period_id');
+    }
+
+    // في App\Models\Project.php
+    public function stages()
+    {
+        return $this->hasMany(ProjectStage::class, 'project_id', 'projectid');
     }
 }

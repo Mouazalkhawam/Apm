@@ -40,6 +40,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/projects/create', [ProjectController::class, 'createProject']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
     Route::post('/projects/recommendations', [ProjectController::class, 'getRecommendations']);
+    Route::get('/student/projects', [ProjectController::class, 'getStudentProjects']);
+    Route::get('/student/projects/{projectId}', [ProjectController::class, 'getStudentProjectDetails']);
     Route::post('/project-stages', [ProjectStageController::class, 'store']); // إنشاء مرحلة
     Route::get('/project-stages/{project_id}', [ProjectStageController::class, 'getByProject']); // عرض مراحل مشروع
     Route::delete('/project-stages/{id}', [ProjectStageController::class, 'destroy']); // حذف مرحلة
@@ -55,6 +57,7 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
     Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask']);
     Route::patch('/submissions/{submission}/grade', [TaskController::class, 'gradeTask']);
+    Route::get('/tasks/stats', [TaskController::class, 'getStudentTaskStats']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)
         Route::get('/', [HonorBoardController::class, 'indexApi']);
