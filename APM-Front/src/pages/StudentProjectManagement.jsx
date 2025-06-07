@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import './StudentProjectManagement.css';
+import ProjectHeader from '../components/Header/ProjectHeader';
 
 const StudentProjectManagement = () => {
   // Project data state
@@ -408,27 +409,14 @@ const StudentProjectManagement = () => {
 
   return (
     <div className="container-tasks">
-      {/* Header */}
-      <header className='header-tasks'>
-        <div className="header-bg"></div>
-        <div className="header-content-tasks">
-          <h1 className="project-title">{projectData.title}</h1>
-          <p className="project-description">
-            {projectData.description}
-          </p>
-          <div className="project-meta">
-            <div className="meta-item">
-              <i className="fas fa-users"></i> فريق العمل: 5 أعضاء
-            </div>
-            <div className="meta-item">
-              <i className="fas fa-calendar-alt"></i> بداية المشروع: 01/01/2023
-            </div>
-            <div className="meta-item">
-              <i className="fas fa-hourglass-half"></i> التسليم النهائي: 15/06/2023
-            </div>
-          </div>
-        </div>
-      </header>
+       {/* Header Component */}
+       <ProjectHeader 
+                title=" أعضاء المجموعة"
+                description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
+                teamMembers={5}
+                startDate="01/01/2023"
+                endDate="15/06/2023"
+              />
       
       {/* Stages Container */}
       <div className="stages-container">
@@ -445,9 +433,9 @@ const StudentProjectManagement = () => {
                 </div>
               ) : (
                 stage.tasks.map(task => (
-                  <div key={task.id} className="task">
-                    <div className="task-title">{task.title}</div>
-                    {task.description && <div className="task-description">{task.description}</div>}
+                  <div key={task.id} className="task-management">
+                    <div className="task-title-management">{task.title}</div>
+                    {task.description && <div className="task-description-management">{task.description}</div>}
                     <div className="task-meta">
                       <div className="task-responsible">{task.responsible}</div>
                       <div className="task-deadline">{formatDate(task.deadline)}</div>
@@ -455,7 +443,7 @@ const StudentProjectManagement = () => {
                     {renderAttachments(task.attachments)}
                     <div className="task-actions">
                       <button 
-                        className="action-btn" 
+                        className="action-btn-management" 
                         onClick={() => {
                           const fileInput = document.createElement('input');
                           fileInput.type = 'file';
@@ -510,7 +498,7 @@ const StudentProjectManagement = () => {
                         <span>إضافة مرفق</span>
                       </button>
                       <button 
-                        className="action-btn primary" 
+                        className="action-btn-management primary" 
                         onClick={() => {
                           setCurrentSubmissionTask(task.id);
                           setShowModal(true);
@@ -532,19 +520,19 @@ const StudentProjectManagement = () => {
             </button>
             <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
               <div className="form-group-tasks">
-                <label htmlFor={`task-title-${stage.id}`}>عنوان المهمة:</label>
+                <label htmlFor={`task-title-management-${stage.id}`}>عنوان المهمة:</label>
                 <input 
                   type="text" 
-                  id={`task-title-${stage.id}`} 
+                  id={`task-title-management-${stage.id}`} 
                   placeholder="أدخل عنوان المهمة"
                   value={newTasks[stage.id]?.title || ''}
                   onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
                 />
               </div>
               <div className="form-group-tasks">
-                <label htmlFor={`task-description-${stage.id}`}>وصف المهمة (اختياري):</label>
+                <label htmlFor={`task-description-management-${stage.id}`}>وصف المهمة (اختياري):</label>
                 <textarea 
-                  id={`task-description-${stage.id}`} 
+                  id={`task-description-management-${stage.id}`} 
                   placeholder="أدخل وصف المهمة"
                   value={newTasks[stage.id]?.description || ''}
                   onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}

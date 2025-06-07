@@ -312,7 +312,7 @@
     <div className="card animate delay-3">
       <div className="card-header">
         <h2 className="card-title">مشاريعي الحالية</h2>
-        <button className="btn btn-primary-profile btn-sm" onClick={() => setShowProjectModal(true)}>
+        <button className="btn-profile btn-primary-profile btn-sm" onClick={() => setShowProjectModal(true)}>
           <i className="fas fa-plus"></i> مشروع جديد
         </button>
       </div>
@@ -340,10 +340,10 @@
                 </div>
               </div>
               <div className="project-actions">
-                <button className="btn btn-outline btn-sm">
+                <button className="btn-profile btn-outline btn-sm">
                   <i className="fas fa-eye"></i> معاينة
                 </button>
-                <button className="btn btn-primary-profile btn-sm" onClick={() => setShowTasksPage(true)}>
+                <button className="btn-profile btn-primary-profile btn-sm" onClick={() => setShowTasksPage(true)}>
                   <i className="fas fa-tasks"></i> المهام
                 </button>
               </div>
@@ -372,10 +372,10 @@
                 </div>
               </div>
               <div className="project-actions">
-                <button className="btn btn-outline btn-sm">
+                <button className="btn-profile btn-outline btn-sm">
                   <i className="fas fa-eye"></i> معاينة
                 </button>
-                <button className="btn btn-primary-profile btn-sm">
+                <button className="btn-profile btn-primary-profile btn-sm">
                   <i className="fas fa-tasks"></i> المهام
                 </button>
               </div>
@@ -736,7 +736,7 @@
               </div>
               
               <button 
-                className="btn btn-primary-profile" 
+                className="btn-profile btn-primary-profile" 
                 type="submit"
                 disabled={loading}
               >
