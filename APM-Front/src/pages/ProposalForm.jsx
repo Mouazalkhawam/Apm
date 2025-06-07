@@ -85,12 +85,14 @@ const ProposalForm = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-
-  const handleArrayInputChange = (e) => {
-    const { name, value } = e.target;
-    const arrayValues = value.split(',').map(item => item.trim()).filter(item => item !== '');
-    setFormData({ ...formData, [name]: arrayValues });
-  };
+const handleArrayInputChange = (e) => {
+  const { name, value } = e.target;
+  // استخدام تعبير منتظم يتعرف على الفواصل العربية والإنجليزية
+  const arrayValues = value.split(/[,،]\s*/)
+    .map(item => item.trim())
+    .filter(item => item !== '');
+  setFormData({ ...formData, [name]: arrayValues });
+};
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
@@ -98,19 +100,20 @@ const ProposalForm = () => {
   };
 
   const addRequirement = (type, value) => {
-    if (value.trim() === '') return;
+  const trimmedValue = value.trim();
+  if (!trimmedValue) return;
 
-    const fieldName = type === 'functional' 
-      ? 'functional_requirements' 
-      : 'non_functional_requirements';
+  const fieldName = type === 'functional' 
+    ? 'functional_requirements' 
+    : 'non_functional_requirements';
 
-    setFormData({
-      ...formData,
-      [fieldName]: [...formData[fieldName], value]
-    });
+  setFormData(prev => ({
+    ...prev,
+    [fieldName]: [...prev[fieldName], trimmedValue]
+  }));
 
-    document.getElementById(`${fieldName}-input`).value = '';
-  };
+  document.getElementById(`${fieldName}-input`).value = '';
+};
 
   const removeRequirement = (type, index) => {
     const fieldName = type === 'functional' 
@@ -122,34 +125,7 @@ const ProposalForm = () => {
       [fieldName]: formData[fieldName].filter((_, i) => i !== index)
     });
   };
-
-  const handleExpertInputChange = (e) => {
-    const { name, value } = e.target;
-    setCurrentExpert({ ...currentExpert, [name]: value });
-  };
-
-  const addExpert = () => {
-    if (!currentExpert.name.trim()) return;
-
-    setFormData({
-      ...formData,
-      experts: [...formData.experts, currentExpert]
-    });
-
-    setCurrentExpert({
-      name: '',
-      phone: '',
-      specialization: ''
-    });
-  };
-
-  const removeExpert = (index) => {
-    setFormData({
-      ...formData,
-      experts: formData.experts.filter((_, i) => i !== index)
-    });
-  };
-
+ 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
@@ -263,32 +239,7 @@ const ProposalForm = () => {
         toggleChat={toggleChat}
       />
       
-      <main className="container-proposal">
-        {groupInfo && (
-          <div className="group-info-card">
-            <h2>معلومات المجموعة</h2>
-            <div className="group-details">
-              <p><strong>اسم المجموعة:</strong> {groupInfo.group.name}</p>
-              <div className="members-section">
-                <h3>أعضاء المجموعة:</h3>
-                <ul>
-                  {groupInfo.group_members.map((member, index) => (
-                    <li key={index}>{member.name}</li>
-                  ))}
-                </ul>
-              </div>
-              <div className="supervisors-section">
-                <h3>المشرفون:</h3>
-                <ul>
-                  {groupInfo.supervisors.map((supervisor, index) => (
-                    <li key={index}>{supervisor.name}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-        )}
-
+       <main className="container-proposal">
         <div className="project-type-card">
           <h2>نوع المشروع</h2>
           <div className="type-options">
@@ -310,8 +261,7 @@ const ProposalForm = () => {
             </div>
           </div>
         </div>
-
-        <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data">
+<form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data" acceptCharset="UTF-8">
           <div className="form-section-proposal">
             <h2 className="section-title-proposal">المعلومات الأساسية</h2>
             <div className="form-grid">
@@ -592,81 +542,7 @@ const ProposalForm = () => {
               ></textarea>
             </div>
           </div>
-
-          <div className="form-section-proposal">
-            <h2 className="section-title-proposal">الخبراء المقترحون (اختياري)</h2>
-            
-            <div className="experts-form">
-              <div className="form-grid form-grid-3">
-                <div className="form-group-proposal">
-                  <label htmlFor="expert_name">اسم الخبير</label>
-                  <input 
-                    type="text" 
-                    id="expert_name" 
-                    name="name"
-                    placeholder="اسم الخبير"
-                    value={currentExpert.name}
-                    onChange={handleExpertInputChange}
-                  />
-                </div>
-                
-                <div className="form-group-proposal">
-                  <label htmlFor="expert_phone">رقم الهاتف</label>
-                  <input 
-                    type="text" 
-                    id="expert_phone" 
-                    name="phone"
-                    placeholder="رقم الهاتف (اختياري)"
-                    value={currentExpert.phone}
-                    onChange={handleExpertInputChange}
-                  />
-                </div>
-                
-                <div className="form-group-proposal">
-                  <label htmlFor="expert_specialization">التخصص</label>
-                  <input 
-                    type="text" 
-                    id="expert_specialization" 
-                    name="specialization"
-                    placeholder="التخصص (اختياري)"
-                    value={currentExpert.specialization}
-                    onChange={handleExpertInputChange}
-                  />
-                </div>
-              </div>
-              
-              <button 
-                type="button" 
-                className="add-expert-btn"
-                onClick={addExpert}
-              >
-                <i className="fas fa-plus"></i> إضافة خبير
-              </button>
-              
-              {formData.experts.length > 0 && (
-                <div className="experts-list">
-                  <h4>قائمة الخبراء المضافين:</h4>
-                  <ul>
-                    {formData.experts.map((expert, index) => (
-                      <li key={index}>
-                        <span>{expert.name}</span>
-                        {expert.specialization && <span> - {expert.specialization}</span>}
-                        <button 
-                          type="button" 
-                          className="remove-expert-btn"
-                          onClick={() => removeExpert(index)}
-                        >
-                          <i className="fas fa-times"></i>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {error && (
+           {error && (
             <div className="error-message" style={{color: 'red', margin: '20px 0'}}>
               {error}
             </div>
