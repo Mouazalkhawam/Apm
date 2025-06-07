@@ -370,89 +370,155 @@ const StatsCard = () => {
   );
 };
 
-const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => (
-  <div className="card animate delay-3">
-    <div className="card-header">
-      <h2 className="card-title">مشاريعي الحالية</h2>
-      <button className="btn-profile btn-primary-profile btn-sm" onClick={() => setShowProjectModal(true)}>
-        <i className="fas fa-plus"></i> مشروع جديد
-      </button>
-    </div>
-    <div className="card-body">
-      <div className="projects-grid-profile">
-        <div className="project-card">
-          <div className="project-header-profile">
-            <span>مشروع التخرج</span>
-            <span className="project-status">قيد التنفيذ</span>
-          </div>
-          <div className="project-body">
-            <h3 className="project-title-profile">نظام إدارة المكتبة الرقمية</h3>
-            <p className="project-description-profile">نظام متكامل لإدارة الكتب والإعارة في المكتبة الجامعية مع لوحة تحكم متقدمة وواجهة مستخدم سهلة.</p>
-            <div className="project-deadline">
-              <i className="fas fa-clock"></i>
-              <span>30 يوم متبقي للتسليم</span>
-            </div>
-            <div className="project-progress">
-              <div className="progress-info">
-                <span>التقدم</span>
-                <span>82%</span>
-              </div>
-              <div className="progress-bar-profile">
-                <div className="progress-fill-profile" style={{width: '82%'}}></div>
-              </div>
-            </div>
-            <div className="project-actions">
-              <button className="btn-profile btn-outline btn-sm">
-                <i className="fas fa-eye"></i> معاينة
-              </button>
-              <button className="btn-profile btn-primary-profile btn-sm" onClick={() => setShowTasksPage(true)}>
-                <i className="fas fa-tasks"></i> المهام
-              </button>
-            </div>
-          </div>
-        </div>
+const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-        <div className="project-card">
-          <div className="project-header-profile">
-            <span>مشروع فصلي</span>
-            <span className="project-status">قيد التنفيذ</span>
-          </div>
-          <div className="project-body">
-            <h3 className="project-title-profile">روبوت الدردشة الذكية</h3>
-            <p className="project-description-profile">روبوت محادثة يعتمد على الذكاء الاصطناعي للرد على استفسارات الطلاب حول المقررات الدراسية.</p>
-            <div className="project-deadline">
-              <i className="fas fa-clock"></i>
-              <span>45 يوم متبقي للتسليم</span>
-            </div>
-            <div className="project-progress">
-              <div className="progress-info">
-                <span>التقدم</span>
-                <span>65%</span>
-              </div>
-              <div className="progress-bar-profile">
-                <div className="progress-fill-profile" style={{width: '65%'}}></div>
-              </div>
-            </div>
-            <div className="project-actions">
-              <button className="btn-profile btn-outline btn-sm">
-                <i className="fas fa-eye"></i> معاينة
-              </button>
-              <button className="btn-profile btn-primary-profile btn-sm">
-                <i className="fas fa-tasks"></i> المهام
-              </button>
-            </div>
-          </div>
-        </div>
+  useEffect(() => {
+    const fetchStudentProjects = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get('http://127.0.0.1:8000/api/student/projects', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        setProjects(response.data.data);
+      } catch (err) {
+        setError('فشل في تحميل المشاريع');
+        console.error('Error fetching projects:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-        <div className="add-project" onClick={() => setShowProjectModal(true)}>
-          <i className="fas fa-plus-circle"></i>
-          <h3>إضافة مشروع جديد</h3>
-          <p>انقر هنا لبدء مشروع جديد</p>
+    fetchStudentProjects();
+  }, []);
+
+  const calculateDaysRemaining = (endDate) => {
+    const today = new Date();
+    const dueDate = new Date(endDate);
+    const diffTime = dueDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  const calculateProgress = (project) => {
+    // يمكنك استبدال هذا بحساب التقدم الفعلي من المهام المكتملة
+    return Math.floor(Math.random() * 50) + 50; // قيمة عشوائية للتوضيح
+  };
+
+  if (loading) {
+    return (
+      <div className="card animate delay-3">
+        <div className="card-header">
+          <h2 className="card-title">مشاريعي الحالية</h2>
+        </div>
+        <div className="card-body">
+          <div className="loading-spinner">جاري تحميل المشاريع...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card animate delay-3">
+        <div className="card-header">
+          <h2 className="card-title">مشاريعي الحالية</h2>
+        </div>
+        <div className="card-body">
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card animate delay-3">
+      <div className="card-header">
+        <h2 className="card-title">مشاريعي الحالية</h2>
+        <button 
+          className="btn-profile btn-primary-profile btn-sm" 
+          onClick={() => setShowProjectModal(true)}
+        >
+          <i className="fas fa-plus"></i> مشروع جديد
+        </button>
+      </div>
+      <div className="card-body">
+        <div className="projects-grid-profile">
+          {projects.length > 0 ? (
+            projects.map(project => {
+              const daysRemaining = calculateDaysRemaining(project.enddate);
+              const progress = calculateProgress(project);
+              
+              return (
+                <div key={project.projectid} className="project-card">
+                  <div className="project-header-profile">
+                    <span>{project.type === 'graduation' ? 'مشروع التخرج' : 'مشروع فصلي'}</span>
+                    <span className={`project-status ${
+                      project.status === 'completed' ? 'completed' : 
+                      project.status === 'in_progress' ? 'in-progress' : 'pending'
+                    }`}>
+                      {project.status === 'completed' ? 'مكتمل' : 
+                       project.status === 'in_progress' ? 'قيد التنفيذ' : 'قيد الانتظار'}
+                    </span>
+                  </div>
+                  <div className="project-body">
+                    <h3 className="project-title-profile">{project.title}</h3>
+                    <p className="project-description-profile">
+                      {project.description || 'لا يوجد وصف للمشروع'}
+                    </p>
+                    <div className="project-deadline">
+                      <i className="fas fa-clock"></i>
+                      <span>{daysRemaining} يوم متبقي للتسليم</span>
+                    </div>
+                    <div className="project-progress">
+                      <div className="progress-info">
+                        <span>التقدم</span>
+                        <span>{progress}%</span>
+                      </div>
+                      <div className="progress-bar-profile">
+                        <div 
+                          className="progress-fill-profile" 
+                          style={{width: `${progress}%`}}
+                        ></div>
+                      </div>
+                    </div>
+                    <div className="project-actions">
+                      <button className="btn-profile btn-outline btn-sm">
+                        <i className="fas fa-eye"></i> معاينة
+                      </button>
+                      <button 
+                        className="btn-profile btn-primary-profile btn-sm" 
+                        onClick={() => setShowTasksPage(true)}
+                      >
+                        <i className="fas fa-tasks"></i> المهام
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="no-projects">
+              <i className="fas fa-folder-open"></i>
+              <p>لا يوجد لديك مشاريع حالية</p>
+            </div>
+          )}
+
+          <div className="add-project" onClick={() => setShowProjectModal(true)}>
+            <i className="fas fa-plus-circle"></i>
+            <h3>إضافة مشروع جديد</h3>
+            <p>انقر هنا لبدء مشروع جديد</p>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const TasksPage = ({ setShowTasksPage }) => (
   <div className="card animate delay-4" id="tasksPage">
