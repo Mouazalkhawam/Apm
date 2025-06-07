@@ -361,12 +361,12 @@
         }
         
         /* تعديلات اللون للأزرار والبطاقات لاستخدام اللونين بشكل منفصل */
-        .btn-primary {
+        .btn-primary-profile {
             background-color: #791770;
             color: white;
         }
         
-        .btn-primary:hover {
+        .btn-primary-profile:hover {
             background-color: #5d0e56;
         }
         
@@ -787,12 +787,12 @@
             margin-left: 8px;
         }
         
-        .btn-primary {
+        .btn-primary-profile {
             background-color: #791770;
             color: white;
         }
         
-        .btn-primary:hover {
+        .btn-primary-profile:hover {
             box-shadow: 0 4px 12px rgba(121, 23, 112, 0.3);
             transform: translateY(-2px);
         }
@@ -1223,7 +1223,7 @@
         }
         
         /* نموذج إنشاء مشروع */
-        .modal-overlay {
+        .modal-overlay-profile {
             position: fixed;
             top: 0;
             right: 0;

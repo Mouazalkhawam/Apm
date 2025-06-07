@@ -15,7 +15,7 @@
 }
 
 .supervisors-list,
-.supervisor-info {
+.supervisor-info-meeting {
     margin-bottom: 20px;
 }
 
@@ -141,6 +141,8 @@
     padding: 5px 10px;
     border-radius: 20px;
     font-size: 0.8rem;
+    top: 5px;
+    right: 5px;
 }
 
 .date-card.completed {
@@ -194,7 +196,7 @@
 }
 
 /* معلومات المشرف المختار */
-.supervisor-info {
+.supervisor-info-meeting {
     background-color: white;
     border-radius: 0;
     padding: 20px;

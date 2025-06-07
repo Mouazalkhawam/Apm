@@ -382,13 +382,13 @@
     box-shadow: 0 4px 10px rgba(142, 68, 173, 0.2);
 }
 
-.add-icon {
+.add-icon-register {
     color: #791770;
     margin-left: 8px;
     transition: all 0.3s;
 }
 
-.add-experience-btn:hover .add-icon {
+.add-experience-btn:hover .add-icon-register {
     transform: scale(1.2);
 }
 
@@ -483,7 +483,7 @@
 /* Modal */
 
 
-.modal-overlay.active {
+.modal-overlay-register.active {
     display: flex;
 }
 
@@ -586,7 +586,7 @@
 }
 
 /* في ملف Registration.css */
-.modal-overlay {
+.modal-overlay-register {
     position: fixed;
     top: 0;
     left: 0;

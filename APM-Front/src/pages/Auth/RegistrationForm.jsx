@@ -570,7 +570,7 @@
                                     })}
                                     {experiences.length < 5 && (
                                         <div className="add-experience-btn" onClick={() => setShowModal(true)}>
-                                            <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon" /></span>
+                                            <span>إضافة خبرة جديدة <FontAwesomeIcon icon={faPlus} className="add-icon-register" /></span>
                                         </div>
                                     )}
                                 </div>
@@ -601,7 +601,7 @@
 
                 {/* Experience Modal */}
                 {showModal && (
-                    <div className="modal-overlay" onClick={() => setShowModal(false)}>
+                    <div className="modal-overlay-register" onClick={() => setShowModal(false)}>
                         <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                             <span className="close-modal" onClick={() => setShowModal(false)}>
                                 <FontAwesomeIcon icon={faTimes} />

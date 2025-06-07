@@ -187,7 +187,7 @@ const SchedulingStudentMeetings = () => {
           </div>
         </div>
 
-        <div className="supervisor-info" id="selected-supervisor">
+        <div className="supervisor-info-meeting" id="selected-supervisor">
           <div className="supervisor-header">
          
           </div>
