@@ -182,7 +182,7 @@ const handleArrayInputChange = (e) => {
 
       if (response.data.message === 'تم إنشاء المقترح بنجاح') {
         alert('تم تقديم المقترح بنجاح!');
-        navigate('/my-proposals');
+        navigate('/profile');
       } else {
         throw new Error(response.data.message || 'فشل في تقديم المقترح');
       }
