@@ -10,49 +10,98 @@ use App\Models\TaskSubmission;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
     // إنشاء مهمة جديدة
     public function store(Request $request)
     {
+        // التحقق من الصلاحية الأساسية
         $validator = Validator::make($request->all(), [
             'project_stage_id' => 'required|exists:project_stages,id',
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'required|exists:students,studentId',
             'due_date' => 'required|date',
+            'priority' => 'required|in:low,medium,high',
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        // التحقق من صلاحيات المنشئ (مشرف أو قائد الفريق)
         $user = Auth::user();
-        if (!$user->isSupervisor() && !$user->isTeamLeader()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        $stage = ProjectStage::with(['project.group'])->findOrFail($request->project_stage_id);
+        $group = $stage->project->group;
+
+        // 1. التحقق من أن المستخدم مشرف معتمد في هذه المجموعة
+        if ($user->supervisor) {
+            $isSupervisorApproved = DB::table('group_supervisor')
+                ->where('groupid', $group->groupid)
+                ->where('supervisorId', $user->supervisor->supervisorId)
+                ->where('status', 'approved')
+                ->exists();
+            
+            if ($isSupervisorApproved) {
+                goto CREATE_TASK; // تخطي التحقق من قائد الفريق إذا كان مشرفاً معتمداً
+            }
         }
 
+        // 2. التحقق من أن المستخدم قائد فريق معتمد في هذه المجموعة
+        if ($user->student) {
+            $isTeamLeader = DB::table('group_student')
+                ->where('groupid', $group->groupid)
+                ->where('studentId', $user->student->studentId)
+                ->where('is_leader', true)
+                ->where('status', 'approved')
+                ->exists();
+
+            if ($isTeamLeader) {
+                goto CREATE_TASK;
+            }
+        }
+
+        return response()->json([
+            'message' => 'Unauthorized - You must be an approved supervisor or team leader for this project'
+        ], 403);
+
+        CREATE_TASK:
+
+        // التحقق من أن الطالب المعين معتمد في نفس المجموعة
+        $isStudentApproved = DB::table('group_student')
+            ->where('groupid', $group->groupid)
+            ->where('studentId', $request->assigned_to)
+            ->where('status', 'approved')
+            ->exists();
+
+        if (!$isStudentApproved) {
+            return response()->json([
+                'message' => 'The assigned student is not approved in this project group'
+            ], 403);
+        }
+
+        // إنشاء المهمة
         $task = Task::create([
             'project_stage_id' => $request->project_stage_id,
             'title' => $request->title,
             'description' => $request->description,
             'assigned_to' => $request->assigned_to,
             'status' => 'pending',
+            'priority' => $request->priority,
             'due_date' => $request->due_date,
             'assigned_by' => $user->userId,
         ]);
 
         return response()->json($task, 201);
     }
-
-    // عرض مهام مرحلة معينة
+        // عرض مهام مرحلة معينة
     public function getStageTasks($stage_id)
     {
         $tasks = Task::with(['assignee.user', 'assigner'])
-            ->where('project_stage_id', $stage_id)
-            ->get();
+        ->where('project_stage_id', $stage_id)
+        ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')") // ترتيب حسب الأولوية
+        ->get();
 
         return response()->json($tasks);
     }
@@ -161,6 +210,77 @@ class TaskController extends Controller
             'total_tasks' => $totalTasks,
             'completed_tasks' => $completedTasks,
             'incomplete_tasks' => $incompleteTasks,
+        ]);
+    }
+
+    public function getUserTasks()
+    {
+        $user = Auth::user();
+        
+        // إذا كان المستخدم طالباً
+        if ($user->student) {
+            $tasks = Task::with(['stage.project', 'assignee.user', 'assigner', 'submissions'])
+                ->where('assigned_to', $user->student->studentId)
+                ->orderBy('due_date', 'asc')
+                ->get();
+                
+            return response()->json([
+                'success' => true,
+                'data' => $tasks
+            ]);
+        }
+        
+        // إذا كان المستخدم مشرفاً
+        if ($user->supervisor) {
+            // الحصول على المشاريع التي يشرف عليها
+            $projects = $user->supervisor->groups()->with('project.stages.tasks')->get();
+            
+            $tasks = collect();
+            foreach ($projects as $project) {
+                foreach ($project->project->stages as $stage) {
+                    $tasks = $tasks->merge($stage->tasks);
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'data' => $tasks
+            ]);
+        }
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'User is not a student or supervisor'
+        ], 400);
+    }
+
+    /**
+ * الحصول على مهام الطالب لمشروع معين
+ */
+    public function getStudentProjectTasks($projectId)
+    {
+        $user = Auth::user();
+        
+        if (!$user->student) {
+            return response()->json(['message' => 'User is not a student'], 400);
+        }
+
+        $tasks = Task::with(['stage', 'assigner', 'submissions'])
+            ->whereHas('stage.project.group.students', function($query) use ($user) {
+                $query->where('students.studentId', $user->student->studentId)
+                    ->where('group_student.status', 'approved');
+            })
+            ->whereHas('stage.project', function($query) use ($projectId) {
+                $query->where('projectid', $projectId);
+            })
+            ->where('assigned_to', $user->student->studentId)
+            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+            ->orderBy('due_date', 'asc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $tasks
         ]);
     }
 }

@@ -58,6 +58,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask']);
     Route::patch('/submissions/{submission}/grade', [TaskController::class, 'gradeTask']);
     Route::get('/tasks/stats', [TaskController::class, 'getStudentTaskStats']);
+    Route::get('/user/tasks', [TaskController::class, 'getUserTasks']);
+    Route::get('/student/projects/{projectId}/tasks', [TaskController::class, 'getStudentProjectTasks']);
     Route::prefix('honor-board')->group(function () {
         // عرض جميع المشاريع المميزة (GET)
         Route::get('/', [HonorBoardController::class, 'indexApi']);

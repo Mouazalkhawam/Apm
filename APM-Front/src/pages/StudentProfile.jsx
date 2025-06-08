@@ -103,17 +103,13 @@ const StudentProfile = () => {
             studentData={studentData}
           />
 
-          <div className="profile-content">
-            <StatsCard />
-
-            <ProjectsCard 
-              showTasksPage={showTasksPage}
-              setShowTasksPage={setShowTasksPage}
-              setShowProjectModal={setShowProjectModal}
-            />
-
-            {showTasksPage && <TasksPage setShowTasksPage={setShowTasksPage} />}
-
+<div className="profile-content">
+        <StatsCard />
+        <ProjectsCard 
+          setShowTasksPage={setShowTasksPage} 
+          setShowProjectModal={setShowProjectModal}
+        />
+        {showTasksPage && <TasksPage setShowTasksPage={setShowTasksPage} projectId={showTasksPage} />}
             <AchievementsCard />
           </div>
         </div>
@@ -493,7 +489,7 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
                       </button>
                       <button 
                         className="btn-profile btn-primary-profile btn-sm" 
-                        onClick={() => setShowTasksPage(true)}
+                        onClick={() => setShowTasksPage(project.projectid)} 
                       >
                         <i className="fas fa-tasks"></i> المهام
                       </button>
@@ -520,85 +516,156 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
   );
 };
 
-const TasksPage = ({ setShowTasksPage }) => (
-  <div className="card animate delay-4" id="tasksPage">
-    <div className="card-body">
-      <div className="tasks-header">
-        <h2 className="tasks-title">مهام مشروع: نظام إدارة المكتبة الرقمية</h2>
-        <button className="create-project-btn" onClick={() => setShowTasksPage(false)}>
-          <i className="fas fa-arrow-right"></i> العودة للمشاريع
-        </button>
+
+const TasksPage = ({ setShowTasksPage, projectId }) => {
+  const [tasks, setTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [projectTitle, setProjectTitle] = useState('');
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        
+        // جلب المهام الخاصة بالمشروع
+        const response = await axios.get(
+          `http://127.0.0.1:8000/api/student/projects/${projectId}/tasks`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          setTasks(response.data.data);
+          
+          // جلب عنوان المشروع من بيانات المهام (إذا كان متوفراً)
+          if (response.data.data.length > 0 && response.data.data[0].stage?.project) {
+            setProjectTitle(response.data.data[0].stage.project.title);
+          } else {
+            // إذا لم يتوفر العنوان في بيانات المهام، نجلب المشاريع للحصول على العنوان
+            const projectsResponse = await axios.get(
+              'http://127.0.0.1:8000/api/student/projects',
+              {
+                headers: {
+                  'Authorization': `Bearer ${token}`
+                }
+              }
+            );
+            
+            const project = projectsResponse.data.data.find(p => p.projectid == projectId);
+            if (project) {
+              setProjectTitle(project.title);
+            }
+          }
+        }
+      } catch (err) {
+        setError('فشل في تحميل مهام المشروع');
+        console.error('Error fetching tasks:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [projectId]);
+
+  const getPriorityClass = (priority) => {
+    switch (priority) {
+      case 'high': return 'priority-high';
+      case 'medium': return 'priority-medium';
+      case 'low': return 'priority-low';
+      default: return '';
+    }
+  };
+
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'numeric', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString('ar-EG', options);
+  };
+
+  if (loading) {
+    return (
+      <div className="card animate delay-4" id="tasksPage">
+        <div className="card-body">
+          <div className="loading-spinner">جاري تحميل المهام...</div>
+        </div>
       </div>
+    );
+  }
 
-      <div className="task-list">
-        <div className="task-item">
-          <input type="checkbox" className="task-checkbox" />
-          <div className="task-details">
-            <h3 className="task-title">تصميم واجهة المستخدم</h3>
-            <p className="task-description">إنشاء واجهة المستخدم الرئيسية مع شريط التنقل والقوائم</p>
-            <p className="task-date">
-              <i className="fas fa-calendar-alt"></i>
-              مستحق: 15/12/2023
-            </p>
-          </div>
-          <span className="task-priority priority-high">عالي</span>
+  if (error) {
+    return (
+      <div className="card animate delay-4" id="tasksPage">
+        <div className="card-body">
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card animate delay-4" id="tasksPage">
+      <div className="card-body">
+        <div className="tasks-header">
+          <h2 className="tasks-title">مهام مشروع: {projectTitle || 'غير معروف'}</h2>
+          <button 
+            className="create-project-btn" 
+            onClick={() => setShowTasksPage(false)}
+          >
+            <i className="fas fa-arrow-right"></i> العودة للمشاريع
+          </button>
         </div>
 
-        <div className="task-item">
-          <input type="checkbox" className="task-checkbox" defaultChecked />
-          <div className="task-details">
-            <h3 className="task-title">إنشاء قاعدة البيانات</h3>
-            <p className="task-description">تصميم الجداول الأساسية ونظم العلاقات بينها</p>
-            <p className="task-date">
-              <i className="fas fa-calendar-alt"></i>
-              مستحق: 10/12/2023
-            </p>
-          </div>
-          <span className="task-priority priority-high">عالي</span>
-        </div>
-
-        <div className="task-item">
-          <input type="checkbox" className="task-checkbox" />
-          <div className="task-details">
-            <h3 className="task-title">برمجة نظام الإعارة</h3>
-            <p className="task-description">تطبيق النظام الأساسي لعمليات الإعارة والإرجاع</p>
-            <p className="task-date">
-              <i className="fas fa-calendar-alt"></i>
-              مستحق: 20/12/2023
-            </p>
-          </div>
-          <span className="task-priority priority-medium">متوسط</span>
-        </div>
-
-        <div className="task-item">
-          <input type="checkbox" className="task-checkbox" />
-          <div className="task-details">
-            <h3 className="task-title">إنشاء لوحة التحكم الإدارية</h3>
-            <p className="task-description">تصميم الواجهة الإدارية لمدراء النظام</p>
-            <p className="task-date">
-              <i className="fas fa-calendar-alt"></i>
-              مستحق: 25/12/2023
-            </p>
-          </div>
-          <span className="task-priority priority-low">منخفض</span>
-        </div>
-
-        <div className="task-item">
-          <input type="checkbox" className="task-checkbox" />
-          <div className="task-details">
-            <h3 className="task-title">كتابة الوثائق التقنية</h3>
-            <p className="task-description">إعداد ملف التوثيق الخاص بالمشروع</p>
-            <p className="task-date">
-              <i className="fas fa-calendar-alt"></i>
-              مستحق: 30/12/2023
-            </p>
-          </div>
-          <span className="task-priority priority-medium">متوسط</span>
+        <div className="task-list">
+          {tasks.length > 0 ? (
+            tasks.map(task => (
+              <div key={task.id} className="task-item">
+                <input 
+                  type="checkbox" 
+                  className="task-checkbox" 
+                  checked={task.status === 'completed'}
+                  onChange={() => {}}
+                />
+                <div className="task-details">
+                  <h3 className="task-title">{task.title}</h3>
+                  <p className="task-description">{task.description || 'لا يوجد وصف للمهمة'}</p>
+                  <p className="task-date">
+                    <i className="fas fa-calendar-alt"></i>
+                    مستحق: {formatDate(task.due_date)}
+                  </p>
+                  {task.stage && (
+                    <p className="task-stage">
+                      <i className="fas fa-layer-group"></i>
+                      المرحلة: {task.stage.title}
+                    </p>
+                  )}
+                  {task.assigner && (
+                    <p className="task-assigner">
+                      <i className="fas fa-user-tie"></i>
+                      المسند من: {task.assigner.name}
+                    </p>
+                  )}
+                </div>
+                <span className={`task-priority ${getPriorityClass(task.priority)}`}>
+                  {task.priority === 'high' ? 'عالي' : 
+                   task.priority === 'medium' ? 'متوسط' : 'منخفض'}
+                </span>
+              </div>
+            ))
+          ) : (
+            <div className="no-tasks">
+              <i className="fas fa-tasks"></i>
+              <p>لا توجد مهام مسندة لك في هذا المشروع</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
-  </div>
-);
+  );
+};
 
 const AchievementsCard = () => (
   <div className="card animate delay-5">
