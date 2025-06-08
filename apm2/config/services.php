@@ -13,7 +13,11 @@ return [
     | a conventional file to locate the various service credentials.
     |
     */
-
+'pusher' => [
+    'options' => [
+        'verify' => env('APP_ENV') === 'production' ? 'C:\certs\cacert.pem' : false,
+    ],
+],
     'mailgun' => [
         'domain' => env('MAILGUN_DOMAIN'),
         'secret' => env('MAILGUN_SECRET'),
