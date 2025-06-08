@@ -1,0 +1,12 @@
+  "message": "cURL error 60: SSL certificate problem: unable to get local issuer certificate (see https://curl.haxx.se/libcurl/c/libcurl-errors.html) for https://api-eu.pusher.com/apps/1980301/events?auth_key=33ec1a649515b64c4cb1&auth_timestamp=1749385134&auth_version=1.0&body_md5=b1a0d842b539e923256ad79bfbc0b579&auth_signature=f8d1564f3777fe05e6c3d94bf56a92df93741d512cdecb4e722af5607baf411c",
+    "exception": "GuzzleHttp\\Exception\\RequestException",
+    "file": "C:\\Users\\ranoo\\Documents\\GitHub\\Apm\\apm2\\vendor\\guzzlehttp\\guzzle\\src\\Handler\\CurlFactory.php",
+    "line": 276,
+    "trace": [
+        {
+            "file": "C:\\Users\\ranoo\\Documents\\GitHub\\Apm\\apm2\\vendor\\guzzlehttp\\guzzle\\src\\Handler\\CurlFactory.php",
+            "line": 205,
+            "function": "createRejection",
+            "class": "GuzzleHttp\\Handler\\CurlFactory",
+            "type": "::"
+        },
