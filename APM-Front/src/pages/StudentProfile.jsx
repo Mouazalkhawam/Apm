@@ -635,15 +635,13 @@ const ProjectModal = ({ setShowProjectModal }) => {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    startdate: new Date().toISOString().split('T')[0],
-    enddate: '',
-    type: 'semester'
+    type: 'semester',
+    students: [],
+    supervisors: []
   });
 
-  const [selectedStudents, setSelectedStudents] = useState([]);
-  const [selectedSupervisors, setSelectedSupervisors] = useState([]);
-  const [studentsList, setStudentsList] = useState([]);
-  const [supervisorsList, setSupervisorsList] = useState([]);
+  const [studentsOptions, setStudentsOptions] = useState([]);
+  const [supervisorsOptions, setSupervisorsOptions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -671,8 +669,8 @@ const ProjectModal = ({ setShowProjectModal }) => {
           label: `${supervisor.name}`
         }));
         
-        setStudentsList(formattedStudents);
-        setSupervisorsList(formattedSupervisors);
+        setStudentsOptions(formattedStudents);
+        setSupervisorsOptions(formattedSupervisors);
       } catch (err) {
         console.error('Error fetching dropdown data:', err);
         setError('فشل في تحميل قوائم الطلاب والمشرفين');
@@ -690,6 +688,20 @@ const ProjectModal = ({ setShowProjectModal }) => {
     }));
   };
 
+  const handleStudentsChange = (selectedOptions) => {
+    setFormData(prev => ({
+      ...prev,
+      students: selectedOptions ? selectedOptions.map(option => option.value) : []
+    }));
+  };
+
+  const handleSupervisorsChange = (selectedOptions) => {
+    setFormData(prev => ({
+      ...prev,
+      supervisors: selectedOptions ? selectedOptions.map(option => option.value) : []
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -701,11 +713,9 @@ const ProjectModal = ({ setShowProjectModal }) => {
       const requestData = {
         title: formData.title,
         description: formData.description || null,
-        startdate: formData.startdate,
-        enddate: formData.enddate || null,
-        type: formData.type,
-        students: selectedStudents.map(item => item.value),
-        supervisors: selectedSupervisors.map(item => item.value)
+        students: formData.students,
+        supervisors: formData.supervisors,
+        type: formData.type
       };
 
       const response = await axios.post(
@@ -800,42 +810,19 @@ const ProjectModal = ({ setShowProjectModal }) => {
           </div>
           
           <div className="form-group">
-            <label>تاريخ البدء *</label>
-            <input 
-              type="date" 
-              className="form-input-profile" 
-              name="startdate"
-              value={formData.startdate}
-              onChange={handleInputChange}
-              required
-            />
-          </div>
-          
-          <div className="form-group">
-            <label>تاريخ الانتهاء (اختياري)</label>
-            <input 
-              type="date" 
-              className="form-input-profile" 
-              name="enddate"
-              value={formData.enddate}
-              onChange={handleInputChange}
-              min={formData.startdate}
-            />
-          </div>
-          
-          <div className="form-group">
-            <label>اختر الطلاب (اختياري)</label>
+            <label>اختر الطلاب *</label>
             <Select
               closeMenuOnSelect={false}
               components={animatedComponents}
               isMulti
-              options={studentsList}
-              onChange={setSelectedStudents}
+              options={studentsOptions}
+              onChange={handleStudentsChange}
               placeholder="ابحث واختر الطلاب..."
               noOptionsMessage={() => "لا توجد خيارات متاحة"}
               className="react-select-container"
               classNamePrefix="react-select"
               isRtl={true}
+              required
             />
           </div>
           
@@ -845,8 +832,8 @@ const ProjectModal = ({ setShowProjectModal }) => {
               closeMenuOnSelect={false}
               components={animatedComponents}
               isMulti
-              options={supervisorsList}
-              onChange={setSelectedSupervisors}
+              options={supervisorsOptions}
+              onChange={handleSupervisorsChange}
               placeholder="ابحث واختر المشرفين..."
               noOptionsMessage={() => "لا توجد خيارات متاحة"}
               className="react-select-container"
@@ -876,5 +863,7 @@ const ProjectModal = ({ setShowProjectModal }) => {
     </div>
   );
 };
+
+
 
 export default StudentProfile;

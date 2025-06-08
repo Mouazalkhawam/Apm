@@ -33,7 +33,7 @@ class ProjectController extends Controller
         return DB::transaction(function () use ($request) {
             $creator = Student::where('userId', Auth::id())->firstOrFail();
             
-            // التحقق من شروط المشاريع
+            // التحقق من شروط المشاريع مع التحقق من حالة approved
             if ($request->type === 'graduation') {
                 $this->validateGraduationProject($creator);
                 $periods = $this->getGraduationPeriods();
@@ -74,17 +74,17 @@ class ProjectController extends Controller
                 'name' => $request->title,
             ]);
 
-            // ربط الطلاب مع تحديد القائد
+            // ربط الطلاب مع تحديد القائد - حالة approved
             $studentsData = [];
             foreach ($studentsList as $studentId) {
                 $studentsData[$studentId] = [
-                    'status' => 'pending',
+                    'status' => 'approved',
                     'is_leader' => ($studentId == $creator->studentId)
                 ];
             }
             $group->students()->attach($studentsData);
 
-            // ربط المشرفين
+            // ربط المشرفين (حالة pending)
             $group->supervisors()->attach(
                 $request->supervisors,
                 ['status' => 'pending']
@@ -102,6 +102,7 @@ class ProjectController extends Controller
             ], 201);
         });
     }
+
     protected function getGraduationPeriods()
     {
         $currentPeriod = AcademicPeriod::where('is_current', true)->first();
@@ -122,54 +123,56 @@ class ProjectController extends Controller
         return collect([$currentPeriod, $nextPeriod]);
     }
 
-    // الحصول على الفصل الحالي للمشاريع الفصلية
     protected function getSemesterPeriod()
     {
         return AcademicPeriod::where('is_current', true)->get();
     }
 
-
     protected function validateGraduationProject(Student $student)
     {
-        // التحقق من وجود مشروع فصلي مكتمل
+        // التحقق من وجود مشروع فصلي مكتمل بحالة approved
         $hasCompletedSemesterProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'semester')
                       ->where('status', 'completed');
             })
+            ->where('group_student.status', 'approved')
             ->exists();
 
         if (!$hasCompletedSemesterProject) {
-            abort(403, 'يجب أن يكون لديك مشروع فصلي مكتمل قبل إنشاء مشروع تخرج');
+            abort(403, 'يجب أن يكون لديك مشروع فصلي مكتمل (ومقبول) قبل إنشاء مشروع تخرج');
         }
 
-        // التحقق من عدم وجود مشروع تخرج قيد التنفيذ
+        // التحقق من عدم وجود مشروع تخرج قيد التنفيذ بحالة approved
         $hasActiveGraduationProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'graduation')
                       ->whereIn('status', ['pending', 'in_progress']);
             })
+            ->where('group_student.status', 'approved')
             ->exists();
 
         if ($hasActiveGraduationProject) {
-            abort(403, 'لديك بالفعل مشروع تخرج قيد التنفيذ');
+            abort(403, 'لديك بالفعل مشروع تخرج قيد التنفيذ (ومقبول)');
         }
     }
 
     protected function validateSemesterProject(Student $student)
     {
-        // التحقق من عدم وجود مشروع فصلي قيد التنفيذ
+        // التحقق من عدم وجود مشروع فصلي قيد التنفيذ بحالة approved
         $hasActiveSemesterProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'semester')
                       ->whereIn('status', ['pending', 'in_progress']);
             })
+            ->where('group_student.status', 'approved')
             ->exists();
 
         if ($hasActiveSemesterProject) {
-            abort(403, 'لديك بالفعل مشروع فصلي قيد التنفيذ');
+            abort(403, 'لديك بالفعل مشروع فصلي قيد التنفيذ (ومقبول)');
         }
     }
+
     private function sendNotifications(Group $group, $students, $supervisors)
     {
         // إشعارات للطلاب
@@ -197,6 +200,7 @@ class ProjectController extends Controller
                 );
             });
     }
+
     public function approveMembership(Request $request)
     {
         $request->validate([
@@ -236,7 +240,6 @@ class ProjectController extends Controller
         $students = Student::with(['skills', 'user', 'groups'])
             ->get()
             ->map(function ($student) {
-                // معالجة الخبرات لاستخراج النص والوسائط
                 $experience_data = [
                     'text' => '',
                     'media' => []
@@ -258,7 +261,6 @@ class ProjectController extends Controller
                     $experience_data['text'] = trim($experience_data['text']);
                 }
                 
-                // معالجة المهارات
                 $skills = $student->skills->pluck('name')->toArray();
                 $skills_str = !empty($skills) ? implode(', ', $skills) : '';
                 
@@ -266,8 +268,8 @@ class ProjectController extends Controller
                     'student_id' => $student->studentId,
                     'name' => $student->user->name,
                     'skills' => $skills_str,
-                    'experience' => $experience_data['text'], // إرسال النص فقط للتوصية
-                    'experience_full' => $student->experience, // إرسال كل بيانات الخبرة
+                    'experience' => $experience_data['text'],
+                    'experience_full' => $student->experience,
                     'gpa' => (float)($student->gpa ?? 0.0)
                 ];
             });
@@ -278,7 +280,6 @@ class ProjectController extends Controller
             'top_n' => $validated['top_n'] ?? 20
         ];
 
-        // إضافة فلاتر GPA إذا كانت موجودة
         if (isset($validated['min_gpa'])) {
             $requestData['min_gpa'] = (float)$validated['min_gpa'];
         }
@@ -296,7 +297,6 @@ class ProjectController extends Controller
             ], 500);
         }
 
-        // معالجة النتائج لإضافة الوسائط المرتبطة
         $recommendations = $response->json()['data'] ?? [];
         $studentsMap = collect($students)->keyBy('student_id');
         
@@ -317,11 +317,6 @@ class ProjectController extends Controller
         ]);
     }
 
-
-    // في ProjectController.php
-/**
- * الحصول على مشاريع الطالب الحالي
- */
     public function getStudentProjects()
     {
         $user = Auth::user();
@@ -334,7 +329,7 @@ class ProjectController extends Controller
             ->whereHas('group', function($query) use ($user) {
                 $query->whereHas('students', function($q) use ($user) {
                     $q->where('students.studentId', $user->student->studentId)
-                    ->where('group_student.status', 'approved');
+                      ->where('group_student.status', 'approved');
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -345,9 +340,7 @@ class ProjectController extends Controller
             'data' => $projects
         ]);
     }
-/**
- * الحصول على تفاصيل مشروع معين للطالب
- */
+
     public function getStudentProjectDetails($projectId)
     {
         $user = Auth::user();
@@ -369,7 +362,7 @@ class ProjectController extends Controller
             ->whereHas('group', function($query) use ($user) {
                 $query->whereHas('students', function($q) use ($user) {
                     $q->where('students.studentId', $user->student->studentId)
-                    ->where('group_student.status', 'approved');
+                      ->where('group_student.status', 'approved');
                 });
             })
             ->first();
