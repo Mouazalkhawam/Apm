@@ -43,7 +43,7 @@ class Supervisor extends Model
             'group_supervisor',
             'supervisorId',
             'groupid'
-        )->withPivot('status');
+        )->withPivot('status', 'created_at');
     }
 
     public function meetings()

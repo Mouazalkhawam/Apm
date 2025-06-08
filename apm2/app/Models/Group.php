@@ -63,13 +63,13 @@ class Group extends Model
                     ->wherePivot('status', 'approved')
                     ->withPivot('is_leader');
     }
-    public function approvedSupervisors()
-    {
-        return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
-                    ->wherePivot('status', 'approved');
-    }
-
-
+   public function approvedSupervisors()
+{
+    return $this->belongsToMany(Supervisor::class, 'group_supervisor', 'groupid', 'supervisorId')
+                ->wherePivot('status', 'approved')
+                ->withPivot('created_at'); // إضافة هذه السطر
+}
+ 
     public function proposal()
     {
         return $this->hasOne(ProjectProposal::class, 'group_id', 'groupid');
