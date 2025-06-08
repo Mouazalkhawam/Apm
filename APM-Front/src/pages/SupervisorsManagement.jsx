@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faUser,
@@ -11,33 +11,56 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import './SupervisorsManagement.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
+import axios from 'axios';
+
 const SupervisorsManagement = () => {
-  const supervisors = [
-    {
-      id: 1,
-      name: "أحمد محمد",
-      role: "المشرف الرئيسي",
-      email: "ahmed@example.com",
-      since: "منذ سنة",
-      isMain: true
-    },
-    {
-      id: 2,
-      name: "سماء علي",
-      role: "مشرف الجودة",
-      email: "samaa@example.com",
-      since: "منذ 5 أشهر",
-      roleType: "quality"
-    },
-    {
-      id: 3,
-      name: "خالد عبدالله",
-      role: "مشرف التطوير",
-      email: "khaled@example.com",
-      since: "منذ 3 أشهر",
-      roleType: "development"
-    }
-  ];
+  const [supervisors, setSupervisors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchSupervisors = async () => {
+      try {
+        const groupId = localStorage.getItem('selectedGroupId');
+        if (!groupId) {
+          throw new Error('Group ID not found');
+        }
+
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get(
+          `http://127.0.0.1:8000/api/groups/${groupId}/supervisors`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          // تحويل البيانات الواردة من API إلى الشكل المتوقع في الكومبوننت
+          const formattedSupervisors = response.data.data.map(supervisor => ({
+            id: supervisor.supervisorId,
+            name: supervisor.name,
+            role: "مشرف أكاديمي", // يمكنك تعديل هذا حسب احتياجاتك
+            email: supervisor.email,
+            since: supervisor.since,
+            isMain: false // يمكنك تحديد المشرف الرئيسي إذا كان متاحاً في API
+          }));
+          
+          setSupervisors(formattedSupervisors);
+        } else {
+          throw new Error('Failed to fetch supervisors');
+        }
+      } catch (err) {
+        setError(err.message || 'حدث خطأ أثناء جلب بيانات المشرفين');
+        console.error('Error fetching supervisors:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSupervisors();
+  }, []);
 
   const getRoleClass = (roleType) => {
     switch(roleType) {
@@ -62,16 +85,42 @@ const SupervisorsManagement = () => {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="supervisors-management" dir="rtl">
+        <ProjectHeader 
+          title=" المشرفين على المشروع "
+          description="جاري تحميل بيانات المشرفين..."
+        />
+        <main className="container">
+          <div className="loading-spinner">جاري تحميل بيانات المشرفين...</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="supervisors-management" dir="rtl">
+        <ProjectHeader 
+          title=" المشرفين على المشروع "
+          description={error}
+        />
+        <main className="container">
+          <div className="error-message">{error}</div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="supervisors-management" dir="rtl">
-         {/* Header Component */}
-              <ProjectHeader 
-                title=" المشرفين على المشروع "
-                description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
-                teamMembers={5}
-                startDate="01/01/2023"
-                endDate="15/06/2023"
-              />
+      {/* Header Component */}
+      <ProjectHeader 
+        title=" المشرفين على المشروع "
+        description="إدارة المشرفين المسؤولين عن متابعة سير العمل في المشروع"
+      />
+
       <main className="container">
         {/* Supervisors Section Header */}
         <div className="section-header">

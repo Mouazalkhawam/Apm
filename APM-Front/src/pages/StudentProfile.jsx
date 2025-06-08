@@ -484,9 +484,15 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
                       </div>
                     </div>
                     <div className="project-actions">
-                      <button className="btn-profile btn-outline btn-sm">
-                        <i className="fas fa-eye"></i> معاينة
-                      </button>
+                    <button 
+                      className="btn-profile btn-outline btn-sm"
+                      onClick={() => {
+                        localStorage.setItem('selectedGroupId', project.group.groupid);
+                        window.location.href = '/group-project-management';
+                      }}
+                    >
+                      <i className="fas fa-eye"></i> معاينة
+                    </button>
                       <button 
                         className="btn-profile btn-primary-profile btn-sm" 
                         onClick={() => setShowTasksPage(project.projectid)} 
