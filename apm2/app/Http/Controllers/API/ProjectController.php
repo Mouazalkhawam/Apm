@@ -176,10 +176,6 @@ class ProjectController extends Controller
     private function sendNotifications(Group $group, $students, $supervisors)
     {
         // إشعارات للطلاب
-        $httpClient = new \GuzzleHttp\Client([
-            'verify' => false, // لبيئة التطوير فقط
-            // أو استخدام: 'verify' => 'C:/path/to/cacert.pem'
-        ]);
         $group->students()
             ->whereIn('students.studentId', $students)
             ->with('user')
@@ -380,50 +376,4 @@ class ProjectController extends Controller
             'data' => $project
         ]);
     }
- 
-public function getGroupSupervisors($groupId)
-{
-    // 1. التحقق من وجود المجموعة
-    $group = Group::find($groupId);
-    if (!$group) {
-        return response()->json(['message' => 'Group not found'], 404);
-    }
-
-    // 2. جلب البيانات باستخدام query builder للتأكد
-    $supervisors = DB::table('group_supervisor')
-                   ->where('groupid', $groupId)
-                   ->where('status', 'approved')
-                   ->join('supervisors', 'group_supervisor.supervisorId', '=', 'supervisors.supervisorId')
-                   ->join('users', 'supervisors.userId', '=', 'users.userId')
-                   ->select(
-                       'supervisors.supervisorId',
-                       'users.name',
-                       'users.email',
-                       'group_supervisor.created_at'
-                   )
-                   ->get()
-                   ->map(function ($item) {
-                       return [
-                           'supervisorId' => $item->supervisorId,
-                           'name' => $item->name,
-                           'email' => $item->email,
-                           'since' => \Carbon\Carbon::parse($item->created_at)->diffForHumans()
-                       ];
-                   });
-
-    if ($supervisors->isEmpty()) {
-        return response()->json([
-            'success' => false,
-            'message' => 'No approved supervisors found',
-            'debug' => DB::table('group_supervisor')
-                         ->where('groupid', $groupId)
-                         ->get()
-        ], 404);
-    }
-
-    return response()->json([
-        'success' => true,
-        'data' => $supervisors
-    ]);
-}
 }
