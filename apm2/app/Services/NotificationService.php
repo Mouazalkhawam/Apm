@@ -31,7 +31,9 @@ class NotificationService
     }
 
     public static function sendRealTime($userId, $message, $data = [])
+    
     {
+            
         $user = User::findOrFail($userId);
         
         $notification = self::send('real_time', $user, array_merge([

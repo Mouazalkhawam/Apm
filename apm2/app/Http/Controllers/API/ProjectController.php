@@ -176,6 +176,10 @@ class ProjectController extends Controller
     private function sendNotifications(Group $group, $students, $supervisors)
     {
         // إشعارات للطلاب
+        $httpClient = new \GuzzleHttp\Client([
+            'verify' => false, // لبيئة التطوير فقط
+            // أو استخدام: 'verify' => 'C:/path/to/cacert.pem'
+        ]);
         $group->students()
             ->whereIn('students.studentId', $students)
             ->with('user')
