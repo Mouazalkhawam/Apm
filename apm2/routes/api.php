@@ -11,6 +11,7 @@ use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\AcademicPeriodController;
 use App\Http\Controllers\API\ResourceController;
 use App\Http\Controllers\API\EvaluationController;
+use App\Http\Controllers\Admin\HonorBoardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
 use Illuminate\Support\Facades\Route;
@@ -72,6 +73,8 @@ Route::middleware('auth:api')->group(function () {
         
         // حذف مشروع (DELETE)
         Route::delete('/{id}', [HonorBoardController::class, 'destroyApi']);
+
+        Route::get('/achievements', [ProjectController::class, 'getAcademicAchievements']);
     });
     
     
