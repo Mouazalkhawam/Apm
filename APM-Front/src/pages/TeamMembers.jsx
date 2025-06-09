@@ -162,7 +162,7 @@ const TeamMembers = () => {
 
   if (error) {
     return (
-      <div className="container-team mx-auto px-4 py-6">
+      <div className="container-team mx-auto px-4 py-6">  
         <ProjectHeader 
           title="أعضاء المجموعة"
           description={error}
@@ -186,10 +186,10 @@ const TeamMembers = () => {
       {/* Team Section */}
       <div className='container-team2'>
         <div className="mb-10">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="section-title">أعضاء الفريق</h2>
+          <div className="flex justify-between items-center mb-4 team-member">
+            <h2 className="section-title-member">أعضاء الفريق</h2>
             <button 
-              className="add-member-btn" 
+              className="add-member-btn-member" 
               onClick={() => setIsModalOpen(true)}
             >
               <FontAwesomeIcon icon={faUserPlus} />
@@ -205,7 +205,7 @@ const TeamMembers = () => {
             <div className="team-grid">
               {teamMembers.map(member => (
                 <div className="team-card" key={member.studentId}>
-                  <div className="flex justify-between items-start">
+                  <div className="flex justify-between items-start team-member">
                     <h3 className="member-name">{member.name}</h3>
                     {member.is_leader && (
                       <span className="leader-badge">
@@ -238,12 +238,12 @@ const TeamMembers = () => {
       <div className="container-team2">
       <div className="search-section">
         
-        <h2 className="section-title">البحث عن شريك للمشروع</h2>
+        <h2 className="section-title-member">البحث عن شريك للمشروع</h2>
         <p className="mb-4 text-gray-600">
           يمكنك البحث عن طلاب مناسبين لضمهم لفريقك بناءً على تخصصاتهم ومهاراتهم.
         </p>
         
-        <div className="search-container">
+        <div className="search-container-member">
           <input 
             type="text" 
             className="search-input" 
