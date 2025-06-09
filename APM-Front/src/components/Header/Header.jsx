@@ -112,9 +112,7 @@ const Header = ({ showNotification, showChat, toggleNotification, toggleChat }) 
           </div>
         </div>
         
-        <a href="#" className="nav-link active"><i className="fas fa-user"></i> الصفحة الشخصية</a>
-        <a href="#" className="nav-link"><i className="fas fa-project-diagram"></i> المشاريع</a>
-        <a href="#" className="nav-link"><i className="fas fa-calendar-alt"></i> الجدول الزمني</a>
+       
         <a href="#" className="nav-link"><i className="fas fa-sign-out-alt"></i> تسجيل خروج</a>
       </div>
     </div>

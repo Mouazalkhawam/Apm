@@ -485,14 +485,14 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
                     </div>
                     <div className="project-actions">
                     <button 
-                      className="btn-profile btn-outline btn-sm"
-                      onClick={() => {
-                        localStorage.setItem('selectedGroupId', project.group.groupid);
-                        window.location.href = '/group-project-management';
-                      }}
-                    >
-                      <i className="fas fa-eye"></i> معاينة
-                    </button>
+                        className="btn-profile btn-outline btn-sm"
+                        onClick={() => {
+                          localStorage.setItem('selectedGroupId', project.group.groupid);
+                          window.location.href = '/group-project-management';
+                        }}
+                      >
+                        <i className="fas fa-eye"></i> معاينة
+                      </button>
                       <button 
                         className="btn-profile btn-primary-profile btn-sm" 
                         onClick={() => setShowTasksPage(project.projectid)} 
@@ -673,37 +673,99 @@ const TasksPage = ({ setShowTasksPage, projectId }) => {
   );
 };
 
-const AchievementsCard = () => (
-  <div className="card animate delay-5">
-    <div className="card-header">
-      <h2 className="card-title">إنجازاتي الأكاديمية</h2>
-    </div>
-    <div className="card-body">
-      <div className="achievements-grid">
-        <div className="achievement-item">
-          <div className="achievement-icon">
-            <i className="fas fa-trophy"></i>
-          </div>
-          <div className="achievement-info">
-            <h4> أفضل مشروع تخرج</h4>
-            <p>مسابقة جامعة الشام الخاصة للتميز التقني 2023</p>
-          </div>
-        </div>
+const AchievementsCard = () => {
+  const [achievements, setAchievements] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-        <div className="achievement-item">
-          <div className="achievement-icon">
-            <i className="fas fa-medal"></i>
-          </div>
-          <div className="achievement-info">
-            <h4>المركز الأول في المشاريع الفصلية</h4>
-            <p>المشاريع الفصلية</p>
-          </div>
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get('http://127.0.0.1:8000/api/honor-board/achievements', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.data.success) {
+          setAchievements(response.data.data);
+        } else {
+          setError('فشل في تحميل الإنجازات');
+        }
+      } catch (err) {
+        setError('حدث خطأ أثناء جلب الإنجازات');
+        console.error('Error fetching achievements:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAchievements();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="card animate delay-5">
+        <div className="card-header">
+          <h2 className="card-title">إنجازاتي الأكاديمية</h2>
+        </div>
+        <div className="card-body">
+          <div className="loading-spinner">جاري تحميل الإنجازات...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card animate delay-5">
+        <div className="card-header">
+          <h2 className="card-title">إنجازاتي الأكاديمية</h2>
+        </div>
+        <div className="card-body">
+          <div className="error-message">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="card animate delay-5">
+      <div className="card-header">
+        <h2 className="card-title">إنجازاتي الأكاديمية</h2>
+      </div>
+      <div className="card-body">
+        <div className="achievements-grid">
+          {achievements.length > 0 ? (
+            achievements.map((achievement, index) => (
+              <div key={index} className="achievement-item">
+                <div className="achievement-icon">
+                  <i className="fas fa-trophy"></i>
+                </div>
+                <div className="achievement-info">
+                  <h4>{achievement.title}</h4>
+                  <p>{achievement.notes || 'إنجاز أكاديمي مميز'}</p>
+                  <div className="achievement-meta">
+                    <span className="achievement-date">
+                      <i className="fas fa-calendar-alt"></i>
+                      {new Date(achievement.featured_at).toLocaleDateString('ar-EG')}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="no-achievements">
+              <i className="fas fa-trophy"></i>
+              <p>لا توجد إنجازات مسجلة حتى الآن</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
-  </div>
-);
-
+  );
+};
 const ProjectModal = ({ setShowProjectModal }) => {
   const [formData, setFormData] = useState({
     title: '',
