@@ -426,4 +426,50 @@ public function getGroupSupervisors($groupId)
         'data' => $supervisors
     ]);
 }
+public function getGroupStudents($groupId)
+{
+    // 1. التحقق من وجود المجموعة
+    $group = Group::find($groupId);
+    if (!$group) {
+        return response()->json(['message' => 'Group not found'], 404);
+    }
+
+    // 2. جلب الطلاب المعتمدة عضويتهم في المجموعة مع معلوماتهم
+    $students = DB::table('group_student')
+        ->where('groupid', $groupId)
+        ->where('status', 'approved')
+        ->join('students', 'group_student.studentId', '=', 'students.studentId')
+        ->join('users', 'students.userId', '=', 'users.userId')
+        ->select(
+            'students.studentId',
+            'users.name',
+            'users.email',
+            'students.major',
+            'group_student.is_leader',
+            'group_student.created_at'
+        )
+        ->get()
+        ->map(function ($item) {
+            return [
+                'studentId' => $item->studentId,
+                'name' => $item->name,
+                'email' => $item->email,
+                'major' => $item->major,
+                'is_leader' => (bool)$item->is_leader,
+                'since' => Carbon::parse($item->created_at)->diffForHumans()
+            ];
+        });
+
+    if ($students->isEmpty()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'No approved students found in this group'
+        ], 404);
+    }
+
+    return response()->json([
+        'success' => true,
+        'data' => $students
+    ]);
+}
 }

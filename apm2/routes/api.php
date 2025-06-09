@@ -146,4 +146,5 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/current-academic-period', [AcademicPeriodController::class, 'getCurrentPeriod']);
     Route::get('/groups/{groupId}/supervisors', [ProjectController::class, 'getGroupSupervisors']);
+    Route::get('/groups/{groupId}/students', [ProjectController::class, 'getGroupStudents']);
 });
