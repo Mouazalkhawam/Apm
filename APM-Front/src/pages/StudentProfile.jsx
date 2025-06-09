@@ -774,6 +774,15 @@ const ProjectModal = ({ setShowProjectModal }) => {
     students: [],
     supervisors: []
   });
+  useEffect(() => {
+    const savedStudents = JSON.parse(localStorage.getItem('selectedStudents') || '[]');
+    if (savedStudents.length > 0) {
+      setFormData(prev => ({
+        ...prev,
+        students: savedStudents.map(s => s.id)
+      }));
+    }
+  }, []);
 
   const [studentsOptions, setStudentsOptions] = useState([]);
   const [supervisorsOptions, setSupervisorsOptions] = useState([]);
@@ -945,22 +954,30 @@ const ProjectModal = ({ setShowProjectModal }) => {
           </div>
           
           <div className="form-group">
-            <label>اختر الطلاب *</label>
-            <Select
-              closeMenuOnSelect={false}
-              components={animatedComponents}
-              isMulti
-              options={studentsOptions}
-              onChange={handleStudentsChange}
-              placeholder="ابحث واختر الطلاب..."
-              noOptionsMessage={() => "لا توجد خيارات متاحة"}
-              className="react-select-container"
-              classNamePrefix="react-select"
-              isRtl={true}
-              required
-            />
-          </div>
-          
+          <label>اختر الطلاب *</label>
+          <Select
+            closeMenuOnSelect={false}
+            components={animatedComponents}
+            isMulti
+            options={studentsOptions}
+            value={studentsOptions.filter(option => 
+              formData.students.includes(option.value)
+            )}
+            onChange={handleStudentsChange}
+            placeholder="ابحث واختر الطلاب..."
+            noOptionsMessage={() => "لا توجد خيارات متاحة"}
+            className="react-select-container"
+            classNamePrefix="react-select"
+            isRtl={true}
+            required
+          />
+          {formData.students.length > 0 && (
+            <div className="mt-2 text-sm text-gray-600">
+              تم اختيار {formData.students.length} طالب(ة) من نظام التوصية
+            </div>
+          )}
+        </div>
+
           <div className="form-group">
             <label>اختر المشرفين *</label>
             <Select

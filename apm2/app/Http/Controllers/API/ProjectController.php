@@ -282,7 +282,7 @@ class ProjectController extends Controller
         $requestData = [
             'students' => $students,
             'query' => $validated['query'] ?? '',
-            'top_n' => $validated['top_n'] ?? 20
+            'top_n' => $validated['top_n'] ?? 5
         ];
 
         if (isset($validated['min_gpa'])) {

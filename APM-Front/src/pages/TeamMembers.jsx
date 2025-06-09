@@ -9,7 +9,8 @@ import {
   faCrown,
   faCalendarAlt, 
   faHourglassHalf,
-  faTasks
+  faTasks,
+  faSearch
 } from '@fortawesome/free-solid-svg-icons';
 import './TeamMembers.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
@@ -26,6 +27,13 @@ const TeamMembers = () => {
     memberSpecialty: '',
     is_leader: false
   });
+  
+  // States for recommendation system
+  const [searchQuery, setSearchQuery] = useState('');
+  const [recommendedStudents, setRecommendedStudents] = useState([]);
+  const [selectedStudents, setSelectedStudents] = useState([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -65,8 +73,71 @@ const TeamMembers = () => {
     };
 
     fetchTeamMembers();
+    fetchRecommendations(); // Load initial recommendations
   }, []);
 
+  // Fetch recommended students from API
+  const fetchRecommendations = async (query = '') => {
+    setIsLoadingRecommendations(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/projects/recommendations',
+        { query },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.status === 'success') {
+        setRecommendedStudents(response.data.data.map(student => ({
+          id: student.student_id,
+          name: student.name,
+          specialty: `GPA: ${student.gpa}`,
+          skills: student.skills ? student.skills.split(', ') : [],
+          experience: student.experience,
+          gpa: student.gpa,
+         /* avatar: student.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'*/
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching recommendations:', error);
+      setError('Failed to load recommendations');
+    } finally {
+      setIsLoadingRecommendations(false);
+    }
+  };
+
+  // Handle search for students
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    setSearchLoading(true);
+    try {
+      await fetchRecommendations(searchQuery);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  // Add student to selected list
+  const handleAddStudent = (student) => {
+    if (!selectedStudents.some(s => s.id === student.id)) {
+      const updatedSelected = [...selectedStudents, student];
+      setSelectedStudents(updatedSelected);
+      localStorage.setItem('selectedStudents', JSON.stringify(updatedSelected));
+    }
+  };
+
+  // Remove student from selected list
+  const handleRemoveStudent = (studentId) => {
+    const updatedSelected = selectedStudents.filter(s => s.id !== studentId);
+    setSelectedStudents(updatedSelected);
+    localStorage.setItem('selectedStudents', JSON.stringify(updatedSelected));
+  };
+
+  // Handle form input changes
   const handleInputChange = (e) => {
     const { id, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -75,6 +146,7 @@ const TeamMembers = () => {
     }));
   };
 
+  // Submit new member form
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -123,30 +195,6 @@ const TeamMembers = () => {
       alert('حدث خطأ أثناء إضافة العضو: ' + (err.response?.data?.message || err.message));
     }
   };
-
-  const recommendedStudents = [
-    {
-      id: 1,
-      name: "نورة أحمد",
-      specialty: "هندسة برمجيات - السنة الثالثة",
-      skills: ["Python", "Django", "SQL"],
-      avatar: "https://randomuser.me/api/portraits/women/32.jpg"
-    },
-    {
-      id: 2,
-      name: "يوسف خالد",
-      specialty: "تصميم جرافيكي - السنة الثانية",
-      skills: ["UI/UX", "Figma", "Photoshop"],
-      avatar: "https://randomuser.me/api/portraits/men/45.jpg"
-    },
-    {
-      id: 3,
-      name: "هبه سعيد",
-      specialty: "علوم البيانات - السنة الرابعة",
-      skills: ["Python", "Machine Learning", "Data Analysis"],
-      avatar: "https://randomuser.me/api/portraits/women/65.jpg"
-    }
-  ];
 
   if (loading) {
     return (
@@ -234,47 +282,136 @@ const TeamMembers = () => {
         </div>
       </div>
       
-      {/* Partner Search Section - لم يتم تغيير أي شيء هنا */}
+      {/* Partner Search Section */}
       <div className="container-team2">
-      <div className="search-section">
-        
-        <h2 className="section-title-member">البحث عن شريك للمشروع</h2>
-        <p className="mb-4 text-gray-600">
-          يمكنك البحث عن طلاب مناسبين لضمهم لفريقك بناءً على تخصصاتهم ومهاراتهم.
-        </p>
-        
-        <div className="search-container-member">
-          <input 
-            type="text" 
-            className="search-input" 
-            placeholder="ابحث عن طريق التخصص أو المهارة..."
-          />
-          <button className="search-btn">بحث</button>
-        </div>
-        
-        <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--primary)' }}>
-          طلاب مقترحون
-        </h3>
-        
-        <div className="recommendation-grid">
-          {recommendedStudents.map(student => (
-            <div className="recommendation-card" key={student.id}>
-              <div className="recommendation-avatar">
-                <img src={student.avatar} alt={`صورة ${student.name}`} />
+        <div className="search-section">
+          <h2 className="section-title-member">البحث عن شريك للمشروع</h2>
+          <p className="mb-4 text-gray-600">
+            يمكنك البحث عن طلاب مناسبين لضمهم لفريقك بناءً على تخصصاتهم ومهاراتهم.
+          </p>
+          
+          <form onSubmit={handleSearch} className="search-container-member">
+            <input 
+              type="text" 
+              className="search-input" 
+              placeholder="ابحث عن طريق التخصص أو المهارة..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <button type="submit" className="search-btn" disabled={searchLoading}>
+              {searchLoading ? 'جاري البحث...' : 'بحث'}
+            </button>
+          </form>
+          
+          <h3 className="text-lg font-semibold mb-3" style={{ color: 'var(--primary)' }}>
+            طلاب مقترحون
+          </h3>
+          
+          {isLoadingRecommendations ? (
+            <div className="text-center py-4">جاري تحميل التوصيات...</div>
+          ) : recommendedStudents.length > 0 ? (
+            <div className="recommendation-grid">
+              {recommendedStudents.map(student => (
+                <div className="recommendation-card" key={student.id}>
+                  <div className="recommendation-avatar">
+                    <img src={student.avatar} alt={`صورة ${student.name}`} />
+                  </div>
+                  <h4 className="recommendation-name">{student.name}</h4>
+                  <p className="recommendation-specialty">المعدل: {student.gpa}</p>
+                  {student.experience && (
+                    <p className="recommendation-experience">
+                      <i className="fas fa-briefcase mr-1"></i>
+                      {student.experience.length > 50 
+                        ? `${student.experience.substring(0, 50)}...` 
+                        : student.experience}
+                    </p>
+                  )}
+                  <div className="recommendation-skills">
+                    {student.skills.slice(0, 5).map((skill, index) => (
+                      <span key={index} className="skill-tag">{skill}</span>
+                    ))}
+                    {student.skills.length > 5 && (
+                      <span className="skill-tag">+{student.skills.length - 5}</span>
+                    )}
+                  </div>
+                  <button 
+                    className={`invite-btn ${selectedStudents.some(s => s.id === student.id) ? 'selected' : ''}`}
+                    onClick={() => handleAddStudent(student)}
+                    disabled={selectedStudents.some(s => s.id === student.id)}
+                  >
+                    {selectedStudents.some(s => s.id === student.id) ? 'تم الاختيار' : 'اختيار'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-4 text-gray-500">لا توجد نتائج</div>
+          )}
+
+          {/* Selected Students Section */}
+          {selectedStudents.length > 0 && (
+            <div className="mt-8">
+              <div className="flex justify-between items-center mb-3">
+                <h3 className="text-lg font-semibold" style={{ color: 'var(--primary)' }}>
+                  الطلاب المختارون ({selectedStudents.length})
+                </h3>
+                <button 
+                  className="text-sm text-blue-600 hover:text-blue-800"
+                  onClick={() => {
+                    localStorage.setItem('selectedStudents', JSON.stringify([]));
+                    setSelectedStudents([]);
+                  }}
+                >
+                  مسح الكل
+                </button>
               </div>
-              <h4 className="recommendation-name">{student.name}</h4>
-              <p className="recommendation-specialty">{student.specialty}</p>
-              <div className="recommendation-skills">
-                {student.skills.map((skill, index) => (
-                  <span key={index} className="skill-tag">{skill}</span>
+              
+              <div className="selected-students-grid">
+                {selectedStudents.map(student => (
+                  <div key={student.id} className="selected-student-card">
+                    <div className="flex items-center">
+                      <img 
+                        src={student.avatar} 
+                        alt={student.name} 
+                        className="selected-student-avatar" 
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://randomuser.me/api/portraits/lego/1.jpg';
+                        }}
+                      />
+                      <div className="ml-3">
+                        <h4 className="selected-student-name">{student.name}</h4>
+                        <p className="selected-student-skills">
+                          {student.skills.slice(0, 3).join(', ')}
+                          {student.skills.length > 3 && '...'}
+                        </p>
+                      </div>
+                    </div>
+                    <button 
+                      className="remove-student-btn"
+                      onClick={() => handleRemoveStudent(student.id)}
+                      title="إزالة"
+                    >
+                      <FontAwesomeIcon icon={faTimes} />
+                    </button>
+                  </div>
                 ))}
               </div>
-              <button className="invite-btn">إرسال دعوة</button>
+              
+              <div className="mt-4 text-center">
+                <button 
+                  className="btn-primary-profile"
+                  onClick={() => setIsModalOpen(true)}
+                >
+                  <FontAwesomeIcon icon={faUserPlus} className="ml-2" />
+                  الانتقال إلى إضافة الأعضاء
+                </button>
+              </div>
             </div>
-          ))}
+          )}
         </div>
       </div>
-      </div>
+      
       {/* Add Member Modal */}
       <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
         <div className="modal-content">
@@ -334,6 +471,19 @@ const TeamMembers = () => {
                 />
                 <label htmlFor="is_leader" className="form-label mr-2">قائد الفريق</label>
               </div>
+              
+              {selectedStudents.length > 0 && (
+                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+                  <h4 className="font-medium mb-2">الطلاب المختارون من التوصيات:</h4>
+                  <ul className="list-disc list-inside">
+                    {selectedStudents.map(student => (
+                      <li key={student.id} className="text-sm">
+                        {student.name} - {student.skills.slice(0, 2).join(', ')}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
             <div className="modal-footer">
               <button 
