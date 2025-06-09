@@ -638,7 +638,7 @@ const TasksPage = ({ setShowTasksPage, projectId }) => {
                 <div className="task-details">
                   <h3 className="task-title">{task.title}</h3>
                   <p className="task-description">{task.description || 'لا يوجد وصف للمهمة'}</p>
-                  <p className="task-date">
+                  <p className="task-date-profile">
                     <i className="fas fa-calendar-alt"></i>
                     مستحق: {formatDate(task.due_date)}
                   </p>
