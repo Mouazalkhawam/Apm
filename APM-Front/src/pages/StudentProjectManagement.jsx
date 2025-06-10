@@ -13,6 +13,7 @@ const StudentProjectManagement = () => {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isLeader, setIsLeader] = useState(false);
 
   // States for UI
   const [showForms, setShowForms] = useState({});
@@ -22,9 +23,9 @@ const StudentProjectManagement = () => {
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [newTasks, setNewTasks] = useState({});
 
-  // Fetch project stages from backend
+  // Fetch project data and check leader status
   useEffect(() => {
-    const fetchProjectStages = async () => {
+    const fetchData = async () => {
       try {
         const groupId = localStorage.getItem('selectedGroupId');
         if (!groupId) {
@@ -32,7 +33,21 @@ const StudentProjectManagement = () => {
         }
 
         const token = localStorage.getItem('access_token');
-        const response = await axios.get(
+        
+        // Check if user is leader
+        const leaderResponse = await axios.get(
+          `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        setIsLeader(leaderResponse.data.is_leader);
+
+        // Fetch project stages
+        const stagesResponse = await axios.get(
           `http://127.0.0.1:8000/api/group-stages/${groupId}`,
           {
             headers: {
@@ -41,14 +56,13 @@ const StudentProjectManagement = () => {
           }
         );
 
-        if (response.data && response.data.data) {
-          // Transform backend data to match our frontend structure
-          const stages = response.data.data.map(stage => ({
+        if (stagesResponse.data && stagesResponse.data.data) {
+          const stages = stagesResponse.data.data.map(stage => ({
             id: stage.id,
             name: stage.title,
             deadline: stage.due_date,
             description: stage.description,
-            tasks: [] // We'll fetch tasks separately if needed
+            tasks: []
           }));
 
           setProjectData(prev => ({
@@ -57,14 +71,14 @@ const StudentProjectManagement = () => {
           }));
         }
       } catch (err) {
-        setError(err.message || 'Failed to fetch project stages');
-        console.error('Error fetching project stages:', err);
+        setError(err.message || 'Failed to fetch data');
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProjectStages();
+    fetchData();
 
     // Initialize showForms state
     const initialShowForms = {};
@@ -303,9 +317,9 @@ const StudentProjectManagement = () => {
       <ProjectHeader 
         title="إدارة المشروع"
         description={projectData.description || "لا يوجد وصف للمشروع"}
-        teamMembers={5} // يمكنك جلب الرقم الفعلي من الباكند إذا لزم الأمر
-        startDate="01/01/2023" // يمكنك جلب التاريخ الفعلي من الباكند
-        endDate="15/06/2023" // يمكنك جلب التاريخ الفعلي من الباكند
+        teamMembers={5}
+        startDate="01/01/2023"
+        endDate="15/06/2023"
       />
       
       {/* Stages Container */}
@@ -406,12 +420,17 @@ const StudentProjectManagement = () => {
                   ))
                 )}
               </div>
-              <button 
-                className="toggle-form-btn" 
-                onClick={() => toggleForm(stage.id)}
-              >
-                {showForms[stage.id] ? 'إخفاء النموذج' : 'إضافة مهمة جديدة'}
-              </button>
+              
+              {/* زر إضافة المهمة - يظهر فقط للقائد */}
+              {isLeader && (
+                <button 
+                  className="toggle-form-btn" 
+                  onClick={() => toggleForm(stage.id)}
+                >
+                  {showForms[stage.id] ? 'إخفاء النموذج' : 'إضافة مهمة جديدة'}
+                </button>
+              )}
+
               <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
                 <div className="form-group-tasks">
                   <label htmlFor={`task-title-management-${stage.id}`}>عنوان المهمة:</label>

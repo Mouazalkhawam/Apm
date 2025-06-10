@@ -47,11 +47,6 @@ class ProjectController extends Controller
                 abort(400, 'لا يوجد فصل دراسي فعال حاليًا');
             }
 
-            // إضافة المنشئ تلقائيًا إلى قائمة الطلاب
-            $studentsList = array_unique(
-                array_merge($request->students, [$creator->studentId])
-            );
-
             // حساب تواريخ البدء والانتهاء
             $startDate = $periods->first()->start_date;
             $endDate = $periods->last()->end_date;
@@ -75,24 +70,35 @@ class ProjectController extends Controller
                 'name' => $request->title,
             ]);
 
-            // ربط الطلاب مع تحديد القائد - حالة approved
+            // ربط الطلاب - فقط المنشئ يكون approved و leader
             $studentsData = [];
-            foreach ($studentsList as $studentId) {
-                $studentsData[$studentId] = [
-                    'status' => 'approved',
-                    'is_leader' => ($studentId == $creator->studentId)
-                ];
+            
+            // إضافة المنشئ كقائد ومعتمد
+            $studentsData[$creator->studentId] = [
+                'status' => 'approved',
+                'is_leader' => true
+            ];
+            
+            // إضافة باقي الطلاب ك pending وغير قادة
+            foreach ($request->students as $studentId) {
+                if ($studentId != $creator->studentId) {
+                    $studentsData[$studentId] = [
+                        'status' => 'pending',
+                        'is_leader' => false
+                    ];
+                }
             }
+            
             $group->students()->attach($studentsData);
 
-            // ربط المشرفين (حالة pending)
+            // ربط المشرفين (جميعهم بحالة pending)
             $group->supervisors()->attach(
                 $request->supervisors,
                 ['status' => 'pending']
             );
 
             // إرسال الإشعارات
-            $this->sendNotifications($group, $studentsList, $request->supervisors);
+            $this->sendNotifications($group, array_keys($studentsData), $request->supervisors);
 
             return response()->json([
                 'success' => true,
@@ -103,7 +109,6 @@ class ProjectController extends Controller
             ], 201);
         });
     }
-
     protected function getGraduationPeriods()
     {
         $currentPeriod = AcademicPeriod::where('is_current', true)->first();
@@ -473,88 +478,122 @@ public function getGroupStudents($groupId)
         'data' => $students
     ]);
 }
-public function getAcademicAchievements()
-{
-    try {
-        $student = Auth::user()->student;
-        
-        if (!$student) {
+    public function getAcademicAchievements()
+    {
+        try {
+            $student = Auth::user()->student;
+            
+            if (!$student) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Student profile not found'
+                ], 404);
+            }
+
+            // الحصول على جميع مجموعات الطالب باستخدام query builder لتجنب التضارب
+            $groupIds = DB::table('group_student')
+                ->where('studentId', $student->studentId)
+                ->where('status', 'approved')
+                ->pluck('groupid');
+
+            if ($groupIds->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No approved groups found'
+                ]);
+            }
+
+            // البحث عن المشاريع المميزة لهذه المجموعات
+            $honorProjects = HonorBoardProject::with([
+                    'project.group' => function($query) use ($groupIds) {
+                        $query->whereIn('groups.groupid', $groupIds);
+                    },
+                    'project.group.approvedStudents.user',
+                    'project.group.approvedSupervisors.user'
+                ])
+                ->whereHas('project.group', function($query) use ($groupIds) {
+                    $query->whereIn('groups.groupid', $groupIds);
+                })
+                ->get();
+
+            if ($honorProjects->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No academic achievements found'
+                ]);
+            }
+
+            // تحضير البيانات للعرض
+            $achievements = $honorProjects->map(function ($honorProject) {
+                return [
+                    'project_id' => $honorProject->project->projectid,
+                    'title' => $honorProject->project->title,
+                    'description' => $honorProject->project->description,
+                    'featured_at' => $honorProject->featured_at,
+                    'notes' => $honorProject->notes,
+                    'group_members' => $honorProject->project->group->approvedStudents->map(function($student) {
+                        return [
+                            'name' => $student->user->name,
+                            'university_number' => $student->university_number,
+                            'is_leader' => $student->pivot->is_leader
+                        ];
+                    }),
+                    'supervisors' => $honorProject->project->group->approvedSupervisors->map(function($supervisor) {
+                        return [
+                            'name' => $supervisor->user->name,
+                            'email' => $supervisor->user->email
+                        ];
+                    })
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'data' => $achievements,
+                'message' => 'Academic achievements retrieved successfully'
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Student profile not found'
-            ], 404);
+                'message' => 'Failed to retrieve achievements: ' . $e->getMessage()
+            ], 500);
         }
-
-        // الحصول على جميع مجموعات الطالب باستخدام query builder لتجنب التضارب
-        $groupIds = DB::table('group_student')
-            ->where('studentId', $student->studentId)
-            ->where('status', 'approved')
-            ->pluck('groupid');
-
-        if ($groupIds->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-                'message' => 'No approved groups found'
-            ]);
-        }
-
-        // البحث عن المشاريع المميزة لهذه المجموعات
-        $honorProjects = HonorBoardProject::with([
-                'project.group' => function($query) use ($groupIds) {
-                    $query->whereIn('groups.groupid', $groupIds);
-                },
-                'project.group.approvedStudents.user',
-                'project.group.approvedSupervisors.user'
-            ])
-            ->whereHas('project.group', function($query) use ($groupIds) {
-                $query->whereIn('groups.groupid', $groupIds);
-            })
-            ->get();
-
-        if ($honorProjects->isEmpty()) {
-            return response()->json([
-                'success' => true,
-                'data' => [],
-                'message' => 'No academic achievements found'
-            ]);
-        }
-
-        // تحضير البيانات للعرض
-        $achievements = $honorProjects->map(function ($honorProject) {
-            return [
-                'project_id' => $honorProject->project->projectid,
-                'title' => $honorProject->project->title,
-                'description' => $honorProject->project->description,
-                'featured_at' => $honorProject->featured_at,
-                'notes' => $honorProject->notes,
-                'group_members' => $honorProject->project->group->approvedStudents->map(function($student) {
-                    return [
-                        'name' => $student->user->name,
-                        'university_number' => $student->university_number,
-                        'is_leader' => $student->pivot->is_leader
-                    ];
-                }),
-                'supervisors' => $honorProject->project->group->approvedSupervisors->map(function($supervisor) {
-                    return [
-                        'name' => $supervisor->user->name,
-                        'email' => $supervisor->user->email
-                    ];
-                })
-            ];
-        });
-
-        return response()->json([
-            'success' => true,
-            'data' => $achievements,
-            'message' => 'Academic achievements retrieved successfully'
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to retrieve achievements: ' . $e->getMessage()
-        ], 500);
     }
-}
+/**
+ * التحقق مما إذا كان الطالب الحالي هو قائد لمجموعة معينة
+ *
+ *
+ */
+    public function isStudentLeader($groupId)
+    {
+        try {
+            $user = Auth::user();
+            
+            if (!$user->student) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not a student'
+                ], 403);
+            }
+
+            $isLeader = GroupStudent::where('groupid', $groupId)
+                ->where('studentId', $user->student->studentId)
+                ->where('is_leader', true)
+                ->exists();
+
+            return response()->json([
+                'success' => true,
+                'is_leader' => $isLeader
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to check leadership status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
