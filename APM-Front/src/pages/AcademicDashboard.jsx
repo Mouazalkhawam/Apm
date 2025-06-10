@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
+import TopNav from '../components/TopNav/TopNav'
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faBars, faSearch, faBell, faEnvelope, 
@@ -12,6 +13,10 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import Chart from 'chart.js/auto';
 import './AcademicDashboard.css';
+
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
 
 const AcademicDashboard = () => {
   const sidebarRef = useRef(null);
@@ -88,19 +93,23 @@ const AcademicDashboard = () => {
   };
 
   const toggleMobileSidebar = () => {
-    sidebarRef.current.classList.add('sidebar-open');
-    overlayRef.current.classList.add('overlay-open');
+    if (sidebarRef.current && overlayRef.current) {
+      sidebarRef.current.classList.add('sidebar-open');
+      overlayRef.current.classList.add('overlay-open');
+    }
   };
-
+  
   const closeMobileSidebar = () => {
-    sidebarRef.current.classList.remove('sidebar-open');
-    overlayRef.current.classList.remove('overlay-open');
+    if (sidebarRef.current && overlayRef.current) {
+      sidebarRef.current.classList.remove('sidebar-open');
+      overlayRef.current.classList.remove('overlay-open');
+    }
   };
 
   return (
     <div className="dashboard-container">
       {/* Sidebar Component */}
-      <Sidebar 
+      <SidebarWithRef 
         ref={sidebarRef}
         user={{
           name: "د.عفاف",
@@ -118,7 +127,6 @@ const AcademicDashboard = () => {
           { icon: faComments, text: "المناقشات", badge: 3 }
         ]}
       />
-      
       {/* Mobile Sidebar Toggle */}
       <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
         <FontAwesomeIcon icon={faBars} />
@@ -130,35 +138,17 @@ const AcademicDashboard = () => {
       {/* Main Content */}
       <div className="main-content">
         {/* Top Navigation */}
-        <header className="top-nav">
-          <div className="top-nav-container">
-            {/* Search */}
-            <div className="search-container">
-              <input type="text" placeholder="ابحث عن مشاريع، طلاب، مهام..." className="search-input" />
-              <button className="search-button">
-                <FontAwesomeIcon icon={faSearch} />
-              </button>
-            </div>
-            
-            {/* Notification & User */}
-            <div className="notification-area">
-              <button className="notification-button">
-                <FontAwesomeIcon icon={faBell} className="notification-icon" />
-                <span className="notification-badge">3</span>
-              </button>
-              <button className="notification-button">
-                <FontAwesomeIcon icon={faEnvelope} className="notification-icon" />
-                <span className="notification-badge blue">7</span>
-              </button>
-              <div className="divider"></div>
-              <div className="user-area">
-                <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" className="user-image" />
-                <span className="user-name">د. عفاف </span>
-                <FontAwesomeIcon icon={faChevronDown} className="user-dropdown" />
-              </div>
-            </div>
-          </div>
-        </header>
+        <TopNav 
+          user={{
+            name: "د.عفاف",
+            image: "https://randomuser.me/api/portraits/women/44.jpg"
+          }}
+          notifications={{
+            bell: 3,
+            envelope: 7
+          }}
+          searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
+        />
         
         {/* Main Content Area */}
         <main className="content-area">

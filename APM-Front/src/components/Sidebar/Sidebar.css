@@ -155,3 +155,36 @@
         transform: translateX(0);
     }
 }
+
+.sidebar {
+    /* ... الأسلوب الحالي ... */
+    transition: width 0.3s ease;
+  }
+  
+  .sidebar-collapsed {
+    width: 60px !important; /* عرض ضيق عند الطي */
+  }
+  
+  .sidebar-collapsed .sidebar-text,
+  .sidebar-collapsed .profile-image,
+  .sidebar-collapsed .profile-info,
+  .sidebar-collapsed .nav-badge {
+    display: none;
+  }
+  
+  .sidebar-collapsed .nav-link {
+    justify-content: center;
+    padding: 12px 0;
+  }
+  
+  .sidebar-collapsed .sidebar-logo {
+    justify-content: center;
+  }
+  
+  .sidebar-toggle {
+    /* تأكد من أن زر التبديل يبقى مرئيًا */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* ... الأسلوب الحالي ... */
+  }
