@@ -48,7 +48,7 @@ const GroupProjectManagement = () => {
             <p className="group-nav-desc">عرض الوثيقة الكاملة للمقترح البحثي</p>
             <button 
               className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+              onClick={() => navigate('/proposal')}
             >
               عرض المقترح
             </button>
@@ -95,13 +95,13 @@ const GroupProjectManagement = () => {
             <div className="group-icon-container">
               <FontAwesomeIcon icon={faChartBar} className="group-nav-icon" />
             </div>
-            <h3 className="group-nav-title">تقدم المشروع</h3>
-            <p className="group-nav-desc">متابعة تقدم المشروع وإنجازات كل مرحلة</p>
+            <h3 className="group-nav-title">تقييم فريق المشروع </h3>
+            <p className="group-nav-desc"> تقييم كافة أعضاء الفريق والمشرفين المسؤولين عن متابعة تقديم العمل</p>
             <button 
               className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+              onClick={() => navigate('/student-evaluation')}
             >
-              عرض التقدم
+              عرض التقييم
             </button>
           </div>
         </div>
@@ -133,7 +133,7 @@ const GroupProjectManagement = () => {
             <p className="group-nav-desc">جدولة مواعيد الاجتماعات مع المشرف</p>
             <button 
               className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+              onClick={() => navigate('/scheduling-student-meetings')}
             >
               عرض الجدول
             </button>
