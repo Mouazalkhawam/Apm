@@ -1,0 +1,233 @@
+/* Discussions.css */
+
+:root {
+    --primary: #791770;
+    --secondary: #eab307;
+    --light: #f9f9f9;
+    --dark: #333;
+}
+
+.discussions-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    font-family: 'Arial', sans-serif;
+}
+
+.discussions-header {
+    background-color: var(--primary);
+    color: white;
+    padding: 20px 0;
+    text-align: center;
+    margin-bottom: 30px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.discussions-header h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.description {
+    font-size: 16px;
+    opacity: 0.9;
+}
+
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 30px;
+}
+
+.tab-btn {
+    padding: 12px 30px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--dark);
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom: 3px solid var(--secondary);
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+}
+
+.tab-content {
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.date-card {
+    background-color: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+    border-left: 4px solid var(--secondary);
+}
+
+.date-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px dashed #ddd;
+}
+
+.date-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.date {
+    background-color: var(--secondary);
+    color: white;
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: bold;
+}
+
+.group-container {
+    margin-top: 15px;
+}
+
+.group-card {
+    background-color: #f9f9f9;
+    border-radius: 6px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border-left: 3px solid var(--primary);
+    transition: transform 0.3s ease;
+}
+
+.group-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.group-title {
+    font-size: 18px;
+    color: var(--primary);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.group-title i {
+    margin-left: 10px;
+    color: var(--secondary);
+}
+
+.group-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.detail-item {
+    display: flex;
+    align-items: center;
+    font-size: 15px;
+}
+
+.detail-item i {
+    color: var(--secondary);
+    margin-left: 8px;
+    width: 18px;
+    text-align: center;
+}
+
+.detail-value {
+    font-weight: bold;
+    color: var(--primary);
+}
+
+.search-container {
+    margin-bottom: 30px;
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    padding: 12px 20px;
+    border: 2px solid #ddd;
+    border-radius: 30px;
+    font-size: 16px;
+    padding-right: 45px;
+    transition: all 0.3s ease;
+}
+
+.search-input:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(121, 23, 112, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+}
+
+.no-results {
+    text-align: center;
+    padding: 40px;
+    color: #666;
+    font-size: 18px;
+}
+
+.no-results i {
+    font-size: 40px;
+    color: #ddd;
+    margin-bottom: 15px;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+    .tabs {
+        flex-direction: column;
+    }
+    
+    .tab-btn {
+        width: 100%;
+        border-bottom: 1px solid #eee;
+        text-align: right;
+    }
+    
+    .date-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+    
+    .date {
+        margin-top: 10px;
+    }
+    
+    .group-details {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

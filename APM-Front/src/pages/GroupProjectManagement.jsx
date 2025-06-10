@@ -150,7 +150,7 @@ const GroupProjectManagement = () => {
             <p className="group-nav-desc">مواعيد المناقشات المرحلية والنهائية</p>
             <button 
               className="group-nav-button"
-              onClick={() => alert('هذه الوظيفة قيد التطوير')}
+               onClick={() => navigate('/discussion-student')}
             >
               عرض المواعيد
             </button>
