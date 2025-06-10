@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import './StudentEvaluation.css';
-
+import ProjectHeader from '../components/Header/ProjectHeader';
 const StudentEvaluation = () => {
   const [activeTab, setActiveTab] = useState('students-evaluation');
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -92,10 +92,14 @@ const StudentEvaluation = () => {
 
   return (
     <div className="evaluation-system">
-      <header>
-        <h1>نظام تقييم المشاريع الطلابية</h1>
-        <p>تقييم زملائك والمشرفين وفق المعايير المحددة</p>
-      </header>
+      {/* Header Component */}
+      <ProjectHeader 
+        title="إدارة المشروع"
+        description={"لا يوجد وصف للمشروع"}
+        teamMembers={5}
+        startDate="01/01/2023"
+        endDate="15/06/2023"
+      />
 
       <div className="container">
         <div className="tabs">

@@ -16,6 +16,7 @@ import TeamMembers from './pages/TeamMembers';
 import SchedulingStudentMeetings from './pages/SchedulingStudentMeetings';
 
 import { AuthProvider } from './context/AuthContext';
+import DiscussionsStudent from './pages/DiscussionsStudent';
 
 function App() {
   return (
@@ -118,6 +119,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <SchedulingStudentMeetings />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/discussion-student" 
+                 element={
+                  <ProtectedRoute>
+                    <DiscussionsStudent />
                             </ProtectedRoute>
                           } 
                />
