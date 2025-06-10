@@ -104,4 +104,34 @@ class ProjectStageController extends Controller
 
         return response()->json(['message' => 'Project stage deleted successfully.']);
     }
+    /**
+ * الحصول على مراحل المشروع بناءً على معرف المجموعة
+ *
+ * @param int $group_id
+ * @return \Illuminate\Http\JsonResponse
+ */
+    public function getByGroup($group_id)
+    {
+        // البحث عن المجموعة
+        $group = Group::find($group_id);
+        
+        if (!$group) {
+            return response()->json(['message' => 'Group not found.'], 404);
+        }
+
+        // التحقق من وجود مشروع مرتبط بالمجموعة
+        if (!$group->project) {
+            return response()->json(['message' => 'No project associated with this group.'], 404);
+        }
+
+        // جلب مراحل المشروع مرتبة
+        $stages = ProjectStage::where('project_id', $group->project->projectid)
+            ->orderBy('order')
+            ->get();
+
+        return response()->json([
+            'message' => 'Stages retrieved successfully.',
+            'data' => $stages
+        ]);
+    }
 }

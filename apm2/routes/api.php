@@ -44,7 +44,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/student/projects', [ProjectController::class, 'getStudentProjects']);
     Route::get('/student/projects/{projectId}', [ProjectController::class, 'getStudentProjectDetails']);
     Route::post('/project-stages', [ProjectStageController::class, 'store']); // إنشاء مرحلة
-    Route::get('/project-stages/{project_id}', [ProjectStageController::class, 'getByProject']); // عرض مراحل مشروع
+    Route::get('/project-stages/{project_id}', [ProjectStageController::class, 'getByProject']);
+    Route::get('/group-stages/{group_id}', [ProjectStageController::class, 'getByGroup']); // عرض مراحل مشروع
     Route::delete('/project-stages/{id}', [ProjectStageController::class, 'destroy']); // حذف مرحلة
     Route::delete('/messages/{messageId}', [MessageController::class, 'destroy']);
     Route::get('/messages/conversation/{userId}', [MessageController::class, 'chatMessages']);

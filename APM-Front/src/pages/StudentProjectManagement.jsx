@@ -1,197 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import './StudentProjectManagement.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
+import axios from 'axios';
 
 const StudentProjectManagement = () => {
   // Project data state
   const [projectData, setProjectData] = useState({
-    title: "نظام إدارة مشاريع الطلاب",
-    description: "نظام متكامل لمتابعة وتنفيذ مشاريع طلبة الجامعة بحسب المراحل المختلفة.",
-    stages: [
-      {
-        id: 1,
-        name: "جمع المتطلبات وتحليلها",
-        deadline: "2023-01-30",
-        tasks: [
-          {
-            id: 101,
-            title: "مقابلة العملاء وجمع المتطلبات",
-            description: "الاجتماع مع مسؤولي الجامعة لفهم متطلبات النظام بالتفصيل.",
-            responsible: "أحمد محمد",
-            deadline: "2023-01-15",
-            attachments: [
-              { type: "file", name: "محضر الاجتماع.docx", url: "#" },
-              { type: "link", name: "متطلبات مشابهة", url: "https://example.com" }
-            ]
-          },
-          {
-            id: 102,
-            title: "تحليل المتطلبات الوظيفية",
-            description: "تحليل المتطلبات وتحويلها إلى مواصفات قابلة للتنفيذ.",
-            responsible: "سارة الخالد",
-            deadline: "2023-01-22",
-            attachments: [
-              { type: "file", name: "وثيقة المتطلبات.pdf", url: "#" }
-            ]
-          },
-          {
-            id: 103,
-            title: "تحديد حالات الاستخدام",
-            responsible: "علي حسن",
-            deadline: "2023-01-25",
-            description: "",
-            attachments: []
-          }
-        ]
-      },
-      {
-        id: 2,
-        name: "التصميم",
-        deadline: "2023-02-20",
-        tasks: [
-          {
-            id: 201,
-            title: "تصميم واجهة المستخدم",
-            description: "تصميم واجهة المستخدم الرئيسية وصفحات النظام.",
-            responsible: "لمى عبدالله",
-            deadline: "2023-02-05",
-            attachments: [
-              { type: "image", name: "تصميم الصفحة الرئيسية.jpg", url: "https://via.placeholder.com/600x400" },
-              { type: "image", name: "تصميم لوحة التحكم.jpg", url: "https://via.placeholder.com/600x400" }
-            ]
-          },
-          {
-            id: 202,
-            title: "تصميم قاعدة البيانات",
-            description: "تصميم مخطط ER وتحديد الجداول والعلاقات.",
-            responsible: "خالد علي",
-            deadline: "2023-02-10",
-            attachments: [
-              { type: "file", name: "ER Diagram.pdf", url: "#" }
-            ]
-          },
-          {
-            id: 203,
-            title: "إنشاء النموذج الأولي",
-            description: "تصميم نموذج أولي لواجهة المستخدم.",
-            responsible: "نورة أحمد",
-            deadline: "2023-02-15",
-            attachments: []
-          }
-        ]
-      },
-      {
-        id: 3,
-        name: "التطوير",
-        deadline: "2023-04-15",
-        tasks: [
-          {
-            id: 301,
-            title: "تطوير الواجهة الأمامية",
-            description: "برمجة واجهة المستخدم باستخدام HTML, CSS, JavaScript.",
-            responsible: "مريم الكندري",
-            deadline: "2023-03-20",
-            attachments: []
-          },
-          {
-            id: 302,
-            title: "تطوير الواجهة الخلفية",
-            description: "برمجة الخادم وقاعدة البيانات باستخدام Node.js وMySQL.",
-            responsible: "فيصل ناصر",
-            deadline: "2023-03-30",
-            attachments: []
-          },
-          {
-            id: 303,
-            title: "ربط الواجهات مع الخادم",
-            description: "ربط الواجهة الأمامية مع الواجهة الخلفية باستخدام API.",
-            responsible: "ياسر محمد",
-            deadline: "2023-04-05",
-            attachments: []
-          }
-        ]
-      },
-      {
-        id: 4,
-        name: "الاختبار",
-        deadline: "2023-05-05",
-        tasks: [
-          {
-            id: 401,
-            title: "اختبار الوحدة",
-            description: "اختبار كل وحدة من الوحدات البرمجية بشكل منفصل.",
-            responsible: "هدى مبارك",
-            deadline: "2023-04-25",
-            attachments: []
-          },
-          {
-            id: 402,
-            title: "اختبار التكامل",
-            description: "اختبار تكامل الوحدات مع بعضها البعض.",
-            responsible: "عبدالله سليمان",
-            deadline: "2023-04-30",
-            attachments: []
-          }
-        ]
-      },
-      {
-        id: 5,
-        name: "النشر",
-        deadline: "2023-05-20",
-        tasks: [
-          {
-            id: 501,
-            title: "إعداد الخادم",
-            description: "تهيئة بيئة التشغيل على الخادم.",
-            responsible: "خالد الفهد",
-            deadline: "2023-05-10",
-            attachments: []
-          },
-          {
-            id: 502,
-            title: "نشر التطبيق",
-            description: "رفع ملفات التطبيق على الخادم وإعداد قواعد البيانات.",
-            responsible: "ناصر أحمد",
-            deadline: "2023-05-15",
-            attachments: []
-          }
-        ]
-      },
-      {
-        id: 6,
-        name: "الصيانة والتحسين",
-        deadline: "2023-06-15",
-        tasks: [
-          {
-            id: 601,
-            title: "جمع ملاحظات المستخدمين",
-            description: "تجميع ملاحظات المستخدمين بعد النشر.",
-            responsible: "أحمد محمد",
-            deadline: "2023-05-30",
-            attachments: []
-          },
-          {
-            id: 602,
-            title: "إصلاح المشكلات",
-            description: "معالجة المشكلات المبلغ عنها.",
-            responsible: "سارة الخالد",
-            deadline: "2023-06-05",
-            attachments: []
-          },
-          {
-            id: 603,
-            title: "إصدار تحسينات جديدة",
-            description: "إضافة ميزات جديدة بناءً على ملاحظات المستخدمين.",
-            responsible: "فيصل ناصر",
-            deadline: "2023-06-12",
-            attachments: []
-          }
-        ]
-      }
-    ]
+    title: "",
+    description: "",
+    stages: []
   });
 
-  // State for form visibility and modal
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // States for UI
   const [showForms, setShowForms] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [currentSubmissionTask, setCurrentSubmissionTask] = useState(null);
@@ -199,8 +22,51 @@ const StudentProjectManagement = () => {
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [newTasks, setNewTasks] = useState({});
 
-  // Initialize showForms state
+  // Fetch project stages from backend
   useEffect(() => {
+    const fetchProjectStages = async () => {
+      try {
+        const groupId = localStorage.getItem('selectedGroupId');
+        if (!groupId) {
+          throw new Error('Group ID not found in local storage');
+        }
+
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get(
+          `http://127.0.0.1:8000/api/group-stages/${groupId}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data && response.data.data) {
+          // Transform backend data to match our frontend structure
+          const stages = response.data.data.map(stage => ({
+            id: stage.id,
+            name: stage.title,
+            deadline: stage.due_date,
+            description: stage.description,
+            tasks: [] // We'll fetch tasks separately if needed
+          }));
+
+          setProjectData(prev => ({
+            ...prev,
+            stages: stages
+          }));
+        }
+      } catch (err) {
+        setError(err.message || 'Failed to fetch project stages');
+        console.error('Error fetching project stages:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProjectStages();
+
+    // Initialize showForms state
     const initialShowForms = {};
     projectData.stages.forEach(stage => {
       initialShowForms[stage.id] = false;
@@ -407,214 +273,243 @@ const StudentProjectManagement = () => {
     return date.toLocaleDateString('ar-EG');
   };
 
+  if (loading) {
+    return (
+      <div className="container-tasks">
+        <ProjectHeader 
+          title="إدارة المشروع"
+          description="جاري تحميل بيانات المشروع..."
+        />
+        <div className="loading-spinner">جاري تحميل بيانات المشروع...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="container-tasks">
+        <ProjectHeader 
+          title="إدارة المشروع"
+          description="حدث خطأ أثناء تحميل البيانات"
+        />
+        <div className="error-message">{error}</div>
+      </div>
+    );
+  }
+
   return (
     <div className="container-tasks">
-       {/* Header Component */}
-       <ProjectHeader 
-                title=" أعضاء المجموعة"
-                description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
-                teamMembers={5}
-                startDate="01/01/2023"
-                endDate="15/06/2023"
-              />
+      {/* Header Component */}
+      <ProjectHeader 
+        title="إدارة المشروع"
+        description={projectData.description || "لا يوجد وصف للمشروع"}
+        teamMembers={5} // يمكنك جلب الرقم الفعلي من الباكند إذا لزم الأمر
+        startDate="01/01/2023" // يمكنك جلب التاريخ الفعلي من الباكند
+        endDate="15/06/2023" // يمكنك جلب التاريخ الفعلي من الباكند
+      />
       
       {/* Stages Container */}
       <div className="stages-container">
-        {projectData.stages.map(stage => (
-          <div key={stage.id} className="stage">
-            <div className="stage-header">
-              {stage.name}
-              <div className="stage-deadline">موعد التسليم: {formatDate(stage.deadline)}</div>
-            </div>
-            <div className="tasks-container">
-              {stage.tasks.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#888', padding: '30px 20px' }}>
-                  لا توجد مهام حتى الآن
-                </div>
-              ) : (
-                stage.tasks.map(task => (
-                  <div key={task.id} className="task-management">
-                    <div className="task-title-management">{task.title}</div>
-                    {task.description && <div className="task-description-management">{task.description}</div>}
-                    <div className="task-meta">
-                      <div className="task-responsible">{task.responsible}</div>
-                      <div className="task-deadline">{formatDate(task.deadline)}</div>
-                    </div>
-                    {renderAttachments(task.attachments)}
-                    <div className="task-actions">
-                      <button 
-                        className="action-btn-management" 
-                        onClick={() => {
-                          const fileInput = document.createElement('input');
-                          fileInput.type = 'file';
-                          fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar,.txt';
-                          fileInput.multiple = true;
-                          
-                          fileInput.onchange = (e) => {
-                            const files = Array.from(e.target.files);
-                            if (files.length === 0) return;
+        {projectData.stages.length === 0 ? (
+          <div className="no-stages-message">لا توجد مراحل متاحة لهذا المشروع حتى الآن</div>
+        ) : (
+          projectData.stages.map(stage => (
+            <div key={stage.id} className="stage">
+              <div className="stage-header">
+                {stage.name}
+                <div className="stage-deadline">موعد التسليم: {formatDate(stage.deadline)}</div>
+              </div>
+            
+              <div className="tasks-container">
+                {stage.tasks.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#888', padding: '30px 20px' }}>
+                    لا توجد مهام حتى الآن
+                  </div>
+                ) : (
+                  stage.tasks.map(task => (
+                    <div key={task.id} className="task-management">
+                      <div className="task-title-management">{task.title}</div>
+                      {task.description && <div className="task-description-management">{task.description}</div>}
+                      <div className="task-meta">
+                        <div className="task-responsible">{task.responsible}</div>
+                        <div className="task-deadline">{formatDate(task.deadline)}</div>
+                      </div>
+                      {renderAttachments(task.attachments)}
+                      <div className="task-actions">
+                        <button 
+                          className="action-btn-management" 
+                          onClick={() => {
+                            const fileInput = document.createElement('input');
+                            fileInput.type = 'file';
+                            fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar,.txt';
+                            fileInput.multiple = true;
                             
-                            const updatedStages = projectData.stages.map(s => {
-                              if (s.tasks.some(t => t.id === task.id)) {
-                                return {
-                                  ...s,
-                                  tasks: s.tasks.map(t => {
-                                    if (t.id === task.id) {
-                                      const newAttachments = files.map(file => {
-                                        const isImage = file.type.startsWith('image/');
-                                        const isLink = file.name.startsWith('http') || file.name.startsWith('www');
+                            fileInput.onchange = (e) => {
+                              const files = Array.from(e.target.files);
+                              if (files.length === 0) return;
+                              
+                              const updatedStages = projectData.stages.map(s => {
+                                if (s.tasks.some(t => t.id === task.id)) {
+                                  return {
+                                    ...s,
+                                    tasks: s.tasks.map(t => {
+                                      if (t.id === task.id) {
+                                        const newAttachments = files.map(file => {
+                                          const isImage = file.type.startsWith('image/');
+                                          const isLink = file.name.startsWith('http') || file.name.startsWith('www');
+                                          
+                                          return {
+                                            type: isImage ? 'image' : (isLink ? 'link' : 'file'),
+                                            name: isLink ? 'رابط خارجي' : file.name,
+                                            url: isLink ? file.name : URL.createObjectURL(file)
+                                          };
+                                        });
                                         
                                         return {
-                                          type: isImage ? 'image' : (isLink ? 'link' : 'file'),
-                                          name: isLink ? 'رابط خارجي' : file.name,
-                                          url: isLink ? file.name : URL.createObjectURL(file)
+                                          ...t,
+                                          attachments: [...t.attachments, ...newAttachments]
                                         };
-                                      });
-                                      
-                                      return {
-                                        ...t,
-                                        attachments: [...t.attachments, ...newAttachments]
-                                      };
-                                    }
-                                    return t;
-                                  })
-                                };
-                              }
-                              return s;
-                            });
+                                      }
+                                      return t;
+                                    })
+                                  };
+                                }
+                                return s;
+                              });
+                              
+                              setProjectData({
+                                ...projectData,
+                                stages: updatedStages
+                              });
+                              
+                              alert(`تم إضافة ${files.length} مرفق جديد إلى المهمة`);
+                            };
                             
-                            setProjectData({
-                              ...projectData,
-                              stages: updatedStages
-                            });
-                            
-                            alert(`تم إضافة ${files.length} مرفق جديد إلى المهمة`);
-                          };
-                          
-                          fileInput.click();
-                        }}
-                      >
-                        <span className="action-icon">📎</span>
-                        <span>إضافة مرفق</span>
-                      </button>
-                      <button 
-                        className="action-btn-management primary" 
-                        onClick={() => {
-                          setCurrentSubmissionTask(task.id);
-                          setShowModal(true);
-                        }}
-                      >
-                        <span className="action-icon">✅</span>
-                        <span>إعلام بالإنجاز</span>
-                      </button>
+                            fileInput.click();
+                          }}
+                        >
+                          <span className="action-icon">📎</span>
+                          <span>إضافة مرفق</span>
+                        </button>
+                        <button 
+                          className="action-btn-management primary" 
+                          onClick={() => {
+                            setCurrentSubmissionTask(task.id);
+                            setShowModal(true);
+                          }}
+                        >
+                          <span className="action-icon">✅</span>
+                          <span>إعلام بالإنجاز</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-            <button 
-              className="toggle-form-btn" 
-              onClick={() => toggleForm(stage.id)}
-            >
-              {showForms[stage.id] ? 'إخفاء النموذج' : 'إضافة مهمة جديدة'}
-            </button>
-            <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
-              <div className="form-group-tasks">
-                <label htmlFor={`task-title-management-${stage.id}`}>عنوان المهمة:</label>
-                <input 
-                  type="text" 
-                  id={`task-title-management-${stage.id}`} 
-                  placeholder="أدخل عنوان المهمة"
-                  value={newTasks[stage.id]?.title || ''}
-                  onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
-                />
-              </div>
-              <div className="form-group-tasks">
-                <label htmlFor={`task-description-management-${stage.id}`}>وصف المهمة (اختياري):</label>
-                <textarea 
-                  id={`task-description-management-${stage.id}`} 
-                  placeholder="أدخل وصف المهمة"
-                  value={newTasks[stage.id]?.description || ''}
-                  onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
-                ></textarea>
-              </div>
-              <div className="form-row-tasks">
-                <div className="form-group-tasks">
-                  <label htmlFor={`task-responsible-${stage.id}`}>المسؤول:</label>
-                  <input 
-                    type="text" 
-                    id={`task-responsible-${stage.id}`} 
-                    placeholder="أدخل اسم المسؤول"
-                    value={newTasks[stage.id]?.responsible || ''}
-                    onChange={(e) => handleNewTaskChange(stage.id, 'responsible', e.target.value)}
-                  />
-                </div>
-                <div className="form-group-tasks">
-                  <label htmlFor={`task-deadline-${stage.id}`}>موعد التسليم:</label>
-                  <input 
-                    type="date" 
-                    id={`task-deadline-${stage.id}`}
-                    value={newTasks[stage.id]?.deadline || ''}
-                    onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
-                  />
-                </div>
-              </div>
-              <div 
-                className="file-upload-area" 
-                id={`upload-area-${stage.id}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.classList.add('dragover');
-                }}
-                onDragLeave={(e) => {
-                  e.currentTarget.classList.remove('dragover');
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.classList.remove('dragover');
-                  const files = e.dataTransfer.files;
-                  if (files.length > 0) {
-                    handleNewTaskFileChange(stage.id, { target: { files } });
-                    const uploadText = e.currentTarget.querySelector('.file-upload-text');
-                    const names = Array.from(files).map(f => f.name).join(', ');
-                    uploadText.textContent = `تم اختيار: ${names}`;
-                  }
-                }}
-              >
-                <div className="file-upload-text">
-                  {newTasks[stage.id]?.files?.length > 0 ? 
-                    `تم اختيار: ${newTasks[stage.id].files.map(f => f.name).join(', ')}` : 
-                    'قم بسحب وإسقاط الملفات هنا أو'}
-                </div>
-                <button 
-                  className="file-upload-btn"
-                  onClick={() => document.getElementById(`file-input-${stage.id}`).click()}
-                >
-                  اختر ملفات
-                </button>
-                <input 
-                  type="file" 
-                  className="file-input" 
-                  id={`file-input-${stage.id}`} 
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
-                  multiple
-                  onChange={(e) => {
-                    handleNewTaskFileChange(stage.id, e);
-                    const uploadText = document.querySelector(`#upload-area-${stage.id} .file-upload-text`);
-                    const names = Array.from(e.target.files).map(f => f.name).join(', ');
-                    uploadText.textContent = `تم اختيار: ${names}`;
-                  }}
-                />
+                  ))
+                )}
               </div>
               <button 
-                className="add-task-btn" 
-                onClick={() => addNewTask(stage.id)}
+                className="toggle-form-btn" 
+                onClick={() => toggleForm(stage.id)}
               >
-                إضافة المهمة
+                {showForms[stage.id] ? 'إخفاء النموذج' : 'إضافة مهمة جديدة'}
               </button>
+              <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
+                <div className="form-group-tasks">
+                  <label htmlFor={`task-title-management-${stage.id}`}>عنوان المهمة:</label>
+                  <input 
+                    type="text" 
+                    id={`task-title-management-${stage.id}`} 
+                    placeholder="أدخل عنوان المهمة"
+                    value={newTasks[stage.id]?.title || ''}
+                    onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
+                  />
+                </div>
+                <div className="form-group-tasks">
+                  <label htmlFor={`task-description-management-${stage.id}`}>وصف المهمة (اختياري):</label>
+                  <textarea 
+                    id={`task-description-management-${stage.id}`} 
+                    placeholder="أدخل وصف المهمة"
+                    value={newTasks[stage.id]?.description || ''}
+                    onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
+                  ></textarea>
+                </div>
+                <div className="form-row-tasks">
+                  <div className="form-group-tasks">
+                    <label htmlFor={`task-responsible-${stage.id}`}>المسؤول:</label>
+                    <input 
+                      type="text" 
+                      id={`task-responsible-${stage.id}`} 
+                      placeholder="أدخل اسم المسؤول"
+                      value={newTasks[stage.id]?.responsible || ''}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'responsible', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group-tasks">
+                    <label htmlFor={`task-deadline-${stage.id}`}>موعد التسليم:</label>
+                    <input 
+                      type="date" 
+                      id={`task-deadline-${stage.id}`}
+                      value={newTasks[stage.id]?.deadline || ''}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div 
+                  className="file-upload-area" 
+                  id={`upload-area-${stage.id}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.add('dragover');
+                  }}
+                  onDragLeave={(e) => {
+                    e.currentTarget.classList.remove('dragover');
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.currentTarget.classList.remove('dragover');
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                      handleNewTaskFileChange(stage.id, { target: { files } });
+                      const uploadText = e.currentTarget.querySelector('.file-upload-text');
+                      const names = Array.from(files).map(f => f.name).join(', ');
+                      uploadText.textContent = `تم اختيار: ${names}`;
+                    }
+                  }}
+                >
+                  <div className="file-upload-text">
+                    {newTasks[stage.id]?.files?.length > 0 ? 
+                      `تم اختيار: ${newTasks[stage.id].files.map(f => f.name).join(', ')}` : 
+                      'قم بسحب وإسقاط الملفات هنا أو'}
+                  </div>
+                  <button 
+                    className="file-upload-btn"
+                    onClick={() => document.getElementById(`file-input-${stage.id}`).click()}
+                  >
+                    اختر ملفات
+                  </button>
+                  <input 
+                    type="file" 
+                    className="file-input" 
+                    id={`file-input-${stage.id}`} 
+                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                    multiple
+                    onChange={(e) => {
+                      handleNewTaskFileChange(stage.id, e);
+                      const uploadText = document.querySelector(`#upload-area-${stage.id} .file-upload-text`);
+                      const names = Array.from(e.target.files).map(f => f.name).join(', ');
+                      uploadText.textContent = `تم اختيار: ${names}`;
+                    }}
+                  />
+                </div>
+                <button 
+                  className="add-task-btn" 
+                  onClick={() => addNewTask(stage.id)}
+                >
+                  إضافة المهمة
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
       
       {/* Submission Modal */}
