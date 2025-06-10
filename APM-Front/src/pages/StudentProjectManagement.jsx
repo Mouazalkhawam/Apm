@@ -4,279 +4,254 @@ import ProjectHeader from '../components/Header/ProjectHeader';
 import axios from 'axios';
 
 const StudentProjectManagement = () => {
-  // Project data state
+  // States
   const [projectData, setProjectData] = useState({
     title: "",
     description: "",
     stages: []
   });
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLeader, setIsLeader] = useState(false);
-
-  // States for UI
+  const [currentUser, setCurrentUser] = useState(null);
   const [showForms, setShowForms] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [currentSubmissionTask, setCurrentSubmissionTask] = useState(null);
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [newTasks, setNewTasks] = useState({});
+  const [groupStudents, setGroupStudents] = useState([]);
+  const [githubRepo, setGithubRepo] = useState('');
+  const [githubCommitUrl, setGithubCommitUrl] = useState('');
+  const [commitDescription, setCommitDescription] = useState('');
 
-  // Fetch project data and check leader status
+  // Fetch data on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const groupId = localStorage.getItem('selectedGroupId');
-        if (!groupId) {
-          throw new Error('Group ID not found in local storage');
-        }
-
         const token = localStorage.getItem('access_token');
+        const groupId = localStorage.getItem('selectedGroupId');
         
-        // Check if user is leader
-        const leaderResponse = await axios.get(
+        if (!groupId) throw new Error('Group ID not found');
+
+        // Fetch current user
+        const userRes = await axios.get('http://127.0.0.1:8000/api/user', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        setCurrentUser(userRes.data);
+
+        // Check if leader
+        const leaderRes = await axios.get(
           `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
+          { headers: { 'Authorization': `Bearer ${token}` } }
         );
+        setIsLeader(leaderRes.data.is_leader);
 
-        setIsLeader(leaderResponse.data.is_leader);
+        // Fetch group students
+        const studentsRes = await axios.get(
+          `http://127.0.0.1:8000/api/groups/${groupId}/students`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setGroupStudents(studentsRes.data.data || []);
 
-        // Fetch project stages
-        const stagesResponse = await axios.get(
+        // Fetch stages
+        const stagesRes = await axios.get(
           `http://127.0.0.1:8000/api/group-stages/${groupId}`,
-          {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          }
+          { headers: { 'Authorization': `Bearer ${token}` } }
         );
 
-        if (stagesResponse.data && stagesResponse.data.data) {
-          // Fetch tasks for each stage
+        if (stagesRes.data?.data) {
           const stagesWithTasks = await Promise.all(
-            stagesResponse.data.data.map(async (stage) => {
-              const tasksResponse = await axios.get(
+            stagesRes.data.data.map(async (stage) => {
+              const tasksRes = await axios.get(
                 `http://127.0.0.1:8000/api/stages/${stage.id}/tasks`,
-                {
-                  headers: {
-                    'Authorization': `Bearer ${token}`
-                  }
-                }
+                { headers: { 'Authorization': `Bearer ${token}` } }
               );
-
-              const tasks = tasksResponse.data.map(task => ({
-                id: task.id,
-                title: task.title,
-                description: task.description,
-                responsible: task.assignee?.user?.name || 'غير محدد',
-                deadline: task.due_date,
-                status: task.status,
-                priority: task.priority,
-                attachments: [] // You can modify this if you have attachments in your API
-              }));
 
               return {
                 id: stage.id,
                 name: stage.title,
                 deadline: stage.due_date,
                 description: stage.description,
-                tasks: tasks
+                tasks: tasksRes.data.map(task => ({
+                  id: task.id,
+                  title: task.title,
+                  description: task.description,
+                  responsible: task.assignee?.user?.name || 'غير محدد',
+                  responsibleId: task.assigned_to,
+                  deadline: task.due_date,
+                  status: task.status,
+                  priority: task.priority,
+                  attachments: []
+                }))
               };
             })
           );
 
-          setProjectData(prev => ({
-            ...prev,
-            stages: stagesWithTasks
-          }));
+          setProjectData(prev => ({ ...prev, stages: stagesWithTasks }));
         }
       } catch (err) {
         setError(err.message || 'Failed to fetch data');
-        console.error('Error fetching data:', err);
+        console.error('Error:', err);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-
-    // Initialize showForms state
-    const initialShowForms = {};
-    projectData.stages.forEach(stage => {
-      initialShowForms[stage.id] = false;
-    });
-    setShowForms(initialShowForms);
   }, []);
 
-  // Toggle add task form visibility
+  // Helper functions
+  const isTaskAssignedToCurrentUser = (task) => {
+    return currentUser?.student?.studentId === task.responsibleId;
+  };
+
   const toggleForm = (stageId) => {
-    setShowForms(prev => ({
-      ...prev,
-      [stageId]: !prev[stageId]
-    }));
+    setShowForms(prev => ({ ...prev, [stageId]: !prev[stageId] }));
   };
 
-  // Handle file input change for submission
   const handleSubmissionFileChange = (e) => {
-    const files = Array.from(e.target.files);
-    setSubmissionFiles(files);
+    setSubmissionFiles(Array.from(e.target.files));
   };
 
-  // Handle file input change for new task
   const handleNewTaskFileChange = (stageId, e) => {
-    const files = Array.from(e.target.files);
     setNewTasks(prev => ({
       ...prev,
-      [stageId]: {
-        ...prev[stageId],
-        files: files
-      }
+      [stageId]: { ...prev[stageId], files: Array.from(e.target.files) }
     }));
   };
 
-  // Handle new task input change
   const handleNewTaskChange = (stageId, field, value) => {
     setNewTasks(prev => ({
       ...prev,
-      [stageId]: {
-        ...prev[stageId],
-        [field]: value
-      }
+      [stageId]: { ...prev[stageId], [field]: value }
     }));
   };
 
-  // Add new task to a stage
   const addNewTask = async (stageId) => {
     try {
-      const groupId = localStorage.getItem('selectedGroupId');
       const token = localStorage.getItem('access_token');
       const newTaskData = newTasks[stageId];
 
-      if (!newTaskData || !newTaskData.title || !newTaskData.responsible) {
-        alert('الرجاء إدخال عنوان المهمة واسم المسؤول');
-        return;
+      if (!newTaskData?.title || !newTaskData?.responsibleId) {
+        return alert('الرجاء إدخال عنوان المهمة واختيار المسؤول');
       }
 
-      // In a real implementation, you would need to find the student ID from the responsible name
-      // For now, we'll just send the data we have
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/stages/${stageId}/tasks`,
-        {
-          title: newTaskData.title,
-          description: newTaskData.description,
-          assigned_to: 1, // You'll need to replace this with actual student ID
-          priority: newTaskData.priority || 'medium',
-          due_date: newTaskData.deadline
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        }
+      const taskPayload = {
+        project_stage_id: stageId,
+        title: newTaskData.title,
+        description: newTaskData.description || '',
+        assigned_to: parseInt(newTaskData.responsibleId),
+        due_date: newTaskData.deadline,
+        priority: newTaskData.priority || 'medium'
+      };
+
+      const res = await axios.post(
+        'http://127.0.0.1:8000/api/tasks',
+        taskPayload,
+        { headers: { 'Authorization': `Bearer ${token}` } }
       );
 
-      if (response.data) {
-        // Update local state with the new task
-        const updatedStages = projectData.stages.map(s => {
-          if (s.id === stageId) {
-            return {
-              ...s,
-              tasks: [
-                ...s.tasks,
-                {
-                  id: response.data.id,
-                  title: response.data.title,
-                  description: response.data.description,
-                  responsible: newTaskData.responsible,
-                  deadline: response.data.due_date,
-                  status: 'pending',
-                  priority: response.data.priority,
-                  attachments: []
-                }
-              ]
-            };
-          }
-          return s;
-        });
+      if (res.data) {
+        // Find the selected student
+        const selectedStudent = groupStudents.find(s => s.studentId === parseInt(newTaskData.responsibleId));
 
-        setProjectData({
-          ...projectData,
-          stages: updatedStages
-        });
-
-        // Reset form
-        setNewTasks(prev => ({
+        setProjectData(prev => ({
           ...prev,
-          [stageId]: {}
-        }));
-        setShowForms(prev => ({
-          ...prev,
-          [stageId]: false
+          stages: prev.stages.map(s => s.id === stageId ? {
+            ...s,
+            tasks: [...s.tasks, {
+              id: res.data.id,
+              title: res.data.title,
+              description: res.data.description,
+              responsible: selectedStudent?.user?.name || 'غير محدد',
+              responsibleId: res.data.assigned_to,
+              deadline: res.data.due_date,
+              status: res.data.status,
+              priority: res.data.priority,
+              attachments: []
+            }]
+          } : s)
         }));
 
+        setNewTasks(prev => ({ ...prev, [stageId]: {} }));
+        setShowForms(prev => ({ ...prev, [stageId]: false }));
         alert('تم إضافة المهمة بنجاح');
       }
     } catch (error) {
-      console.error('Error adding task:', error);
-      alert('حدث خطأ أثناء إضافة المهمة');
+      console.error('Error:', error);
+      alert('حدث خطأ أثناء إضافة المهمة: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // Submit task completion
-  const confirmSubmission = async () => {
+  const submitTaskToAPI = async () => {
     try {
       if (!currentSubmissionTask) return;
 
       const token = localStorage.getItem('access_token');
-      
-      // In a real implementation, you would call an API to update task status
-      // For now, we'll just update the local state
-      const updatedStages = projectData.stages.map(stage => {
-        const updatedTasks = stage.tasks.map(task => {
-          if (task.id === currentSubmissionTask) {
-            const updatedTask = { ...task, status: 'completed' };
-            if (submissionNotes) {
-              updatedTask.submissionNotes = submissionNotes;
-            }
-            if (submissionFiles.length > 0) {
-              updatedTask.submissionFiles = submissionFiles.map(file => ({
-                name: file.name,
-                url: URL.createObjectURL(file)
-              }));
-            }
-            return updatedTask;
+      const formData = new FormData();
+
+      // Add required fields
+      formData.append('content', submissionNotes);
+      formData.append('github_repo', githubRepo);
+      formData.append('github_commit_url', githubCommitUrl);
+      formData.append('commit_description', commitDescription);
+
+      // Add files if any
+      submissionFiles.forEach(file => {
+        formData.append('attachment', file);
+      });
+
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/tasks/${currentSubmissionTask}/submit`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
           }
-          return task;
-        });
-        return { ...stage, tasks: updatedTasks };
-      });
+        }
+      );
 
-      setProjectData({
-        ...projectData,
-        stages: updatedStages
-      });
+      if (response.data.success) {
+        // Update local state
+        const updatedStages = projectData.stages.map(stage => ({
+          ...stage,
+          tasks: stage.tasks.map(task => task.id === currentSubmissionTask ? {
+            ...task,
+            status: 'completed',
+            attachments: [
+              ...task.attachments,
+              ...submissionFiles.map(file => ({
+                name: file.name,
+                url: URL.createObjectURL(file),
+                type: file.type.startsWith('image/') ? 'image' : 'file'
+              }))
+            ]
+          } : task)
+        }));
 
-      // Reset modal
-      setShowModal(false);
-      setCurrentSubmissionTask(null);
-      setSubmissionNotes('');
-      setSubmissionFiles([]);
-
-      alert('تم تسليم المهمة بنجاح');
+        setProjectData(prev => ({ ...prev, stages: updatedStages }));
+        
+        // Reset modal
+        setShowModal(false);
+        setCurrentSubmissionTask(null);
+        setSubmissionNotes('');
+        setSubmissionFiles([]);
+        setGithubRepo('');
+        setGithubCommitUrl('');
+        setCommitDescription('');
+        
+        alert('تم تسليم المهمة بنجاح');
+      }
     } catch (error) {
       console.error('Error submitting task:', error);
-      alert('حدث خطأ أثناء تسليم المهمة');
+      alert('حدث خطأ أثناء تسليم المهمة: ' + (error.response?.data?.message || error.message));
     }
   };
 
-  // Render attachments with preview for images
   const renderAttachments = (attachments) => {
-    if (!attachments || attachments.length === 0) {
+    if (!attachments?.length) {
       return (
         <div className="task-attachments">
           <div className="attachment-label">المرفقات:</div>
@@ -293,7 +268,7 @@ const StudentProjectManagement = () => {
             <div key={index} className="attachment-item">
               <a href={attachment.url} className="attachment-link" target="_blank" rel="noopener noreferrer">
                 <span className="attachment-icon">
-                  {attachment.type === 'image' ? '🖼️' : attachment.type === 'link' ? '🔗' : '📄'}
+                  {attachment.type === 'image' ? '🖼️' : '📄'}
                 </span>
                 {attachment.name}
               </a>
@@ -310,83 +285,114 @@ const StudentProjectManagement = () => {
     );
   };
 
-  // Show image preview when clicking on the eye icon
   const showImagePreview = (e, imageUrl) => {
     const previewImg = e.target.closest('.attachment-item').nextElementSibling;
-    
-    if (previewImg && previewImg.classList.contains('attachment-preview')) {
-      if (previewImg.style.display === 'block') {
-        previewImg.style.display = 'none';
-        previewImg.src = '';
-      } else {
-        previewImg.src = imageUrl;
-        previewImg.style.display = 'block';
-      }
+    if (previewImg?.classList.contains('attachment-preview')) {
+      previewImg.style.display = previewImg.style.display === 'block' ? 'none' : 'block';
+      previewImg.src = previewImg.style.display === 'block' ? imageUrl : '';
     }
   };
 
-  // Format date for display
-  const formatDate = (dateString) => {
-    if (!dateString) return 'غير محدد';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ar-EG');
-  };
+  const formatDate = (dateString) => dateString ? new Date(dateString).toLocaleDateString('ar-EG') : 'غير محدد';
 
-  // Render priority badge
   const renderPriorityBadge = (priority) => {
-    switch (priority) {
-      case 'high':
-        return <span className="priority-badge high-spm">عالي</span>;
-      case 'medium':
-        return <span className="priority-badge medium-spm">متوسط</span>;
-      case 'low':
-        return <span className="priority-badge low-spm">منخفض</span>;
-      default:
-        return <span className="priority-badge">غير محدد</span>;
-    }
+    const classes = {
+      high: 'high-spm',
+      medium: 'medium-spm',
+      low: 'low-spm'
+    };
+    return <span className={`priority-badge ${classes[priority]}`}>{
+      priority === 'high' ? 'عالي' : 
+      priority === 'medium' ? 'متوسط' : 
+      priority === 'low' ? 'منخفض' : 'غير محدد'
+    }</span>;
   };
 
-  // Render status badge
   const renderStatusBadge = (status) => {
-    switch (status) {
-      case 'completed':
-        return <span className="status-badge completed">مكتمل</span>;
-      case 'in_progress':
-        return <span className="status-badge in-progress">قيد التنفيذ</span>;
-      case 'pending':
-        return <span className="status-badge pending">قيد الانتظار</span>;
-      default:
-        return <span className="status-badge">غير محدد</span>;
-    }
+    const classes = {
+      completed: 'completed',
+      in_progress: 'in-progress',
+      pending: 'pending'
+    };
+    return <span className={`status-badge ${classes[status]}`}>{
+      status === 'completed' ? 'مكتمل' : 
+      status === 'in_progress' ? 'قيد التنفيذ' : 
+      status === 'pending' ? 'قيد الانتظار' : 'غير محدد'
+    }</span>;
   };
 
-  if (loading) {
+  const renderTaskActions = (task) => {
     return (
-      <div className="container-tasks">
-        <ProjectHeader 
-          title="إدارة المشروع"
-          description="جاري تحميل بيانات المشروع..."
-        />
-        <div className="loading-spinner">جاري تحميل بيانات المشروع...</div>
-      </div>
-    );
-  }
+      <>
+        <button 
+          className="action-btn-management" 
+          onClick={() => {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar,.txt';
+            fileInput.multiple = true;
+            fileInput.onchange = (e) => {
+              const files = Array.from(e.target.files);
+              if (files.length === 0) return;
+              
+              setProjectData(prev => ({
+                ...prev,
+                stages: prev.stages.map(s => ({
+                  ...s,
+                  tasks: s.tasks.map(t => t.id === task.id ? {
+                    ...t,
+                    attachments: [
+                      ...t.attachments,
+                      ...files.map(file => ({
+                        type: file.type.startsWith('image/') ? 'image' : 'file',
+                        name: file.name,
+                        url: URL.createObjectURL(file)
+                      }))
+                    ]
+                  } : t)
+                }))
+              }));
+              alert(`تم إضافة ${files.length} مرفق جديد`);
+            };
+            fileInput.click();
+          }}
+        >
+          <span className="action-icon">📎</span>
+          <span>إضافة مرفق</span>
+        </button>
 
-  if (error) {
-    return (
-      <div className="container-tasks">
-        <ProjectHeader 
-          title="إدارة المشروع"
-          description="حدث خطأ أثناء تحميل البيانات"
-        />
-        <div className="error-message">{error}</div>
-      </div>
+        {isTaskAssignedToCurrentUser(task) && task.status !== 'completed' && (
+          <button 
+            className="action-btn-management primary supmit-spm" 
+            onClick={() => {
+              setCurrentSubmissionTask(task.id);
+              setShowModal(true);
+            }}
+          >
+            <span className="action-icon">✅</span>
+            <span>إعلام بالإنجاز</span>
+          </button>
+        )}
+      </>
     );
-  }
+  };
+
+  if (loading) return (
+    <div className="container-tasks">
+      <ProjectHeader title="إدارة المشروع" description="جاري تحميل البيانات..." />
+      <div className="loading-spinner">جاري تحميل بيانات المشروع...</div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="container-tasks">
+      <ProjectHeader title="إدارة المشروع" description="حدث خطأ أثناء تحميل البيانات" />
+      <div className="error-message">{error}</div>
+    </div>
+  );
 
   return (
     <div className="container-tasks">
-      {/* Header Component */}
       <ProjectHeader 
         title="إدارة المشروع"
         description={projectData.description || "لا يوجد وصف للمشروع"}
@@ -395,7 +401,6 @@ const StudentProjectManagement = () => {
         endDate="15/06/2023"
       />
       
-      {/* Stages Container */}
       <div className="stages-container">
         {projectData.stages.length === 0 ? (
           <div className="no-stages-message">لا توجد مراحل متاحة لهذا المشروع حتى الآن</div>
@@ -429,80 +434,13 @@ const StudentProjectManagement = () => {
                       </div>
                       {renderAttachments(task.attachments)}
                       <div className="task-actions">
-                        <button 
-                          className="action-btn-management" 
-                          onClick={() => {
-                            const fileInput = document.createElement('input');
-                            fileInput.type = 'file';
-                            fileInput.accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar,.txt';
-                            fileInput.multiple = true;
-                            
-                            fileInput.onchange = (e) => {
-                              const files = Array.from(e.target.files);
-                              if (files.length === 0) return;
-                              
-                              const updatedStages = projectData.stages.map(s => {
-                                if (s.tasks.some(t => t.id === task.id)) {
-                                  return {
-                                    ...s,
-                                    tasks: s.tasks.map(t => {
-                                      if (t.id === task.id) {
-                                        const newAttachments = files.map(file => {
-                                          const isImage = file.type.startsWith('image/');
-                                          const isLink = file.name.startsWith('http') || file.name.startsWith('www');
-                                          
-                                          return {
-                                            type: isImage ? 'image' : (isLink ? 'link' : 'file'),
-                                            name: isLink ? 'رابط خارجي' : file.name,
-                                            url: isLink ? file.name : URL.createObjectURL(file)
-                                          };
-                                        });
-                                        
-                                        return {
-                                          ...t,
-                                          attachments: [...t.attachments, ...newAttachments]
-                                        };
-                                      }
-                                      return t;
-                                    })
-                                  };
-                                }
-                                return s;
-                              });
-                              
-                              setProjectData({
-                                ...projectData,
-                                stages: updatedStages
-                              });
-                              
-                              alert(`تم إضافة ${files.length} مرفق جديد إلى المهمة`);
-                            };
-                            
-                            fileInput.click();
-                          }}
-                        >
-                          <span className="action-icon">📎</span>
-                          <span>إضافة مرفق</span>
-                        </button>
-                        {task.status !== 'completed' && (
-                          <button 
-                            className="action-btn-management primary supmit-spm" 
-                            onClick={() => {
-                              setCurrentSubmissionTask(task.id);
-                              setShowModal(true);
-                            }}
-                          >
-                            <span className="action-icon">✅</span>
-                            <span>إعلام بالإنجاز</span>
-                          </button>
-                        )}
+                        {renderTaskActions(task)}
                       </div>
                     </div>
                   ))
                 )}
               </div>
               
-              {/* زر إضافة المهمة - يظهر فقط للقائد */}
               {isLeader && (
                 <button 
                   className="toggle-form-btn" 
@@ -514,42 +452,51 @@ const StudentProjectManagement = () => {
 
               <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
                 <div className="form-group-tasks">
-                  <label htmlFor={`task-title-management-${stage.id}`}>عنوان المهمة:</label>
+                  <label htmlFor={`task-title-${stage.id}`}>عنوان المهمة:</label>
                   <input 
                     type="text" 
-                    id={`task-title-management-${stage.id}`} 
+                    id={`task-title-${stage.id}`}
                     placeholder="أدخل عنوان المهمة"
                     value={newTasks[stage.id]?.title || ''}
                     onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
+                    required
                   />
                 </div>
                 <div className="form-group-tasks">
-                  <label htmlFor={`task-description-management-${stage.id}`}>وصف المهمة (اختياري):</label>
+                  <label htmlFor={`task-desc-${stage.id}`}>وصف المهمة (اختياري):</label>
                   <textarea 
-                    id={`task-description-management-${stage.id}`} 
+                    id={`task-desc-${stage.id}`}
                     placeholder="أدخل وصف المهمة"
                     value={newTasks[stage.id]?.description || ''}
                     onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
-                  ></textarea>
+                  />
                 </div>
                 <div className="form-row-tasks">
                   <div className="form-group-tasks">
-                    <label htmlFor={`task-responsible-${stage.id}`}>المسؤول:</label>
-                    <input 
-                      type="text" 
-                      id={`task-responsible-${stage.id}`} 
-                      placeholder="أدخل اسم المسؤول"
-                      value={newTasks[stage.id]?.responsible || ''}
-                      onChange={(e) => handleNewTaskChange(stage.id, 'responsible', e.target.value)}
-                    />
+                    <label htmlFor={`task-resp-${stage.id}`}>المسؤول:</label>
+                    <select
+                      id={`task-resp-${stage.id}`}
+                      value={newTasks[stage.id]?.responsibleId || ''}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'responsibleId', e.target.value)}
+                      className="student-select"
+                      required
+                    >
+                      <option value="">اختر طالب من المجموعة</option>
+                      {groupStudents.map(student => (
+                        <option key={student.name} value={student.studentId}>
+                          {student.user?.name || ` ${student.name}`}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                   <div className="form-group-tasks">
-                    <label htmlFor={`task-deadline-${stage.id}`}>موعد التسليم:</label>
+                    <label htmlFor={`task-due-${stage.id}`}>موعد التسليم:</label>
                     <input 
                       type="date" 
-                      id={`task-deadline-${stage.id}`}
+                      id={`task-due-${stage.id}`}
                       value={newTasks[stage.id]?.deadline || ''}
                       onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
+                      required
                     />
                   </div>
                 </div>
@@ -559,6 +506,7 @@ const StudentProjectManagement = () => {
                     id={`task-priority-${stage.id}`}
                     value={newTasks[stage.id]?.priority || 'medium'}
                     onChange={(e) => handleNewTaskChange(stage.id, 'priority', e.target.value)}
+                    required
                   >
                     <option value="high">عالي</option>
                     <option value="medium">متوسط</option>
@@ -566,25 +514,15 @@ const StudentProjectManagement = () => {
                   </select>
                 </div>
                 <div 
-                  className="file-upload-area" 
-                  id={`upload-area-${stage.id}`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    e.currentTarget.classList.add('dragover');
-                  }}
-                  onDragLeave={(e) => {
-                    e.currentTarget.classList.remove('dragover');
-                  }}
+                  className="file-upload-area"
+                  id={`file-upload-area-${stage.id}`}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDragLeave={(e) => e.preventDefault()}
                   onDrop={(e) => {
                     e.preventDefault();
-                    e.currentTarget.classList.remove('dragover');
-                    const files = e.dataTransfer.files;
-                    if (files.length > 0) {
-                      handleNewTaskFileChange(stage.id, { target: { files } });
-                      const uploadText = e.currentTarget.querySelector('.file-upload-text');
-                      const names = Array.from(files).map(f => f.name).join(', ');
-                      uploadText.textContent = `تم اختيار: ${names}`;
-                    }
+                    handleNewTaskFileChange(stage.id, { target: { files: e.dataTransfer.files } });
+                    e.currentTarget.querySelector('.file-upload-text').textContent = 
+                      `تم اختيار: ${Array.from(e.dataTransfer.files).map(f => f.name).join(', ')}`;
                   }}
                 >
                   <div className="file-upload-text">
@@ -593,26 +531,26 @@ const StudentProjectManagement = () => {
                       'قم بسحب وإسقاط الملفات هنا أو'}
                   </div>
                   <button 
-                    className="file-upload-btn"
+                    type="button"
                     onClick={() => document.getElementById(`file-input-${stage.id}`).click()}
                   >
                     اختر ملفات
                   </button>
                   <input 
                     type="file" 
-                    className="file-input" 
-                    id={`file-input-${stage.id}`} 
+                    id={`file-input-${stage.id}`}
+                    className="file-input"
                     accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
                     multiple
                     onChange={(e) => {
                       handleNewTaskFileChange(stage.id, e);
-                      const uploadText = document.querySelector(`#upload-area-${stage.id} .file-upload-text`);
-                      const names = Array.from(e.target.files).map(f => f.name).join(', ');
-                      uploadText.textContent = `تم اختيار: ${names}`;
+                      document.querySelector(`#file-upload-area-${stage.id} .file-upload-text`).textContent = 
+                        `تم اختيار: ${Array.from(e.target.files).map(f => f.name).join(', ')}`;
                     }}
                   />
                 </div>
                 <button 
+                  type="button"
                   className="add-task-btn" 
                   onClick={() => addNewTask(stage.id)}
                 >
@@ -624,38 +562,62 @@ const StudentProjectManagement = () => {
         )}
       </div>
       
-      {/* Submission Modal */}
       <div className={`modal-overlay-tasks ${showModal ? 'show' : ''}`}>
         <div className="modal-content-tasks">
-          <div className="modal-header">
-            إعلام بإكمال المهمة
-          </div>
+          <div className="modal-header-spm">إعلام بإكمال المهمة</div>
           <div className="modal-body">
             <div className="form-group-tasks">
               <label htmlFor="submissionNotes">ملاحظات حول الإنجاز:</label>
               <textarea 
-                id="submissionNotes" 
+                id="submissionNotes"
                 placeholder="أدخل ملاحظاتك عن إنجاز المهمة (اختياري)"
                 value={submissionNotes}
                 onChange={(e) => setSubmissionNotes(e.target.value)}
-              ></textarea>
+              />
             </div>
+
+            <div className="form-group-tasks">
+              <label htmlFor="githubRepo">مستودع GitHub:</label>
+              <input 
+                type="text" 
+                id="githubRepo"
+                placeholder="اسم المستودع (مثال: username/repo-name)"
+                value={githubRepo}
+                onChange={(e) => setGithubRepo(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group-tasks">
+              <label htmlFor="githubCommitUrl">رابط Commit:</label>
+              <input 
+                type="url" 
+                id="githubCommitUrl"
+                placeholder="https://github.com/username/repo/commit/abc123"
+                value={githubCommitUrl}
+                onChange={(e) => setGithubCommitUrl(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group-tasks">
+              <label htmlFor="commitDescription">وصف التغييرات:</label>
+              <textarea 
+                id="commitDescription"
+                placeholder="أدخل وصفاً للتغييرات التي قمت بها"
+                value={commitDescription}
+                onChange={(e) => setCommitDescription(e.target.value)}
+                required
+              />
+            </div>
+
             <div 
               className="file-upload-area"
-              onDragOver={(e) => {
-                e.preventDefault();
-                e.currentTarget.classList.add('dragover');
-              }}
-              onDragLeave={(e) => {
-                e.currentTarget.classList.remove('dragover');
-              }}
+              onDragOver={(e) => e.preventDefault()}
+              onDragLeave={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
-                e.currentTarget.classList.remove('dragover');
-                const files = e.dataTransfer.files;
-                if (files.length > 0) {
-                  setSubmissionFiles(files);
-                }
+                setSubmissionFiles(Array.from(e.dataTransfer.files));
               }}
             >
               <div className="file-upload-text">
@@ -664,16 +626,16 @@ const StudentProjectManagement = () => {
                   'يمكنك إرفاق ملفات إضافية للإنجاز (اختياري)'}
               </div>
               <button 
-                className="file-upload-btn"
+                type="button"
                 onClick={() => document.getElementById('submissionFiles').click()}
               >
                 اختر ملفات
               </button>
               <input 
                 type="file" 
-                className="file-input" 
-                id="submissionFiles" 
-                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar" 
+                id="submissionFiles"
+                className="file-input"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
                 multiple
                 onChange={handleSubmissionFileChange}
               />
@@ -688,19 +650,25 @@ const StudentProjectManagement = () => {
           </div>
           <div className="modal-footer">
             <button 
+              type="button"
               className="modal-btn secondary" 
               onClick={() => {
                 setShowModal(false);
                 setCurrentSubmissionTask(null);
                 setSubmissionNotes('');
                 setSubmissionFiles([]);
+                setGithubRepo('');
+                setGithubCommitUrl('');
+                setCommitDescription('');
               }}
             >
               إلغاء
             </button>
             <button 
+              type="button"
               className="modal-btn primary" 
-              onClick={confirmSubmission}
+              onClick={submitTaskToAPI}
+              disabled={!githubRepo || !githubCommitUrl || !commitDescription}
             >
               تأكيد الإنجاز
             </button>
@@ -711,4 +679,4 @@ const StudentProjectManagement = () => {
   );
 };
 
-export default StudentProjectManagement;  
+export default StudentProjectManagement;

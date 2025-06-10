@@ -36,4 +36,16 @@ class Task extends Model
     {
         return $this->hasMany(TaskSubmission::class);
     }
+
+    // دالة جديدة للتحقق من وجود تسليم
+    public function hasSubmission()
+    {
+        return $this->submissions()->exists();
+    }
+
+    // دالة جديدة للحصول على آخر تسليم
+    public function latestSubmission()
+    {
+        return $this->submissions()->latest()->first();
+    }
 }

@@ -1,0 +1,157 @@
+/* Sidebar.css */
+.sidebar {
+    width: 250px;
+    background-color: #791770;
+    color: white;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.3s ease;
+}
+
+.sidebar-collapsed {
+    width: 80px;
+}
+
+.sidebar-collapsed .sidebar-text {
+    display: none;
+}
+
+/* Logo Section */
+.sidebar-logo {
+    padding: 1rem;
+    border-bottom: 1px solid #5c1157;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.sidebar-logo-icon {
+    font-size: 1.5rem;
+    color: #d0a1cc;
+}
+
+.sidebar-logo-text {
+    font-size: 1.25rem;
+    font-weight: bold;
+    margin-right: 0.5rem;
+}
+
+.sidebar-toggle {
+    color: #d0a1cc;
+    background: none;
+    border: none;
+    cursor: pointer;
+}
+
+.sidebar-toggle:hover {
+    color: white;
+}
+
+/* User Profile */
+.sidebar-profile {
+    padding: 1rem;
+    border-bottom: 1px solid #5c1157;
+    display: flex;
+    align-items: center;
+}
+
+.profile-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+}
+
+.profile-info {
+    margin-right: 0.75rem;
+}
+
+.profile-name-dashboard {
+    font-weight: 500;
+}
+
+.profile-role {
+    font-size: 0.75rem;
+    color: #d0a1cc;
+}
+
+/* Navigation */
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    color: #d0a1cc;
+    text-decoration: none;
+    margin-bottom: 0.25rem;
+}
+
+.nav-link:hover {
+    color: white;
+    background-color: #5c1157;
+}
+
+.nav-link.active {
+    color: white;
+    background-color: #5c1157;
+}
+
+.nav-icon {
+    font-size: 1rem;
+}
+
+.nav-text {
+    margin-right: 0.75rem;
+}
+
+.nav-badge {
+    font-size: 0.75rem;
+    background-color: #eab307;
+    color: white;
+    border-radius: 9999px;
+    padding: 0.125rem 0.5rem;
+    margin-right: auto;
+}
+
+.nav-badge.alert {
+    background-color: #eab307;
+}
+
+/* Settings Section */
+.sidebar-settings {
+    padding: 0.5rem;
+    border-top: 1px solid #5c1157;
+    margin-top: auto;
+}
+
+/* Responsive */
+@media (max-width: 767px) {
+    .sidebar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 30;
+        width: 250px;
+        transform: translateX(100%);
+        transition: transform 0.3s ease;
+    }
+    
+    .sidebar-open {
+        transform: translateX(0);
+    }
+}

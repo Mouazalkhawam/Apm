@@ -96,15 +96,15 @@ class TaskController extends Controller
         return response()->json($task, 201);
     }
         // عرض مهام مرحلة معينة
-    public function getStageTasks($stage_id)
-    {
-        $tasks = Task::with(['assignee.user', 'assigner'])
-        ->where('project_stage_id', $stage_id)
-        ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')") // ترتيب حسب الأولوية
-        ->get();
-
-        return response()->json($tasks);
-    }
+        public function getStageTasks($stage_id)
+        {
+            $tasks = Task::with(['assignee.user', 'assigner', 'submissions'])
+                ->where('project_stage_id', $stage_id)
+                ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+                ->get();
+        
+            return response()->json($tasks);
+        }
 
     // تحديث حالة المهمة
     public function updateStatus(Request $request, $task_id)
@@ -130,6 +130,9 @@ class TaskController extends Controller
     }
 
     // تقديم حل للمهمة
+    // ... (بقية الدوال كما هي)
+
+// تقديم حل للمهمة مع إمكانية رفع ملف
     public function submitTask(Request $request, $task_id)
     {
         $task = Task::findOrFail($task_id);
@@ -141,21 +144,50 @@ class TaskController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'submission_content' => 'required|string'
+            'content' => 'required|string',
+            'github_repo' => 'required|string',
+            'github_commit_url' => 'required|url',
+            'commit_description' => 'required|string|max:500',
+            'attachment' => 'nullable|file|max:10240' // 10MB كحد أقصى
         ]);
 
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
 
-        $submission = TaskSubmission::create([
+        $data = [
             'task_id' => $task_id,
             'studentId' => $user->student->studentId,
-            'content' => $request->submission_content
-        ]);
+            'content' => $request->content,
+            'github_repo' => $request->github_repo,
+            'github_commit_url' => $request->github_commit_url,
+            'commit_description' => $request->commit_description
+        ];
 
-        return response()->json($submission, 201);
+        // معالجة المرفق إذا وجد
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('task_attachments', $fileName, 'public');
+
+            $data['attachment_path'] = $filePath;
+            $data['attachment_name'] = $file->getClientOriginalName();
+            $data['attachment_size'] = $file->getSize();
+        }
+
+        $submission = TaskSubmission::create($data);
+
+        // تحديث حالة المهمة تلقائياً إلى "مكتملة"
+        $task->update(['status' => 'completed']);
+
+        return response()->json([
+            'success' => true,
+            'data' => $submission,
+            'message' => 'تم تسليم المهمة بنجاح'
+        ], 201);
     }
+
+// ... (بقية الدوال كما هي)
 
     // تقييم المهمة (للمشرف)
     public function gradeTask(Request $request, $submission_id)
@@ -217,7 +249,6 @@ class TaskController extends Controller
     {
         $user = Auth::user();
         
-        // إذا كان المستخدم طالباً
         if ($user->student) {
             $tasks = Task::with(['stage.project', 'assignee.user', 'assigner', 'submissions'])
                 ->where('assigned_to', $user->student->studentId)
@@ -230,10 +261,8 @@ class TaskController extends Controller
             ]);
         }
         
-        // إذا كان المستخدم مشرفاً
         if ($user->supervisor) {
-            // الحصول على المشاريع التي يشرف عليها
-            $projects = $user->supervisor->groups()->with('project.stages.tasks')->get();
+            $projects = $user->supervisor->groups()->with('project.stages.tasks.submissions')->get();
             
             $tasks = collect();
             foreach ($projects as $project) {
@@ -253,7 +282,6 @@ class TaskController extends Controller
             'message' => 'User is not a student or supervisor'
         ], 400);
     }
-
     /**
  * الحصول على مهام الطالب لمشروع معين
  */
@@ -282,5 +310,27 @@ class TaskController extends Controller
             'success' => true,
             'data' => $tasks
         ]);
+    }
+
+    public function downloadAttachment($submission_id)
+    {
+        $submission = TaskSubmission::findOrFail($submission_id);
+        $user = Auth::user();
+
+        // التحقق من الصلاحيات (المشرف أو صاحب التسليم)
+        $isOwner = $user->student && $user->student->studentId == $submission->studentId;
+        $isSupervisor = $user->isSupervisor();
+
+        if (!$isOwner && !$isSupervisor) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if (!$submission->hasAttachment()) {
+            return response()->json(['message' => 'No attachment found'], 404);
+        }
+
+        $path = storage_path('app/public/' . $submission->attachment_path);
+        
+        return response()->download($path, $submission->attachment_name);
     }
 }

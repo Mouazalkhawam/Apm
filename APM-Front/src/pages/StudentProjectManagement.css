@@ -570,10 +570,11 @@
             max-width: 500px;
             border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            overflow: hidden;
             transform: translateY(-20px);
             opacity: 0;
             transition: all 0.3s ease;
+            max-height: 500px;
+            overflow: scroll;
         }
         
         .modal-overlay-tasks.show .modal-content-tasks {
@@ -581,7 +582,7 @@
             opacity: 1;
         }
         
-        .modal-header {
+        .modal-header-spm {
             background-color: #791770;
             color: white;
             padding: 20px;

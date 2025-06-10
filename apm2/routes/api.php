@@ -59,6 +59,7 @@ Route::middleware('auth:api')->group(function () {
     Route::patch('/tasks/{task}/status', [TaskController::class, 'updateStatus']);
     Route::post('/tasks/{task}/submit', [TaskController::class, 'submitTask']);
     Route::patch('/submissions/{submission}/grade', [TaskController::class, 'gradeTask']);
+    Route::get('/tasks/submissions/{submission}/download', [TaskController::class, 'downloadAttachment']);
     Route::get('/tasks/stats', [TaskController::class, 'getStudentTaskStats']);
     Route::get('/user/tasks', [TaskController::class, 'getUserTasks']);
     Route::get('/student/projects/{projectId}/tasks', [TaskController::class, 'getStudentProjectTasks']);

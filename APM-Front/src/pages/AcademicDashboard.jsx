@@ -1,12 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
+import Sidebar from '../components/Sidebar/Sidebar';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
-  faGraduationCap, faChevronRight, faChevronLeft, faBars,
-  faTachometerAlt, faProjectDiagram, faUsers, faCalendarCheck,
-  faFileAlt, faComments, faCog, faSignOutAlt, faSearch,
-  faBell, faEnvelope, faEllipsisV, faLaptopCode, faMobileAlt,
-  faChartLine, faRobot, faArrowUp, faExclamationCircle, faCommentAlt,
-  faTasks, faChevronDown
+  faBars, faSearch, faBell, faEnvelope, 
+  faEllipsisV, faLaptopCode, faMobileAlt,
+  faChartLine, faRobot, faArrowUp, 
+  faExclamationCircle, faCommentAlt,
+  faTasks, faChevronDown, faTachometerAlt,
+  faProjectDiagram, faUsers, faCalendarCheck,
+  faFileAlt, faComments
 } from '@fortawesome/free-solid-svg-icons';
 import Chart from 'chart.js/auto';
 import './AcademicDashboard.css';
@@ -82,7 +84,6 @@ const AcademicDashboard = () => {
   }, []);
 
   const toggleSidebar = () => {
-    sidebarRef.current.classList.toggle('sidebar-collapsed');
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
@@ -98,73 +99,25 @@ const AcademicDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar */}
-      <div className={`sidebar ${sidebarCollapsed ? 'sidebar-collapsed' : ''}`} ref={sidebarRef}>
-        {/* Logo */}
-        <div className="sidebar-logo">
-          <div className="logo-container">
-            <FontAwesomeIcon icon={faGraduationCap} className="sidebar-logo-icon" />
-            <span className="sidebar-text sidebar-logo-text">أكاديمية المشاريع</span>
-          </div>
-          <button id="toggleSidebar" className="sidebar-toggle" onClick={toggleSidebar}>
-            <FontAwesomeIcon icon={sidebarCollapsed ? faChevronLeft : faChevronRight} />
-          </button>
-        </div>
-        
-        {/* User Profile */}
-        <div className="sidebar-profile">
-          <img src="https://randomuser.me/api/portraits/women/44.jpg" alt="User" className="profile-image" />
-          <div className="profile-info">
-            <div className="sidebar-text profile-name-dashboard">د.عفاف</div>
-            <div className="sidebar-text profile-role">منسق المشاريع</div>
-          </div>
-        </div>
-        
-        {/* Navigation */}
-        <nav className="sidebar-nav">
-          <div>
-            <a href="#" className="nav-link active">
-              <FontAwesomeIcon icon={faTachometerAlt} className="nav-icon" />
-              <span className="sidebar-text nav-text">اللوحة الرئيسية</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faProjectDiagram} className="nav-icon" />
-              <span className="sidebar-text nav-text">المشاريع</span>
-              <span className="nav-badge sidebar-text">12</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faUsers} className="nav-icon" />
-              <span className="sidebar-text nav-text">الطلاب</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faCalendarCheck} className="nav-icon" />
-              <span className="sidebar-text nav-text">المهام</span>
-              <span className="nav-badge alert sidebar-text">5</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faFileAlt} className="nav-icon" />
-              <span className="sidebar-text nav-text">التقارير</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faComments} className="nav-icon" />
-              <span className="sidebar-text nav-text">المناقشات</span>
-              <span className="nav-badge sidebar-text">3</span>
-            </a>
-          </div>
-          
-          {/* Settings */}
-          <div className="sidebar-settings">
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faCog} className="nav-icon" />
-              <span className="sidebar-text nav-text">الإعدادات</span>
-            </a>
-            <a href="#" className="nav-link">
-              <FontAwesomeIcon icon={faSignOutAlt} className="nav-icon" />
-              <span className="sidebar-text nav-text">تسجيل الخروج</span>
-            </a>
-          </div>
-        </nav>
-      </div>
+      {/* Sidebar Component */}
+      <Sidebar 
+        ref={sidebarRef}
+        user={{
+          name: "د.عفاف",
+          role: "منسق المشاريع",
+          image: "https://randomuser.me/api/portraits/women/44.jpg"
+        }}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+        navItems={[
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true },
+          { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
+          { icon: faUsers, text: "الطلاب" },
+          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true },
+          { icon: faFileAlt, text: "التقارير" },
+          { icon: faComments, text: "المناقشات", badge: 3 }
+        ]}
+      />
       
       {/* Mobile Sidebar Toggle */}
       <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
