@@ -101,7 +101,7 @@
     margin-bottom: 30px;
 }
 
-.date-card {
+.date-card-meeting {
     background-color: white;
     border-radius: 8px;
     padding: 20px;
@@ -114,26 +114,26 @@
     position: relative;
 }
 
-.date-card:hover {
+.date-card-meeting:hover {
     transform: translateY(-3px);
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
-.date-card.selected {
+.date-card-meeting.selected {
     background-color: #791770;
     color: white;
     box-shadow: 0 5px 15px rgba(121, 23, 112, 0.3);
     transform: translateY(-3px);
 }
 
-.date-card.unavailable {
+.date-card-meeting.unavailable {
     background-color: #f0f0f0;
     color: #999;
     cursor: not-allowed;
     position: relative;
 }
 
-.date-card.unavailable::after {
+.date-card-meeting.unavailable::after {
     content: "غير متاح";
     position: absolute;
     background-color: rgba(0, 0, 0, 0.7);
@@ -145,13 +145,13 @@
     right: 5px;
 }
 
-.date-card.completed {
+.date-card-meeting.completed {
     background-color: #f0f8f0;
     border: 1px solid #d0e8d0;
     text-align: right;
 }
 
-.date-card.completed::before {
+.date-card-meeting.completed::before {
     content: "تم";
     position: absolute;
     top: 10px;
@@ -170,7 +170,7 @@
     margin-bottom: 5px;
 }
 
-.date-card.selected .date-day {
+.date-card-meeting.selected .date-day {
     color: white;
 }
 
@@ -184,7 +184,7 @@
     color: #666;
 }
 
-.date-card.selected .date-time {
+.date-card-meeting.selected .date-time {
     color: rgba(255, 255, 255, 0.8);
 }
 
@@ -281,7 +281,7 @@
 }
 
 /* التبويبات */
-.tabs {
+.tabs-meeting {
     display: flex;
     border-bottom: 1px solid #ddd;
     margin-bottom: 20px;
