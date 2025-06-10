@@ -57,17 +57,42 @@ const StudentProjectManagement = () => {
         );
 
         if (stagesResponse.data && stagesResponse.data.data) {
-          const stages = stagesResponse.data.data.map(stage => ({
-            id: stage.id,
-            name: stage.title,
-            deadline: stage.due_date,
-            description: stage.description,
-            tasks: []
-          }));
+          // Fetch tasks for each stage
+          const stagesWithTasks = await Promise.all(
+            stagesResponse.data.data.map(async (stage) => {
+              const tasksResponse = await axios.get(
+                `http://127.0.0.1:8000/api/stages/${stage.id}/tasks`,
+                {
+                  headers: {
+                    'Authorization': `Bearer ${token}`
+                  }
+                }
+              );
+
+              const tasks = tasksResponse.data.map(task => ({
+                id: task.id,
+                title: task.title,
+                description: task.description,
+                responsible: task.assignee?.user?.name || 'غير محدد',
+                deadline: task.due_date,
+                status: task.status,
+                priority: task.priority,
+                attachments: [] // You can modify this if you have attachments in your API
+              }));
+
+              return {
+                id: stage.id,
+                name: stage.title,
+                deadline: stage.due_date,
+                description: stage.description,
+                tasks: tasks
+              };
+            })
+          );
 
           setProjectData(prev => ({
             ...prev,
-            stages: stages
+            stages: stagesWithTasks
           }));
         }
       } catch (err) {
@@ -126,107 +151,127 @@ const StudentProjectManagement = () => {
   };
 
   // Add new task to a stage
-  const addNewTask = (stageId) => {
-    const stage = projectData.stages.find(s => s.id === stageId);
-    const newTaskData = newTasks[stageId];
+  const addNewTask = async (stageId) => {
+    try {
+      const groupId = localStorage.getItem('selectedGroupId');
+      const token = localStorage.getItem('access_token');
+      const newTaskData = newTasks[stageId];
 
-    if (!newTaskData || !newTaskData.title || !newTaskData.responsible) {
-      alert('الرجاء إدخال عنوان المهمة واسم المسؤول');
-      return;
-    }
-
-    const newTaskId = stage.tasks.length > 0 ? 
-      Math.max(...stage.tasks.map(t => t.id)) + 1 : 
-      stageId * 100 + 1;
-
-    const newTask = {
-      id: newTaskId,
-      title: newTaskData.title,
-      description: newTaskData.description || '',
-      responsible: newTaskData.responsible,
-      deadline: newTaskData.deadline || null,
-      attachments: []
-    };
-
-    // Add file attachments if any
-    if (newTaskData.files && newTaskData.files.length > 0) {
-      newTaskData.files.forEach(file => {
-        const isImage = file.type.startsWith('image/');
-        const isLink = file.name.startsWith('http') || file.name.startsWith('www');
-        
-        newTask.attachments.push({
-          type: isImage ? 'image' : (isLink ? 'link' : 'file'),
-          name: isLink ? 'رابط خارجي' : file.name,
-          url: isLink ? file.name : URL.createObjectURL(file)
-        });
-      });
-    }
-
-    // Update project data
-    const updatedStages = projectData.stages.map(s => {
-      if (s.id === stageId) {
-        return {
-          ...s,
-          tasks: [...s.tasks, newTask]
-        };
+      if (!newTaskData || !newTaskData.title || !newTaskData.responsible) {
+        alert('الرجاء إدخال عنوان المهمة واسم المسؤول');
+        return;
       }
-      return s;
-    });
 
-    setProjectData({
-      ...projectData,
-      stages: updatedStages
-    });
+      // In a real implementation, you would need to find the student ID from the responsible name
+      // For now, we'll just send the data we have
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/stages/${stageId}/tasks`,
+        {
+          title: newTaskData.title,
+          description: newTaskData.description,
+          assigned_to: 1, // You'll need to replace this with actual student ID
+          priority: newTaskData.priority || 'medium',
+          due_date: newTaskData.deadline
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
 
-    // Reset form
-    setNewTasks(prev => ({
-      ...prev,
-      [stageId]: {}
-    }));
-    setShowForms(prev => ({
-      ...prev,
-      [stageId]: false
-    }));
+      if (response.data) {
+        // Update local state with the new task
+        const updatedStages = projectData.stages.map(s => {
+          if (s.id === stageId) {
+            return {
+              ...s,
+              tasks: [
+                ...s.tasks,
+                {
+                  id: response.data.id,
+                  title: response.data.title,
+                  description: response.data.description,
+                  responsible: newTaskData.responsible,
+                  deadline: response.data.due_date,
+                  status: 'pending',
+                  priority: response.data.priority,
+                  attachments: []
+                }
+              ]
+            };
+          }
+          return s;
+        });
+
+        setProjectData({
+          ...projectData,
+          stages: updatedStages
+        });
+
+        // Reset form
+        setNewTasks(prev => ({
+          ...prev,
+          [stageId]: {}
+        }));
+        setShowForms(prev => ({
+          ...prev,
+          [stageId]: false
+        }));
+
+        alert('تم إضافة المهمة بنجاح');
+      }
+    } catch (error) {
+      console.error('Error adding task:', error);
+      alert('حدث خطأ أثناء إضافة المهمة');
+    }
   };
 
   // Submit task completion
-  const confirmSubmission = () => {
-    if (!currentSubmissionTask) return;
+  const confirmSubmission = async () => {
+    try {
+      if (!currentSubmissionTask) return;
 
-    const taskId = currentSubmissionTask;
-    const updatedStages = projectData.stages.map(stage => {
-      const updatedTasks = stage.tasks.map(task => {
-        if (task.id === taskId) {
-          const updatedTask = { ...task, completed: true };
-          if (submissionNotes) {
-            updatedTask.submissionNotes = submissionNotes;
+      const token = localStorage.getItem('access_token');
+      
+      // In a real implementation, you would call an API to update task status
+      // For now, we'll just update the local state
+      const updatedStages = projectData.stages.map(stage => {
+        const updatedTasks = stage.tasks.map(task => {
+          if (task.id === currentSubmissionTask) {
+            const updatedTask = { ...task, status: 'completed' };
+            if (submissionNotes) {
+              updatedTask.submissionNotes = submissionNotes;
+            }
+            if (submissionFiles.length > 0) {
+              updatedTask.submissionFiles = submissionFiles.map(file => ({
+                name: file.name,
+                url: URL.createObjectURL(file)
+              }));
+            }
+            return updatedTask;
           }
-          if (submissionFiles.length > 0) {
-            updatedTask.submissionFiles = submissionFiles.map(file => ({
-              name: file.name,
-              url: URL.createObjectURL(file)
-            }));
-          }
-          return updatedTask;
-        }
-        return task;
+          return task;
+        });
+        return { ...stage, tasks: updatedTasks };
       });
-      return { ...stage, tasks: updatedTasks };
-    });
 
-    setProjectData({
-      ...projectData,
-      stages: updatedStages
-    });
+      setProjectData({
+        ...projectData,
+        stages: updatedStages
+      });
 
-    // Reset modal
-    setShowModal(false);
-    setCurrentSubmissionTask(null);
-    setSubmissionNotes('');
-    setSubmissionFiles([]);
+      // Reset modal
+      setShowModal(false);
+      setCurrentSubmissionTask(null);
+      setSubmissionNotes('');
+      setSubmissionFiles([]);
 
-    // Show success message
-    alert('تم تسليم المهمة بنجاح وإعلام الفريق بإكمالها');
+      alert('تم تسليم المهمة بنجاح');
+    } catch (error) {
+      console.error('Error submitting task:', error);
+      alert('حدث خطأ أثناء تسليم المهمة');
+    }
   };
 
   // Render attachments with preview for images
@@ -287,6 +332,34 @@ const StudentProjectManagement = () => {
     return date.toLocaleDateString('ar-EG');
   };
 
+  // Render priority badge
+  const renderPriorityBadge = (priority) => {
+    switch (priority) {
+      case 'high':
+        return <span className="priority-badge high-spm">عالي</span>;
+      case 'medium':
+        return <span className="priority-badge medium-spm">متوسط</span>;
+      case 'low':
+        return <span className="priority-badge low-spm">منخفض</span>;
+      default:
+        return <span className="priority-badge">غير محدد</span>;
+    }
+  };
+
+  // Render status badge
+  const renderStatusBadge = (status) => {
+    switch (status) {
+      case 'completed':
+        return <span className="status-badge completed">مكتمل</span>;
+      case 'in_progress':
+        return <span className="status-badge in-progress">قيد التنفيذ</span>;
+      case 'pending':
+        return <span className="status-badge pending">قيد الانتظار</span>;
+      default:
+        return <span className="status-badge">غير محدد</span>;
+    }
+  };
+
   if (loading) {
     return (
       <div className="container-tasks">
@@ -341,12 +414,18 @@ const StudentProjectManagement = () => {
                   </div>
                 ) : (
                   stage.tasks.map(task => (
-                    <div key={task.id} className="task-management">
-                      <div className="task-title-management">{task.title}</div>
+                    <div key={task.id} className={`task-management ${task.status}`}>
+                      <div className="task-header">
+                        <div className="task-title-management">{task.title}</div>
+                        <div className="task-meta">
+                          {renderPriorityBadge(task.priority)}
+                          {renderStatusBadge(task.status)}
+                        </div>
+                      </div>
                       {task.description && <div className="task-description-management">{task.description}</div>}
                       <div className="task-meta">
-                        <div className="task-responsible">{task.responsible}</div>
-                        <div className="task-deadline">{formatDate(task.deadline)}</div>
+                        <div className="task-responsible">المسؤول: {task.responsible}</div>
+                        <div className="task-deadline">الموعد النهائي: {formatDate(task.deadline)}</div>
                       </div>
                       {renderAttachments(task.attachments)}
                       <div className="task-actions">
@@ -405,16 +484,18 @@ const StudentProjectManagement = () => {
                           <span className="action-icon">📎</span>
                           <span>إضافة مرفق</span>
                         </button>
-                        <button 
-                          className="action-btn-management primary" 
-                          onClick={() => {
-                            setCurrentSubmissionTask(task.id);
-                            setShowModal(true);
-                          }}
-                        >
-                          <span className="action-icon">✅</span>
-                          <span>إعلام بالإنجاز</span>
-                        </button>
+                        {task.status !== 'completed' && (
+                          <button 
+                            className="action-btn-management primary supmit-spm" 
+                            onClick={() => {
+                              setCurrentSubmissionTask(task.id);
+                              setShowModal(true);
+                            }}
+                          >
+                            <span className="action-icon">✅</span>
+                            <span>إعلام بالإنجاز</span>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))
@@ -471,6 +552,18 @@ const StudentProjectManagement = () => {
                       onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
                     />
                   </div>
+                </div>
+                <div className="form-group-tasks">
+                  <label htmlFor={`task-priority-${stage.id}`}>الأولوية:</label>
+                  <select 
+                    id={`task-priority-${stage.id}`}
+                    value={newTasks[stage.id]?.priority || 'medium'}
+                    onChange={(e) => handleNewTaskChange(stage.id, 'priority', e.target.value)}
+                  >
+                    <option value="high">عالي</option>
+                    <option value="medium">متوسط</option>
+                    <option value="low">منخفض</option>
+                  </select>
                 </div>
                 <div 
                   className="file-upload-area" 
@@ -618,4 +711,4 @@ const StudentProjectManagement = () => {
   );
 };
 
-export default StudentProjectManagement;
+export default StudentProjectManagement;  
