@@ -38,6 +38,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index']); 
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
+    Route::get('/schedules/group/{group_id}', [DiscussionScheduleController::class, 'getByGroup']);
     Route::post('/projects/create', [ProjectController::class, 'createProject']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
     Route::post('/projects/recommendations', [ProjectController::class, 'getRecommendations']);
