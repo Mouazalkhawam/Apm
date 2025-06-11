@@ -9,12 +9,14 @@ const SupervisorDashboard = () => {
   return (
      <div className="dashboard-container-dash">
         
-         <TopNav />
+       
+         <Sidebar />
          <div className="main-container">
-            <Sidebar />
+            
     <div className="supervisor-dashboard">
         
       <main className="main-content">
+      <TopNav />
         
         <h1 className="page-title">نظرة عامة</h1>
         
