@@ -130,6 +130,7 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'leaderIndex']);
         Route::post('/meetings/{meeting}/choose', [MeetingController::class, 'chooseTime']);
     });
+    Route::post('groups/{groupId}/meetings/{meetingId}/choose',[MeetingController::class, 'chooseTime']);
     Route::get('/supervisors/{supervisor}/available-times', 
         [MeetingController::class, 'getAvailableTimes']);
 

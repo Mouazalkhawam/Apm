@@ -9,12 +9,18 @@ class DiscussionSchedule extends Model
     use HasFactory;
 
     protected $table = 'schedules';
-
-
     protected $primaryKey = 'scheduledId';
-
     protected $fillable = [
-        'date',
+        'date', 
         'type',
+        'group_id',
+        'time',
+        'location',
+        'notes'
     ];
+
+    public function group()
+    {
+        return $this->belongsTo(Group::class, 'group_id', 'groupid');
+    }
 }
