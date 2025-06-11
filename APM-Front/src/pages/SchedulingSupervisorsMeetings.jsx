@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useRef } from 'react';
 import { 
   faPlus, 
   faArrowLeft, 
@@ -7,15 +8,29 @@ import {
   faEdit, 
   faTrash,
   faUsers,
-  faCalendarAlt 
+  faCalendarAlt,
+  faTachometerAlt,
+  faProjectDiagram,
+  faCalendarCheck,
+  faFileAlt,
+  faComments
 } from '@fortawesome/free-solid-svg-icons';
 import './SchedulingSupervisorsMeetings.css';
+import TopNav from "../components/TopNav/TopNav"; // تأكد من أن المسار صحيح
+import Sidebar from "../components/Sidebar/Sidebar"; // تأكد من المسار الصحيح
+
 
 const SchedulingSupervisorsMeetings = () => {
+  const [collapsed, setCollapsed] = useState(false);
+  const sidebarRef = useRef(null);
   const [timeInputs, setTimeInputs] = useState([{ start: '', end: '' }]);
   const [selectedGroup, setSelectedGroup] = useState('');
   const [meetingDate, setMeetingDate] = useState('');
   const [meetingTopic, setMeetingTopic] = useState('');
+  const toggleSidebar = () => {
+    setCollapsed(!collapsed);
+  };
+
   const [meetings, setMeetings] = useState([
     {
       id: 1,
@@ -163,6 +178,39 @@ const SchedulingSupervisorsMeetings = () => {
 
   return (
     <div className="scheduling-container">
+      <Sidebar 
+        ref={sidebarRef}
+        collapsed={collapsed}
+        onToggleCollapse={toggleSidebar}
+        user={{
+          name: "د.عفاف",
+          role: "مشرف أكاديمي",
+          image: "https://randomuser.me/api/portraits/women/44.jpg"
+        }}
+        navItems={[
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية" },
+          { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
+          { icon: faUsers, text: "الطلاب" },
+          { icon: faCalendarCheck, text: "الاجتماعات", badge: 5, active: true },
+          { icon: faFileAlt, text: "التقارير" },
+          { icon: faComments, text: "المناقشات", badge: 3 }
+        ]}
+      />
+      
+      {/* Top Navigation */}
+      <TopNav 
+        user={{
+          name: "د.عفاف",
+          image: "https://randomuser.me/api/portraits/women/44.jpg"
+        }}
+        notifications={{
+          bell: 3,
+          envelope: 7
+        }}
+        searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
+      />
+      
+        
       {/* Stats Cards */}
       <div className="stats-cards">
         <div className="card stat-card">
