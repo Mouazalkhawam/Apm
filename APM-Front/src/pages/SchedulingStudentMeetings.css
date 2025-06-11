@@ -283,8 +283,11 @@
 /* التبويبات */
 .tabs-meeting {
     display: flex;
-    border-bottom: 1px solid #ddd;
+   /* border-bottom: 1px solid #ddd;*/
     margin-bottom: 20px;
+}
+.instruction-text{
+    margin-bottom: 40px;
 }
 
 .tab {
@@ -294,6 +297,9 @@
     font-weight: 500;
     transition: all 0.3s;
     border-bottom: 3px solid transparent;
+    border: transparent;
+    border-radius: 50px;
+    background-color: transparent;
 }
 
 .tab.active {

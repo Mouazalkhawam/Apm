@@ -11,25 +11,14 @@ const SchedulingStudentMeetings = () => {
   // حالات المكون
   const [supervisors, setSupervisors] = useState([]);
   const [currentSupervisorId, setCurrentSupervisorId] = useState(null);
+  const [availableTimes, setAvailableTimes] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showAppointmentStatus, setShowAppointmentStatus] = useState(false);
   const [activeTab, setActiveTab] = useState('schedule');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // بيانات المواعيد (يمكن استبدالها بطلب API لاحقاً)
-  const mockAppointmentsData = {
-    1: {
-      availableDates: [
-        { id: 1, day: "الأحد", date: "19 نوفمبر 2023", time: "9:00 صباحاً - 10:00 صباحاً", dataDate: "2023-11-19", dataTime: "9:00 - 10:00", note: "آخر موعد متاح" },
-        { id: 2, day: "الاثنين", date: "20 نوفمبر 2023", time: "10:00 صباحاً - 11:00 صباحاً", dataDate: "2023-11-20", dataTime: "10:00 - 11:00", note: "" },
-      ],
-      previousAppointments: [
-        { day: "الثلاثاء", date: "7 نوفمبر 2023", time: "11:00 صباحاً - 12:00 ظهراً", purpose: "مناقشة المشروع النهائي", notes: "تم مناقشة المرحلة الأولى من المشروع" },
-      ]
-    }
-  };
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // جلب بيانات المشرفين من API
   useEffect(() => {
@@ -40,8 +29,7 @@ const SchedulingStudentMeetings = () => {
           {
             headers: {
               'Authorization': `Bearer ${accessToken}`,
-              'Accept': 'application/json',
-              'Content-Type': 'application/json'
+              'Accept': 'application/json'
             }
           }
         );
@@ -55,7 +43,6 @@ const SchedulingStudentMeetings = () => {
       } catch (err) {
         if (err.response && err.response.status === 401) {
           setError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
-          // يمكن إضافة redirect لصفحة تسجيل الدخول هنا
         } else {
           setError('حدث خطأ أثناء جلب بيانات المشرفين');
         }
@@ -76,6 +63,36 @@ const SchedulingStudentMeetings = () => {
     }
   }, [selectedGroupId, accessToken]);
 
+  // جلب المواعيد المتاحة للمشرف المحدد
+  useEffect(() => {
+    if (!currentSupervisorId) return;
+
+    const fetchAvailableTimes = async () => {
+      try {
+        const response = await axios.get(
+          `http://127.0.0.1:8000/api/supervisors/${currentSupervisorId}/available-times`,
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        if (response.data.success) {
+          setAvailableTimes(response.data.data.available_times || []);
+        } else {
+          setAvailableTimes([]);
+        }
+      } catch (err) {
+        console.error('Error fetching available times:', err);
+        setAvailableTimes([]);
+      }
+    };
+
+    fetchAvailableTimes();
+  }, [currentSupervisorId, accessToken]);
+
   // اختيار المشرف
   const handleSupervisorSelect = (supervisorId) => {
     setCurrentSupervisorId(supervisorId);
@@ -83,28 +100,55 @@ const SchedulingStudentMeetings = () => {
   };
 
   // اختيار الموعد
-  const handleDateSelect = (date) => {
-    if (!date.unavailable) {
-      setSelectedDate(date);
-    }
+  const handleDateSelect = (time) => {
+    setSelectedDate(time);
   };
 
   // تأكيد الحجز
-  const handleConfirmAppointment = () => {
-    setShowConfirmation(false);
-    setShowAppointmentStatus(true);
+  const handleConfirmAppointment = async () => {
+    if (!selectedDate || !currentSupervisorId) return;
+
+    setIsSubmitting(true);
+    try {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/meetings`,
+        {
+          supervisor_id: currentSupervisorId,
+          meeting_time: selectedDate.meeting_time,
+          group_id: selectedGroupId
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        setShowConfirmation(false);
+        setShowAppointmentStatus(true);
+      } else {
+        alert('حدث خطأ أثناء حجز الموعد: ' + (response.data.message || ''));
+      }
+    } catch (err) {
+      console.error('Error confirming appointment:', err);
+      alert('حدث خطأ أثناء حجز الموعد');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // إلغاء الحجز
   const handleCancelAppointment = () => {
     setShowConfirmation(false);
+    setSelectedDate(null);
   };
 
   // إتمام العملية
   const handleDone = () => {
     setShowAppointmentStatus(false);
     setSelectedDate(null);
-    alert('تم حجز الموعد بنجاح. سيتم إرسال تأكيد إلى بريدك الإلكتروني.');
   };
 
   // تغيير التبويب
@@ -112,39 +156,51 @@ const SchedulingStudentMeetings = () => {
     setActiveTab(tab);
   };
 
-  // عرض المواعيد المتاحة
-  const renderAvailableDates = () => {
-    if (!currentSupervisorId || !mockAppointmentsData[currentSupervisorId]) return null;
-    
-    return mockAppointmentsData[currentSupervisorId].availableDates.map((date) => (
-      <div
-        key={date.id}
-        className={`date-card-meeting ${date.unavailable ? 'unavailable' : ''} ${selectedDate?.id === date.id ? 'selected' : ''}`}
-        onClick={() => handleDateSelect(date)}
-      >
-        <div className="date-day">{date.day}</div>
-        <div className="date-date">{date.date}</div>
-        <div className="date-time">{date.time}</div>
-        {date.note && <div className="date-note">{date.note}</div>}
-      </div>
-    ));
+  // تنسيق التاريخ والوقت
+  const formatDateTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const options = { 
+      weekday: 'long', 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    return date.toLocaleDateString('ar-EG', options);
   };
 
-  // عرض المواعيد السابقة
-  const renderPreviousAppointments = () => {
-    if (!currentSupervisorId || !mockAppointmentsData[currentSupervisorId]) return null;
-    
-    return mockAppointmentsData[currentSupervisorId].previousAppointments.map((appointment, index) => (
-      <div key={index} className="date-card-meeting completed">
-        <div className="date-day">{appointment.day}</div>
-        <div className="date-date">{appointment.date}</div>
-        <div className="date-time">{appointment.time}</div>
-        <div style={{ marginTop: '10px', width: '100%' }}>
-          <strong>الغرض:</strong> {appointment.purpose}<br />
-          <strong>ملاحظات:</strong> {appointment.notes}
+  // عرض المواعيد المتاحة
+  const renderAvailableDates = () => {
+    if (availableTimes.length === 0) {
+      return (
+        <div className="no-available-times">
+          <i className="fas fa-calendar-times"></i>
+          <p>لا توجد مواعيد متاحة حالياً لهذا المشرف</p>
         </div>
-      </div>
-    ));
+      );
+    }
+
+    return availableTimes.map((time) => {
+      const formattedDateTime = formatDateTime(time.meeting_time);
+      const [dayPart, datePart, timePart] = formattedDateTime.split('، ');
+      
+      return (
+        <div
+          key={time.id}
+          className={`date-card-meeting ${selectedDate?.id === time.id ? 'selected' : ''}`}
+          onClick={() => handleDateSelect(time)}
+        >
+          <div className="date-day">{dayPart}</div>
+          <div className="date-date">{datePart}</div>
+          <div className="date-time">{timePart}</div>
+          {time.status === 'tentative' && (
+            <div className="date-note">موعد مؤقت</div>
+          )}
+        </div>
+      );
+    });
   };
 
   if (loading) {
@@ -194,7 +250,6 @@ const SchedulingStudentMeetings = () => {
                   className={`supervisor-card-meeting ${supervisor.supervisorId === currentSupervisorId ? 'selected' : ''}`}
                   onClick={() => handleSupervisorSelect(supervisor.supervisorId)}
                 >
-                  
                   <div className="supervisor-details">
                     <h3>{supervisor.name}</h3>
                     <p><i className="fas fa-envelope"></i> {supervisor.email}</p>
@@ -236,32 +291,50 @@ const SchedulingStudentMeetings = () => {
                   <button
                     className="btn btn-primary"
                     onClick={() => setShowConfirmation(true)}
+                    disabled={isSubmitting}
                   >
-                    <i className="fas fa-check"></i> تأكيد الموعد المحدد
+                    {isSubmitting ? (
+                      <>
+                        <i className="fas fa-spinner fa-spin"></i> جاري الحجز...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fas fa-check"></i> تأكيد الموعد المحدد
+                      </>
+                    )}
                   </button>
                 </div>
               )}
 
-              {showConfirmation && (
+              {showConfirmation && selectedDate && (
                 <div className="confirmation-overlay">
                   <div className="confirmation-modal">
                     <h3>تأكيد حجز الموعد</h3>
                     <div className="selected-date-info">
-                      <p><strong>اليوم:</strong> {selectedDate.day}</p>
-                      <p><strong>التاريخ:</strong> {selectedDate.date}</p>
-                      <p><strong>الوقت:</strong> {selectedDate.time}</p>
+                      <p><strong>المشرف:</strong> {supervisors.find(s => s.supervisorId === currentSupervisorId)?.name}</p>
+                      <p><strong>التاريخ والوقت:</strong> {formatDateTime(selectedDate.meeting_time)}</p>
                     </div>
                     <p className="confirmation-question">هل أنت متأكد من حجز هذا الموعد؟</p>
                     <div className="modal-buttons">
                       <button 
                         className="btn btn-confirm"
                         onClick={handleConfirmAppointment}
+                        disabled={isSubmitting}
                       >
-                        <i className="fas fa-check"></i> تأكيد
+                        {isSubmitting ? (
+                          <>
+                            <i className="fas fa-spinner fa-spin"></i> جاري الحجز...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fas fa-check"></i> تأكيد
+                          </>
+                        )}
                       </button>
                       <button 
                         className="btn btn-cancel"
                         onClick={handleCancelAppointment}
+                        disabled={isSubmitting}
                       >
                         <i className="fas fa-times"></i> إلغاء
                       </button>
@@ -270,7 +343,7 @@ const SchedulingStudentMeetings = () => {
                 </div>
               )}
 
-              {showAppointmentStatus && (
+              {showAppointmentStatus && selectedDate && (
                 <div className="status-overlay">
                   <div className="status-modal">
                     <div className="status-icon success">
@@ -278,9 +351,9 @@ const SchedulingStudentMeetings = () => {
                     </div>
                     <h3>تم الحجز بنجاح</h3>
                     <p className="status-details">
-                      تم تأكيد موعدك مع المشرف في:<br />
-                      {selectedDate.day} الموافق {selectedDate.date}<br />
-                      من الساعة {selectedDate.time}
+                      تم تأكيد موعدك مع المشرف:<br />
+                      <strong>{supervisors.find(s => s.supervisorId === currentSupervisorId)?.name}</strong><br />
+                      في: {formatDateTime(selectedDate.meeting_time)}
                     </p>
                     <button 
                       className="btn btn-done"
@@ -298,9 +371,9 @@ const SchedulingStudentMeetings = () => {
               <p className="instruction-text">
                 قائمة بالمواعيد التي تمت مع مشرفيك الأكاديميين
               </p>
-
-              <div className="previous-appointments">
-                {renderPreviousAppointments()}
+              <div className="no-available-times">
+                <i className="fas fa-info-circle"></i>
+                <p>هذه الميزة قيد التطوير وسيتم تفعيلها قريباً</p>
               </div>
             </div>
           </div>

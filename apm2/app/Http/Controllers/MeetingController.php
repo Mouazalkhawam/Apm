@@ -74,8 +74,8 @@ class MeetingController extends Controller
                     'date_format:Y-m-d H:i:s',
                     'after:now +1 hour',
                     'before:now +30 days'
-                ],
-                'description' => 'nullable|string|max:500'
+                ]
+                // تم إزالة حقل description
             ]);
 
             if ($validator->fails()) {
@@ -116,9 +116,9 @@ class MeetingController extends Controller
                     'group_id' => $request->group_id,
                     'leader_id' => $leader->studentId,
                     'supervisor_id' => $supervisor->supervisorId,
-                    'description' => $request->description,
                     'meeting_time' => $time,
                     'status' => 'proposed'
+                    // تم إزالة حقل description
                 ]);
             }
 
@@ -229,53 +229,51 @@ class MeetingController extends Controller
     }
 
     // اختيار الموعد من القائد
-   // Update the chooseTime method in MeetingController
-
-   public function chooseTime(Student $leader, Meeting $meeting)
-   {
-       try {
-           $user = auth()->user();
-           $this->checkStudent($user);
-   
-           // التحقق من أن الطالب الحالي هو نفسه القائد الممرر في الرابط
-           if ($user->student->studentId !== $leader->studentId) {
-               abort(403, 'لا تملك صلاحية التصرف نيابة عن قائد آخر');
-           }
-   
-           // التحقق من أن القائد هو قائد المجموعة المرتبطة بالاجتماع
-           $isLeader = DB::table('group_student')
-               ->where('groupid', $meeting->group_id)
-               ->where('studentId', $leader->studentId)
-               ->where('is_leader', true)
-               ->exists();
-   
-           if (!$isLeader) {
-               abort(403, 'غير مصرح بهذا الإجراء');
-           }
-   
-           DB::transaction(function () use ($meeting) {
-               // إلغاء جميع الاجتماعات الأخرى للمجموعة
-               Meeting::where('group_id', $meeting->group_id)
-                   ->where('id', '!=', $meeting->id)
-                   ->update(['status' => 'canceled']);
-   
-               // تحديث الاجتماع الحالي إلى "مؤقت"
-               $meeting->update([
-                   'status' => 'tentative',
-                   'selected_by_leader_at' => now()
-               ]);
-           });
-   
-           return response()->json([
-               'success' => true,
-               'message' => 'تم اختيار الموعد بنجاح',
-               'data' => $meeting->fresh()
-           ]);
-   
-       } catch (\Exception $e) {
-           return $this->handleException($e);
-       }
-   }
+    public function chooseTime(Student $leader, Meeting $meeting)
+    {
+        try {
+            $user = auth()->user();
+            $this->checkStudent($user);
+    
+            // التحقق من أن الطالب الحالي هو نفسه القائد الممرر في الرابط
+            if ($user->student->studentId !== $leader->studentId) {
+                abort(403, 'لا تملك صلاحية التصرف نيابة عن قائد آخر');
+            }
+    
+            // التحقق من أن القائد هو قائد المجموعة المرتبطة بالاجتماع
+            $isLeader = DB::table('group_student')
+                ->where('groupid', $meeting->group_id)
+                ->where('studentId', $leader->studentId)
+                ->where('is_leader', true)
+                ->exists();
+    
+            if (!$isLeader) {
+                abort(403, 'غير مصرح بهذا الإجراء');
+            }
+    
+            DB::transaction(function () use ($meeting) {
+                // إلغاء جميع الاجتماعات الأخرى للمجموعة
+                Meeting::where('group_id', $meeting->group_id)
+                    ->where('id', '!=', $meeting->id)
+                    ->update(['status' => 'canceled']);
+    
+                // تحديث الاجتماع الحالي إلى "مؤقت"
+                $meeting->update([
+                    'status' => 'tentative',
+                    'selected_by_leader_at' => now()
+                ]);
+            });
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'تم اختيار الموعد بنجاح',
+                'data' => $meeting->fresh()
+            ]);
+    
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
+    }
 
     // معالجة الأخطاء
     private function handleException(\Exception $e)
@@ -289,5 +287,47 @@ class MeetingController extends Controller
             'message' => $e->getMessage(),
             'trace' => config('app.debug') ? $e->getTrace() : null
         ], $statusCode);
+    }
+    public function getAvailableTimes(Supervisor $supervisor)
+    {
+        try {
+            $user = auth()->user();
+            $this->checkStudent($user);
+
+            // التحقق من أن الطالب عضو في مجموعة مرتبطة بهذا المشرف
+            $isMember = DB::table('group_student')
+                ->join('group_supervisor', 'group_student.groupid', '=', 'group_supervisor.groupid')
+                ->where('group_supervisor.supervisorId', $supervisor->supervisorId)
+                ->where('group_supervisor.status', 'approved')
+                ->where('group_student.studentId', $user->student->studentId)
+                ->exists();
+
+            if (!$isMember) {
+                abort(403, 'غير مصرح لك برؤية مواعيد هذا المشرف');
+            }
+
+            // الحصول على المواعيد المتاحة (غير ملغاة)
+            $availableTimes = Meeting::where('supervisor_id', $supervisor->supervisorId)
+                ->whereIn('status', ['proposed', 'tentative'])
+                ->where('meeting_time', '>', now()->addHours(1)) // المواعيد بعد ساعة من الآن على الأقل
+                ->orderBy('meeting_time')
+                ->get(['id', 'meeting_time', 'status']);
+
+            return response()->json([
+                'success' => true,
+                'data' => [
+                    'supervisor' => [
+                        'id' => $supervisor->supervisorId,
+                        'name' => $supervisor->user->name,
+                        'email' => $supervisor->user->email
+                    ],
+                    'available_times' => $availableTimes,
+                    'working_hours' => $supervisor->working_hours // إذا كان لديك هذا الحقل في جدول المشرفين
+                ]
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->handleException($e);
+        }
     }
 }

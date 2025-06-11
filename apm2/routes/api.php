@@ -130,6 +130,8 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'leaderIndex']);
         Route::post('/meetings/{meeting}/choose', [MeetingController::class, 'chooseTime']);
     });
+    Route::get('/supervisors/{supervisor}/available-times', 
+        [MeetingController::class, 'getAvailableTimes']);
 
     Route::prefix('student/profile')->group(function () {
         Route::put('/update', [StudentProfileController::class, 'updateProfile']);
