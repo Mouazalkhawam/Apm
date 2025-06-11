@@ -230,51 +230,84 @@ class MeetingController extends Controller
 
     // اختيار الموعد من القائد
     public function chooseTime(Student $leader, Meeting $meeting)
-    {
-        try {
-            $user = auth()->user();
-            $this->checkStudent($user);
-    
-            // التحقق من أن الطالب الحالي هو نفسه القائد الممرر في الرابط
-            if ($user->student->studentId !== $leader->studentId) {
-                abort(403, 'لا تملك صلاحية التصرف نيابة عن قائد آخر');
+{
+    try {
+        $user = auth()->user();
+        $this->checkStudent($user);
+        
+        // التحقق من أن الطالب الحالي هو نفسه القائد الممرر في الرابط
+        if ($user->student->studentId != $leader->studentId) {
+            abort(403, 'لا تملك صلاحية التصرف نيابة عن قائد آخر');
+        }
+
+        // التحقق من أن الاجتماع يعود للمجموعة التي يقودها الطالب
+        $isValidMeeting = DB::table('group_student')
+            ->where('groupid', $meeting->group_id)
+            ->where('studentId', $leader->studentId)
+            ->where('is_leader', true)
+            ->exists();
+
+        if (!$isValidMeeting) {
+            abort(403, 'لا تملك صلاحية اختيار موعد لهذه المجموعة');
+        }
+
+
+            // التحقق من أن الطالب عضو في نفس مجموعة الاجتماع
+            $isGroupMember = DB::table('group_student')
+                ->where('groupid', $meeting->group_id)
+                ->where('studentId', $leader->studentId)
+                ->where('status', 'approved')
+                ->exists();
+
+            if (!$isGroupMember) {
+                abort(403, 'أنت لست عضوًا في هذه المجموعة');
             }
-    
+
+            // التحقق من أن المشرف معتمد للمجموعة
+            $isSupervisorApproved = DB::table('group_supervisor')
+                ->where('groupid', $meeting->group_id)
+                ->where('supervisorId', $meeting->supervisor_id)
+                ->where('status', 'approved')
+                ->exists();
+
+            if (!$isSupervisorApproved) {
+                abort(403, 'المشرف غير معتمد لهذه المجموعة');
+            }
+
             // التحقق من أن القائد هو قائد المجموعة المرتبطة بالاجتماع
             $isLeader = DB::table('group_student')
                 ->where('groupid', $meeting->group_id)
                 ->where('studentId', $leader->studentId)
                 ->where('is_leader', true)
                 ->exists();
-    
+
             if (!$isLeader) {
-                abort(403, 'غير مصرح بهذا الإجراء');
+                abort(403, 'غير مصرح بهذا الإجراء، يجب أن تكون قائد المجموعة');
             }
-    
+
             DB::transaction(function () use ($meeting) {
                 // إلغاء جميع الاجتماعات الأخرى للمجموعة
                 Meeting::where('group_id', $meeting->group_id)
                     ->where('id', '!=', $meeting->id)
                     ->update(['status' => 'canceled']);
-    
+
                 // تحديث الاجتماع الحالي إلى "مؤقت"
                 $meeting->update([
                     'status' => 'tentative',
                     'selected_by_leader_at' => now()
                 ]);
             });
-    
+
             return response()->json([
                 'success' => true,
                 'message' => 'تم اختيار الموعد بنجاح',
                 'data' => $meeting->fresh()
             ]);
-    
+
         } catch (\Exception $e) {
             return $this->handleException($e);
         }
     }
-
     // معالجة الأخطاء
     private function handleException(\Exception $e)
     {
