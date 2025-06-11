@@ -15,12 +15,12 @@ const TopNav = ({
   searchPlaceholder = "ابحث عن مشاريع، طلاب، مهام..."
 }) => {
   return (
-    <header className="top-nav">
-      <div className="top-nav-container">
+    <header className="top-nav-dash-super">
+      <div className="top-nav-container-dash-super">
         {/* Search */}
-        <div className="search-container">
-          <input type="text" placeholder={searchPlaceholder} className="search-input" />
-          <button className="search-button">
+        <div className="search-container-dash-super">
+          <input type="text" placeholder={searchPlaceholder} className="search-input-dash-super" />
+          <button className="search-button-dash">
             <FontAwesomeIcon icon={faSearch} />
           </button>
         </div>

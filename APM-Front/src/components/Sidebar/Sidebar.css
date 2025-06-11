@@ -1,5 +1,5 @@
 /* Sidebar.css */
-.sidebar {
+.sidebar-dash-super {
     width: 250px;
     background-color: #791770;
     color: white;
@@ -54,7 +54,7 @@
 }
 
 /* User Profile */
-.sidebar-profile {
+.sidebar-profile-dash {
     padding: 1rem;
     border-bottom: 1px solid #5c1157;
     display: flex;

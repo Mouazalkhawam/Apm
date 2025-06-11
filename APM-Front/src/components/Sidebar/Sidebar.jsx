@@ -26,7 +26,7 @@ const Sidebar = React.forwardRef(({
     logoText = "أكاديمية المشاريع"
   }, ref) => {
   return (
-    <div className={`sidebar ${collapsed ? 'sidebar-collapsed' : ''}`} ref={ref}>
+    <div className={`sidebar-dash-super ${collapsed ? 'sidebar-collapsed' : ''}`} ref={ref}>
       {/* Logo - Show only arrow when collapsed */}
       <div className="sidebar-logo">
         {!collapsed && (
@@ -42,7 +42,7 @@ const Sidebar = React.forwardRef(({
       
       {/* User Profile - Hide when collapsed */}
       {!collapsed && (
-        <div className="sidebar-profile">
+        <div className="sidebar-profile-dash">
           <img src={user.image} alt="User" className="profile-image" />
           <div className="profile-info">
             <div className="sidebar-text profile-name-dashboard">{user.name}</div>
