@@ -89,4 +89,9 @@ class User extends Authenticatable implements JWTSubject
         }
         return false;
     }
+    // في موديل User.php
+    public function isCoordinator()
+    {
+        return $this->role === 'coordinator';
+    }
 }
