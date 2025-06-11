@@ -177,25 +177,12 @@ const SchedulingSupervisorsMeetings = () => {
   };
 
   return (
+    <div className="dashboard-container-dash">
+        
+       
+         <Sidebar />
     <div className="scheduling-container">
-      <Sidebar 
-        ref={sidebarRef}
-        collapsed={collapsed}
-        onToggleCollapse={toggleSidebar}
-        user={{
-          name: "د.عفاف",
-          role: "مشرف أكاديمي",
-          image: "https://randomuser.me/api/portraits/women/44.jpg"
-        }}
-        navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-          { icon: faUsers, text: "الطلاب" },
-          { icon: faCalendarCheck, text: "الاجتماعات", badge: 5, active: true },
-          { icon: faFileAlt, text: "التقارير" },
-          { icon: faComments, text: "المناقشات", badge: 3 }
-        ]}
-      />
+      
       
       {/* Top Navigation */}
       <TopNav 
@@ -429,6 +416,7 @@ const SchedulingSupervisorsMeetings = () => {
           </div>
         </>
       )}
+    </div>
     </div>
   );
 };

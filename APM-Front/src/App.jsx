@@ -19,6 +19,7 @@ import { AuthProvider } from './context/AuthContext';
 import DiscussionsStudent from './pages/DiscussionsStudent';
 import SchedulingSupervisorsMeetings from './pages/SchedulingSupervisorsMeetings';
 import SupervisorDashboard from './pages/SupervisorDashboard';
+import GroupManagementSupervisor from './pages/GroupManagementSupervisor';
 
 function App() {
   return (
@@ -137,6 +138,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <SupervisorDashboard />
+                            </ProtectedRoute>
+                          } 
+               />
+               <Route 
+                 path="/group-supervisor" 
+                 element={
+                  <ProtectedRoute>
+                    <GroupManagementSupervisor />
                             </ProtectedRoute>
                           } 
                />

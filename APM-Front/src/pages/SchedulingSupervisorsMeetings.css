@@ -10,14 +10,21 @@
 }
 
 /* الأساسيات */
-.scheduling-container {
-  background-color: #f5f7fa;
-  color: var(--dark-color);
-  direction: rtl;
-  padding: 20px;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.scheduling-container  {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
+.scheduling-container {
+    background-color: #f9fafb;
+    color: #333;
+    line-height: 1.6;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+}
 * {
   margin: 0;
   padding: 0;

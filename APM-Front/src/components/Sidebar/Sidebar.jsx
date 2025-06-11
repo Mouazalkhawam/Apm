@@ -6,6 +6,7 @@ import {
   faFileAlt, faComments, faCog, faSignOutAlt
 } from '@fortawesome/free-solid-svg-icons';
 import "./Sidebar.css";
+import { useNavigate } from 'react-router-dom';
 
 const Sidebar = React.forwardRef(({ 
     user = {
@@ -14,17 +15,24 @@ const Sidebar = React.forwardRef(({
       image: "https://randomuser.me/api/portraits/women/44.jpg"
     },
     navItems = [
-      { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true },
-      { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-      { icon: faUsers, text: "الطلاب" },
-      { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true },
-      { icon: faFileAlt, text: "التقارير" },
-      { icon: faComments, text: "المناقشات", badge: 3 }
+      { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
+      { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/group-supervisor" },
+      { icon: faUsers, text: "الطلاب", path: "/students" },
+      { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
+      { icon: faFileAlt, text: "التقارير", path: "/reports" },
+      { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
     ],
     collapsed = false,
     onToggleCollapse = () => {},
     logoText = "أكاديمية المشاريع"
   }, ref) => {
+  
+  const navigate = useNavigate();
+
+  const handleNavigation = (path) => {
+    navigate(path);
+  };
+
   return (
     <div className={`sidebar-dash-super ${collapsed ? 'sidebar-collapsed' : ''}`} ref={ref}>
       {/* Logo - Show only arrow when collapsed */}
@@ -55,7 +63,11 @@ const Sidebar = React.forwardRef(({
       <nav className="sidebar-nav">
         <div>
           {navItems.map((item, index) => (
-            <a href="#" key={index} className={`nav-link ${item.active ? 'active' : ''}`}>
+            <div 
+              key={index} 
+              className={`nav-link ${item.active ? 'active' : ''}`}
+              onClick={() => handleNavigation(item.path)}
+            >
               <FontAwesomeIcon icon={item.icon} className="nav-icon" />
               {!collapsed && (
                 <>
@@ -67,21 +79,27 @@ const Sidebar = React.forwardRef(({
                   )}
                 </>
               )}
-            </a>
+            </div>
           ))}
         </div>
         
         {/* Settings - Hide text when collapsed */}
         {!collapsed && (
           <div className="sidebar-settings">
-            <a href="#" className="nav-link">
+            <div 
+              className="nav-link"
+              onClick={() => handleNavigation('/settings')}
+            >
               <FontAwesomeIcon icon={faCog} className="nav-icon" />
               <span className="sidebar-text nav-text">الإعدادات</span>
-            </a>
-            <a href="#" className="nav-link">
+            </div>
+            <div 
+              className="nav-link"
+              onClick={() => handleNavigation('/logout')}
+            >
               <FontAwesomeIcon icon={faSignOutAlt} className="nav-icon" />
               <span className="sidebar-text nav-text">تسجيل الخروج</span>
-            </a>
+            </div>
           </div>
         )}
       </nav>
