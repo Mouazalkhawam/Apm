@@ -136,7 +136,7 @@ const AcademicDashboard = () => {
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
       {/* Main Content */}
-      <div className="main-content">
+      <div className="main-content-cord">
         {/* Top Navigation */}
         <TopNav 
           user={{
