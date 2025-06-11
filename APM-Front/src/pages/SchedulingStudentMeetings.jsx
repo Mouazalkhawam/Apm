@@ -65,11 +65,10 @@ const SchedulingStudentMeetings = () => {
 
   // جلب المواعيد المتاحة للمشرف المحدد
   useEffect(() => {
-    if (!currentSupervisorId) return;
+    if (!currentSupervisorId || !selectedGroupId) return;
   
     const fetchAvailableTimes = async () => {
       try {
-        console.log('Fetching times for supervisor:', currentSupervisorId); // Debug
         const response = await axios.get(
           `http://127.0.0.1:8000/api/supervisors/${currentSupervisorId}/available-times`,
           {
@@ -79,32 +78,26 @@ const SchedulingStudentMeetings = () => {
             }
           }
         );
-  
-        console.log('Full API Response:', response); // Debug
         
-        // تحقق من هيكل الاستجابة
         if (response.data && response.data.success) {
-          // جرب كلا الخيارين
-          const times = response.data.data || response.data;
-          console.log('Available times data:', times); // Debug
-          setAvailableTimes(times);
+          // تصفية المواعيد لتظهر فقط تلك التي تطابق group_id الحالي
+          const filteredTimes = response.data.data.filter(time => 
+            time.group_id == selectedGroupId || time.status === 'proposed'
+          );
+          setAvailableTimes(filteredTimes);
         } else {
-          console.error('Unexpected response structure:', response.data);
           setAvailableTimes([]);
         }
       } catch (err) {
-        console.error('Error details:', {
-          message: err.message,
-          response: err.response?.data,
-          stack: err.stack
-        });
+        console.error('Error fetching available times:', err);
         setAvailableTimes([]);
         setError('حدث خطأ أثناء جلب المواعيد المتاحة');
       }
     };
   
     fetchAvailableTimes();
-  }, [currentSupervisorId, accessToken]);
+  }, [currentSupervisorId, accessToken, selectedGroupId]);
+
   // اختيار المشرف
   const handleSupervisorSelect = (supervisorId) => {
     setCurrentSupervisorId(supervisorId);
@@ -118,13 +111,13 @@ const SchedulingStudentMeetings = () => {
 
   // تأكيد الحجز
   const handleConfirmAppointment = async () => {
-    if (!selectedDate || !currentSupervisorId) return;
+    if (!selectedDate || !currentSupervisorId || !selectedGroupId) return;
 
     setIsSubmitting(true);
     try {
       const response = await axios.post(
         `http://127.0.0.1:8000/api/groups/${selectedGroupId}/meetings/${selectedDate.id}/choose`,
-        {}, // body فارغ إذا لم يكن مطلوباً
+        {},
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -132,8 +125,6 @@ const SchedulingStudentMeetings = () => {
           }
         }
       );
-
-      console.log('Appointment response:', response.data);
       
       if (response.data.success) {
         setShowConfirmation(false);
@@ -145,12 +136,13 @@ const SchedulingStudentMeetings = () => {
         alert('حدث خطأ أثناء حجز الموعد: ' + (response.data.message || ''));
       }
     } catch (err) {
-      console.error('Error confirming appointment:', err.response?.data || err.message);
+      console.error('Error confirming appointment:', err);
       alert('حدث خطأ أثناء حجز الموعد: ' + (err.response?.data?.message || err.message));
     } finally {
       setIsSubmitting(false);
     }
-};
+  };
+
   // إلغاء الحجز
   const handleCancelAppointment = () => {
     setShowConfirmation(false);
@@ -185,8 +177,6 @@ const SchedulingStudentMeetings = () => {
 
   // عرض المواعيد المتاحة
   const renderAvailableDates = () => {
-    console.log('Available Times:', availableTimes); // تصحيح الأخطاء
-    
     if (!availableTimes || availableTimes.length === 0) {
       return (
         <div className="no-available-times">
@@ -197,12 +187,7 @@ const SchedulingStudentMeetings = () => {
     }
 
     return availableTimes.map((time) => {
-      console.log('Processing time:', time); // تصحيح الأخطاء
-      
-      if (!time.meeting_time) {
-        console.warn('Invalid time object:', time);
-        return null;
-      }
+      if (!time.meeting_time) return null;
 
       const formattedDateTime = formatDateTime(time.meeting_time);
       const [dayPart, datePart, timePart] = formattedDateTime.split('، ');
@@ -222,7 +207,7 @@ const SchedulingStudentMeetings = () => {
         </div>
       );
     });
-};
+  };
 
   if (loading) {
     return (
