@@ -162,6 +162,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/groups/{groupId}/students', [ProjectController::class, 'getGroupStudents']);
     Route::get('/groups/{groupId}/is-leader', [ProjectController::class, 'isStudentLeader']);
     Route::get('/groups/{groupId}/is-supervisor', [ProjectController::class, 'isUserSupervisor']);
+    Route::post('/groups/{groupId}/members', [ProjectController::class, 'addGroupMembers']);
 
 
     Route::post('/evaluations', [EvaluationController::class, 'store']);

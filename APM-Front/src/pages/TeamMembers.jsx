@@ -10,7 +10,8 @@ import {
   faCalendarAlt, 
   faHourglassHalf,
   faTasks,
-  faSearch
+  faSearch,
+  faChevronDown
 } from '@fortawesome/free-solid-svg-icons';
 import './TeamMembers.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
@@ -23,10 +24,13 @@ const TeamMembers = () => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     memberName: '',
-    memberEmail: '',
-    memberSpecialty: '',
-    is_leader: false
+    studentId: ''
   });
+  
+  // States for students dropdown
+  const [studentsList, setStudentsList] = useState([]);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   
   // States for recommendation system
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,9 +76,52 @@ const TeamMembers = () => {
       }
     };
 
+    const fetchStudents = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get(
+          'http://127.0.0.1:8000/api/students',
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (response.data.success) {
+          setStudentsList(response.data.data);
+          setFilteredStudents(response.data.data);
+        }
+      } catch (err) {
+        console.error('Error fetching students:', err);
+      }
+    };
+
     fetchTeamMembers();
-    fetchRecommendations(); // Load initial recommendations
+    fetchStudents();
+    fetchRecommendations();
   }, []);
+
+  // Filter students based on input
+  const filterStudents = (input) => {
+    if (!input) {
+      setFilteredStudents(studentsList);
+      return;
+    }
+    const filtered = studentsList.filter(student =>
+      student.name.toLowerCase().includes(input.toLowerCase())
+    );
+    setFilteredStudents(filtered);
+  };
+
+  // Handle student selection from dropdown
+  const handleStudentSelect = (student) => {
+    setFormData({
+      memberName: student.name,
+      studentId: student.studentId
+    });
+    setIsDropdownOpen(false);
+  };
 
   // Fetch recommended students from API
   const fetchRecommendations = async (query = '') => {
@@ -99,7 +146,7 @@ const TeamMembers = () => {
           skills: student.skills ? student.skills.split(', ') : [],
           experience: student.experience,
           gpa: student.gpa,
-         /* avatar: student.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'*/
+          avatar: student.avatar || 'https://randomuser.me/api/portraits/lego/1.jpg'
         })));
       }
     } catch (error) {
@@ -139,11 +186,15 @@ const TeamMembers = () => {
 
   // Handle form input changes
   const handleInputChange = (e) => {
-    const { id, value, type, checked } = e.target;
+    const { id, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [id]: type === 'checkbox' ? checked : value
+      [id]: value
     }));
+
+    if (id === 'memberName') {
+      filterStudents(value);
+    }
   };
 
   // Submit new member form
@@ -153,9 +204,19 @@ const TeamMembers = () => {
       const groupId = localStorage.getItem('selectedGroupId');
       const token = localStorage.getItem('access_token');
       
+      if (!formData.studentId) {
+        alert('الرجاء اختيار طالب من القائمة');
+        return;
+      }
+
       const response = await axios.post(
-        `http://127.0.0.1:8000/api/groups/${groupId}/students`,
-        formData,
+        `http://127.0.0.1:8000/api/groups/${groupId}/members`,
+        {
+          members: [{
+            id: formData.studentId,
+            type: 'student'
+          }]
+        },
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -186,10 +247,10 @@ const TeamMembers = () => {
         setIsModalOpen(false);
         setFormData({
           memberName: '',
-          memberEmail: '',
-          memberSpecialty: '',
-          is_leader: false
+          studentId: ''
         });
+        setSelectedStudents([]);
+        localStorage.removeItem('selectedStudents');
       }
     } catch (err) {
       alert('حدث خطأ أثناء إضافة العضو: ' + (err.response?.data?.message || err.message));
@@ -222,7 +283,6 @@ const TeamMembers = () => {
 
   return (
     <div className="container-team mx-auto px-4 py-6">
-      {/* Header Component */}
       <ProjectHeader 
         title="أعضاء المجموعة"
         description="هذا المشروع يهدف إلى تطوير نظام متكامل لإدارة مشاريع المجموعات في الجامعة، حيث يمكن توزيع المهام ومتابعة التقدم والإنجاز بشكل فعال."
@@ -231,7 +291,6 @@ const TeamMembers = () => {
         endDate="15/06/2023"
       />
       
-      {/* Team Section */}
       <div className='container-team2'>
         <div className="mb-10">
           <div className="flex justify-between items-center mb-4 team-member">
@@ -282,7 +341,6 @@ const TeamMembers = () => {
         </div>
       </div>
       
-      {/* Partner Search Section */}
       <div className="container-team2">
         <div className="search-section">
           <h2 className="section-title-member">البحث عن شريك للمشروع</h2>
@@ -348,7 +406,6 @@ const TeamMembers = () => {
             <div className="text-center py-4 text-gray-500">لا توجد نتائج</div>
           )}
 
-          {/* Selected Students Section */}
           {selectedStudents.length > 0 && (
             <div className="mt-8">
               <div className="flex justify-between items-center mb-3">
@@ -412,7 +469,6 @@ const TeamMembers = () => {
         </div>
       </div>
       
-      {/* Add Member Modal */}
       <div className={`modal-overlay ${isModalOpen ? 'active' : ''}`}>
         <div className="modal-content">
           <div className="modal-header">
@@ -426,50 +482,41 @@ const TeamMembers = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              <div className="form-group">
+              <div className="form-group relative">
                 <label htmlFor="memberName" className="form-label">اسم الطالب</label>
-                <input 
-                  type="text" 
-                  id="memberName" 
-                  className="form-input" 
-                  placeholder="أدخل الاسم الكامل"
-                  value={formData.memberName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="memberEmail" className="form-label">البريد الإلكتروني</label>
-                <input 
-                  type="email" 
-                  id="memberEmail" 
-                  className="form-input" 
-                  placeholder="أدخل البريد الجامعي"
-                  value={formData.memberEmail}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label htmlFor="memberSpecialty" className="form-label">التخصص</label>
-                <input 
-                  type="text" 
-                  id="memberSpecialty" 
-                  className="form-input" 
-                  placeholder="أدخل التخصص"
-                  value={formData.memberSpecialty}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="form-group flex items-center">
-                <input 
-                  type="checkbox" 
-                  id="is_leader" 
-                  className="form-checkbox" 
-                  checked={formData.is_leader}
-                  onChange={handleInputChange}
-                />
-                <label htmlFor="is_leader" className="form-label mr-2">قائد الفريق</label>
+                <div className="relative">
+                  <input 
+                    type="text" 
+                    id="memberName" 
+                    className="form-input pr-10" 
+                    placeholder="ابحث عن اسم الطالب"
+                    value={formData.memberName}
+                    onChange={handleInputChange}
+                    onFocus={() => setIsDropdownOpen(true)}
+                    required
+                  />
+                  <FontAwesomeIcon 
+                    icon={faChevronDown} 
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                  />
+                </div>
+                {isDropdownOpen && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                    {filteredStudents.length > 0 ? (
+                      filteredStudents.map(student => (
+                        <div 
+                          key={student.id}
+                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => handleStudentSelect(student)}
+                        >
+                          {student.name}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="px-4 py-2 text-gray-500">لا توجد نتائج</div>
+                    )}
+                  </div>
+                )}
               </div>
               
               {selectedStudents.length > 0 && (

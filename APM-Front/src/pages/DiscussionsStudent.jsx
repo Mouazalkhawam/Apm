@@ -180,7 +180,7 @@ const DiscussionsStudent = () => {
           </div>
         </div>
       )}
-      
+    <div className='container-discussion'>
       <div className="tabs">
         <button 
           className={`tab-btn ${activeTab === 'intermediate' ? 'active' : ''}`}
@@ -287,6 +287,7 @@ const DiscussionsStudent = () => {
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 };

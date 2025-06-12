@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import './StudentEvaluation.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
 import axios from 'axios';
+import TopNav from "../components/TopNav/TopNav"; 
+import Sidebar from "../components/Sidebar/Sidebar";
 
 const StudentEvaluation = () => {
   const [activeTab, setActiveTab] = useState('students-evaluation');
@@ -390,7 +392,9 @@ const StudentEvaluation = () => {
 
   if (error) {
     return (
+      
       <div className="evaluation-system">
+        
         <ProjectHeader 
           title="إدارة المشروع"
           description={"لا يوجد وصف للمشروع"}
@@ -417,6 +421,7 @@ const StudentEvaluation = () => {
   }
 
   return (
+    
     <div className="evaluation-system">
       <ProjectHeader 
         title="إدارة المشروع"

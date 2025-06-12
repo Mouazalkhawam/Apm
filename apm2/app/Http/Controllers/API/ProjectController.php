@@ -636,4 +636,106 @@ class ProjectController extends Controller
             ], 500);
         }
     }
+    public function addGroupMembers(Request $request, $groupId)
+    {
+        $request->validate([
+            'members' => 'required|array|min:1',
+            'members.*.user_id' => 'required|exists:users,userId', // تغيير إلى userId
+            'members.*.type' => 'required|in:student,supervisor'
+        ]);
+    
+        return DB::transaction(function () use ($request, $groupId) {
+            // التحقق من أن المستخدم الحالي هو قائد المجموعة
+            $user = Auth::user();
+            $isLeader = GroupStudent::where('groupid', $groupId)
+                ->where('studentId', $user->student->studentId)
+                ->where('is_leader', true)
+                ->exists();
+    
+            if (!$isLeader) {
+                abort(403, 'Only the group leader can add members');
+            }
+    
+            $group = Group::findOrFail($groupId);
+            $addedMembers = [];
+            $notificationService = new NotificationService();
+    
+            foreach ($request->members as $member) {
+                if ($member['type'] === 'student') {
+                    // البحث عن الطالب باستخدام userId
+                    $student = Student::where('userId', $member['user_id'])->firstOrFail();
+                    
+                    // التحقق من أن الطالب ليس بالفعل في المجموعة
+                    $existing = GroupStudent::where('groupid', $groupId)
+                        ->where('studentId', $student->studentId)
+                        ->first();
+    
+                    if ($existing) {
+                        continue; // تخطي إذا كان الطالب موجود بالفعل
+                    }
+    
+                    // إضافة الطالب بحالة pending
+                    DB::table('group_student')->insert([
+                        'groupid' => $groupId,
+                        'studentId' => $student->studentId,
+                        'status' => 'pending',
+                        'is_leader' => false,
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+    
+                    // إرسال إشعار للطالب
+                    $notificationService->sendRealTime(
+                        $member['user_id'], // استخدام userId مباشرة
+                        "تمت دعوتك للانضمام إلى مجموعة {$group->name}"
+                    );
+    
+                    $addedMembers[] = [
+                        'user_id' => $member['user_id'],
+                        'type' => 'student',
+                        'name' => $student->user->name
+                    ];
+                } elseif ($member['type'] === 'supervisor') {
+                    // البحث عن المشرف باستخدام userId
+                    $supervisor = Supervisor::where('userId', $member['user_id'])->firstOrFail();
+                    
+                    // التحقق من أن المشرف ليس بالفعل في المجموعة
+                    $existing = GroupSupervisor::where('groupid', $groupId)
+                        ->where('supervisorId', $supervisor->supervisorId)
+                        ->first();
+    
+                    if ($existing) {
+                        continue; // تخطي إذا كان المشرف موجود بالفعل
+                    }
+    
+                    // إضافة المشرف بحالة pending
+                    DB::table('group_supervisor')->insert([
+                        'groupid' => $groupId,
+                        'supervisorId' => $supervisor->supervisorId,
+                        'status' => 'pending',
+                        'created_at' => now(),
+                        'updated_at' => now()
+                    ]);
+    
+                    // إرسال إشعار للمشرف
+                    $notificationService->sendRealTime(
+                        $member['user_id'], // استخدام userId مباشرة
+                        "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}"
+                    );
+    
+                    $addedMembers[] = [
+                        'user_id' => $member['user_id'],
+                        'type' => 'supervisor',
+                        'name' => $supervisor->user->name
+                    ];
+                }
+            }
+    
+            return response()->json([
+                'success' => true,
+                'message' => 'Members added successfully',
+                'data' => $addedMembers
+            ]);
+        });
+    }
 }
