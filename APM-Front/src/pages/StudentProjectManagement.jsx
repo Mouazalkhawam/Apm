@@ -25,6 +25,11 @@ const StudentProjectManagement = () => {
   const [githubRepo, setGithubRepo] = useState('');
   const [githubCommitUrl, setGithubCommitUrl] = useState('');
   const [commitDescription, setCommitDescription] = useState('');
+  const [showGradeModal, setShowGradeModal] = useState(false);
+  const [currentTaskToGrade, setCurrentTaskToGrade] = useState(null);
+  const [grade, setGrade] = useState('');
+  const [feedback, setFeedback] = useState('');
+  const [gradingStatus, setGradingStatus] = useState({});
 
   // Fetch data on component mount
   useEffect(() => {
@@ -86,22 +91,44 @@ const StudentProjectManagement = () => {
                 { headers: { 'Authorization': `Bearer ${token}` } }
               );
 
+              // Fetch grading status for each completed task
+              const tasksWithGradingStatus = await Promise.all(
+                tasksRes.data.map(async task => {
+                  let gradingStatus = {};
+                  if (task.status === 'completed') {
+                    try {
+                      const gradingRes = await axios.get(
+                        `http://127.0.0.1:8000/api/tasks/${task.id}/grading-status`,
+                        { headers: { 'Authorization': `Bearer ${token}` } }
+                      );
+                      gradingStatus = gradingRes.data;
+                    } catch (err) {
+                      console.error('Error fetching grading status:', err);
+                    }
+                  }
+
+                  return {
+                    id: task.id,
+                    title: task.title,
+                    description: task.description,
+                    responsible: task.assignee?.user?.name || 'غير محدد',
+                    responsibleId: task.assigned_to,
+                    deadline: task.due_date,
+                    status: task.status,
+                    priority: task.priority,
+                    grade: gradingStatus.grade,
+                    feedback: gradingStatus.feedback,
+                    attachments: []
+                  };
+                })
+              );
+
               return {
                 id: stage.id,
                 name: stage.title,
                 deadline: stage.due_date,
                 description: stage.description,
-                tasks: tasksRes.data.map(task => ({
-                  id: task.id,
-                  title: task.title,
-                  description: task.description,
-                  responsible: task.assignee?.user?.name || 'غير محدد',
-                  responsibleId: task.assigned_to,
-                  deadline: task.due_date,
-                  status: task.status,
-                  priority: task.priority,
-                  attachments: []
-                }))
+                tasks: tasksWithGradingStatus
               };
             })
           );
@@ -268,6 +295,75 @@ const StudentProjectManagement = () => {
     }
   };
 
+  const checkTaskGradingStatus = async (taskId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(
+        `http://127.0.0.1:8000/api/tasks/${taskId}/grading-status`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error checking grading status:', error);
+      return {
+        success: false,
+        is_graded: false,
+        grade: null,
+        feedback: null
+      };
+    }
+  };
+
+  const handleGradeTask = async () => {
+    try {
+      if (!currentTaskToGrade || !grade) {
+        return alert('الرجاء إدخال العلامة');
+      }
+
+      const token = localStorage.getItem('access_token');
+      
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/tasks/${currentTaskToGrade}/grade`,
+        {
+          grade: parseInt(grade),
+          feedback: feedback || ''
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Update local state
+        const updatedStages = projectData.stages.map(stage => ({
+          ...stage,
+          tasks: stage.tasks.map(task => task.id === currentTaskToGrade ? {
+            ...task,
+            grade: response.data.grade,
+            feedback: response.data.feedback
+          } : task)
+        }));
+
+        setProjectData(prev => ({ ...prev, stages: updatedStages }));
+        
+        // Reset modal
+        setShowGradeModal(false);
+        setCurrentTaskToGrade(null);
+        setGrade('');
+        setFeedback('');
+        
+        alert('تم تقييم المهمة بنجاح');
+      }
+    } catch (error) {
+      console.error('Error grading task:', error);
+      alert('حدث خطأ أثناء تقييم المهمة: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
   const renderAttachments = (attachments) => {
     if (!attachments?.length) {
       return (
@@ -391,7 +487,51 @@ const StudentProjectManagement = () => {
             <span>إعلام بالإنجاز</span>
           </button>
         )}
+
+        {isSupervisor && task.status === 'completed' && (
+          <button 
+            className="action-btn-management grade-btn" 
+            onClick={async () => {
+              // Check grading status before showing modal
+              const gradingStatus = await checkTaskGradingStatus(task.id);
+              setCurrentTaskToGrade(task.id);
+              setGrade(gradingStatus.grade || '');
+              setFeedback(gradingStatus.feedback || '');
+              setShowGradeModal(true);
+            }}
+          >
+            <span className="action-icon">⭐</span>
+            <span>{task.grade ? 'تعديل التقييم' : 'تقييم المهمة'}</span>
+          </button>
+        )}
       </>
+    );
+  };
+
+  const renderTaskGrade = (task) => {
+    if (task.status !== 'completed') return null;
+
+    return (
+      <div className="task-grade-container">
+        <div className="task-grade-info">
+          {task.grade ? (
+            <>
+              <span className="grade-label">العلامة:</span>
+              <span className="grade-value">{task.grade}/100</span>
+              {task.feedback && (
+                <>
+                  <span className="feedback-label">التعليق:</span>
+                  <span className="feedback-value">{task.feedback}</span>
+                </>
+              )}
+            </>
+          ) : isSupervisor ? (
+            <span className="not-graded">لم يتم التقييم بعد</span>
+          ) : (
+            <span className="not-graded">بانتظار التقييم من المشرف</span>
+          )}
+        </div>
+      </div>
     );
   };
 
@@ -451,6 +591,7 @@ const StudentProjectManagement = () => {
                         <div className="task-deadline">الموعد النهائي: {formatDate(task.deadline)}</div>
                       </div>
                       {renderAttachments(task.attachments)}
+                      {renderTaskGrade(task)}
                       <div className="task-actions">
                         {renderTaskActions(task)}
                       </div>
@@ -582,6 +723,7 @@ const StudentProjectManagement = () => {
         )}
       </div>
       
+      {/* Submission Modal */}
       <div className={`modal-overlay-tasks ${showModal ? 'show' : ''}`}>
         <div className="modal-content-tasks">
           <div className="modal-header-spm">إعلام بإكمال المهمة</div>
@@ -691,6 +833,60 @@ const StudentProjectManagement = () => {
               disabled={!githubRepo || !githubCommitUrl || !commitDescription}
             >
               تأكيد الإنجاز
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Grade Modal */}
+      <div className={`modal-overlay-tasks ${showGradeModal ? 'show' : ''}`}>
+        <div className="modal-content-tasks">
+          <div className="modal-header-spm">تقييم المهمة</div>
+          <div className="modal-body">
+            <div className="form-group-tasks">
+              <label htmlFor="grade">العلامة (من 100):</label>
+              <input 
+                type="number" 
+                id="grade"
+                min="0"
+                max="100"
+                placeholder="أدخل العلامة من 0 إلى 100"
+                value={grade}
+                onChange={(e) => setGrade(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group-tasks">
+              <label htmlFor="feedback">التعليق (اختياري):</label>
+              <textarea 
+                id="feedback"
+                placeholder="أدخل تعليقك على المهمة"
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button 
+              type="button"
+              className="modal-btn secondary" 
+              onClick={() => {
+                setShowGradeModal(false);
+                setCurrentTaskToGrade(null);
+                setGrade('');
+                setFeedback('');
+              }}
+            >
+              إلغاء
+            </button>
+            <button 
+              type="button"
+              className="modal-btn primary" 
+              onClick={handleGradeTask}
+              disabled={!grade}
+            >
+              حفظ التقييم
             </button>
           </div>
         </div>

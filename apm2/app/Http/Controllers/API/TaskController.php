@@ -333,4 +333,101 @@ class TaskController extends Controller
         
         return response()->download($path, $submission->attachment_name);
     }
+    public function gradeTaskSubmission(Request $request, $task_id)
+    {
+        // 1. التحقق من وجود المهمة
+        $task = Task::with('submissions')->findOrFail($task_id);
+        
+        // 2. التحقق من أن المستخدم مشرف
+        $user = Auth::user();
+        if (!$user->isSupervisor()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح - يجب أن تكون مشرفاً لتقييم المهام'
+            ], 403);
+        }
+
+        // 3. التحقق من وجود تسليم للمهمة
+        if ($task->submissions->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد تسليم لهذه المهمة بعد'
+            ], 404);
+        }
+
+        // 4. التحقق من صحة البيانات المدخلة
+        $validator = Validator::make($request->all(), [
+            'grade' => 'required|numeric|min:0|max:100',
+            'feedback' => 'nullable|string|max:1000'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // 5. تحديث تقييم التسليم
+        try {
+            // نأخذ آخر تسليم للمهمة
+            $submission = $task->submissions->last();
+            
+            $submission->update([
+                'grade' => $request->grade,
+                'feedback' => $request->feedback
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'data' => $submission,
+                'message' => 'تم تقييم التسليم بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تقييم التسليم: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function checkTaskGrading($task_id)
+    {
+        try {
+            // 1. التحقق من وجود المهمة
+            $task = Task::findOrFail($task_id);
+            
+            // 2. التحقق من وجود تسليم للمهمة
+            $submission = TaskSubmission::where('task_id', $task_id)
+                ->orderBy('created_at', 'desc')
+                ->first();
+
+            if (!$submission) {
+                return response()->json([
+                    'success' => true,
+                    'is_graded' => false,
+                    'message' => 'لم يتم تسليم هذه المهمة بعد'
+                ]);
+            }
+
+            // 3. التحقق من وجود تقييم للتسليم
+            $isGraded = !is_null($submission->grade);
+
+            return response()->json([
+                'success' => true,
+                'is_graded' => $isGraded,
+                'grade' => $isGraded ? $submission->grade : null,
+                'feedback' => $isGraded ? $submission->feedback : null,
+                'message' => $isGraded 
+                    ? 'تم تقييم هذه المهمة' 
+                    : 'تم تسليم المهمة ولكن لم يتم تقييمها بعد'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء التحقق من تقييم المهمة: ' . $e->getMessage()
+            ], 500);
+        }
+    }
 }
