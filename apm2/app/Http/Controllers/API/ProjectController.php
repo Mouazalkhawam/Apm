@@ -738,4 +738,44 @@ class ProjectController extends Controller
             ]);
         });
     }
+    public function getSupervisorGroups()
+{
+    try {
+        $user = Auth::user();
+        
+        if (!$user->supervisor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User is not a supervisor'
+            ], 403);
+        }
+
+        // جلب أسماء المجموعات المعتمدة للمشرف فقط
+        $groups = Group::whereHas('supervisors', function($query) use ($user) {
+                $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
+                      ->where('group_supervisor.status', 'approved');
+            })
+            ->pluck('name', 'groupId');
+
+        if ($groups->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'No approved groups found for this supervisor'
+            ]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => $groups,
+            'message' => 'Supervisor groups retrieved successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve supervisor groups: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

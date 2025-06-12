@@ -123,7 +123,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/evaluations', [EvaluationController::class, 'store']);
     Route::get('/evaluations', [EvaluationController::class, 'index']);
 
-
+    Route::get('/supervisor/groups', [ProjectController::class, 'getSupervisorGroups']);
     Route::prefix('supervisors/{supervisor}')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'supervisorIndex']);
         Route::post('/meetings/propose', [MeetingController::class, 'storeProposed']);
