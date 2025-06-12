@@ -23,115 +23,151 @@ import axios from 'axios';
 const SchedulingSupervisorsMeetings = () => {
   const [collapsed, setCollapsed] = useState(false);
   const sidebarRef = useRef(null);
-  const [timeInputs, setTimeInputs] = useState([{ start: '', end: '' }]);
+  const [datetimeInputs, setDatetimeInputs] = useState(['']);
   const [selectedGroup, setSelectedGroup] = useState('');
-  const [meetingDate, setMeetingDate] = useState('');
-  const [meetingTopic, setMeetingTopic] = useState('');
+  const [meetingDescription, setMeetingDescription] = useState('');
   const [groups, setGroups] = useState([]);
   const [loadingGroups, setLoadingGroups] = useState(true);
-  
+  const [meetings, setMeetings] = useState([]);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmationData, setConfirmationData] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [loadingMeetings, setLoadingMeetings] = useState(true);
+
   // Fetch groups from API
-useEffect(() => {
-  const fetchGroups = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-
-      const response = await axios.get('http://localhost:8000/api/supervisor/groups', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/json'
+  useEffect(() => {
+    const fetchGroups = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('No authentication token found');
         }
-      });
 
-      if (response.status !== 200) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const response = await axios.get('http://localhost:8000/api/supervisor/groups', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.status !== 200) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        if (!response.data.success) {
+          throw new Error('API request was not successful');
+        }
+
+        const groupsData = response.data.data;
+        const groupsArray = Object.keys(groupsData).map(groupId => ({
+          value: groupId,
+          label: groupsData[groupId]
+        }));
+        
+        setGroups(groupsArray);
+        setLoadingGroups(false);
+        
+      } catch (error) {
+        console.error('Failed to fetch groups:', error);
+        setLoadingGroups(false);
+        alert('فشل في جلب المجموعات. يرجى التحقق من اتصالك بالإنترنت أو إعادة تسجيل الدخول');
       }
+    };
+    
+    fetchGroups();
+  }, []);
 
-      if (!response.data.success) {
-        throw new Error('API request was not successful');
+  // Fetch meetings from API
+  useEffect(() => {
+    const fetchMeetings = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await axios.get('http://localhost:8000/api/supervisor/meetings', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json'
+          }
+        });
+
+        if (response.status !== 200) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        if (!response.data.success) {
+          throw new Error('API request was not successful');
+        }
+
+        const formattedMeetings = response.data.data.map(meeting => ({
+          id: meeting.id,
+          group: meeting.group_name,
+          datetime: meeting.meeting_time,
+          description: meeting.description || '-',
+          status: meeting.status
+        }));
+        
+        setMeetings(formattedMeetings);
+        setLoadingMeetings(false);
+        
+      } catch (error) {
+        console.error('Failed to fetch meetings:', error);
+        setLoadingMeetings(false);
+        alert('فشل في جلب الاجتماعات. يرجى التحقق من اتصالك بالإنترنت أو إعادة تسجيل الدخول');
       }
-
-      const groupsData = response.data.data;
-      const groupsArray = Object.keys(groupsData).map(groupId => ({
-        value: groupId,
-        label: groupsData[groupId]
-      }));
-      
-      setGroups(groupsArray);
-      setLoadingGroups(false);
-      
-    } catch (error) {
-      console.error('Failed to fetch groups:', error);
-      setLoadingGroups(false);
-      // عرض رسالة للمستخدم
-      alert('فشل في جلب المجموعات. يرجى التحقق من اتصالك بالإنترنت أو إعادة تسجيل الدخول');
-    }
-  };
-  
-  fetchGroups();
-}, []);
+    };
+    
+    fetchMeetings();
+  }, []);
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
   };
 
-  const [meetings, setMeetings] = useState([
-    {
-      id: 1,
-      group: 'المجموعة 1 - تعليم أساسي',
-      date: '14/06/2023',
-      times: ['09:00 - 10:00', '11:00 - 12:00'],
-      topic: 'مراجعة الدروس',
-      status: 'active'
-    },
-    {
-      id: 2,
-      group: 'المجموعة 2 - تطوير الويب',
-      date: '15/06/2023',
-      times: ['10:00 - 11:00', '14:00 - 15:00'],
-      topic: 'مناقشة المشاريع',
-      status: 'active'
-    },
-    {
-      id: 3,
-      group: 'المجموعة 3 - علم البيانات',
-      date: '16/06/2023',
-      times: ['08:00 - 09:00'],
-      topic: '-',
-      status: 'pending'
+  const addDatetimeInput = () => {
+    if (datetimeInputs.length < 5) {
+      setDatetimeInputs([...datetimeInputs, '']);
     }
-  ]);
-  const [showConfirmation, setShowConfirmation] = useState(false);
-  const [confirmationData, setConfirmationData] = useState({});
-  const [editingId, setEditingId] = useState(null);
-
-  const addTimeInput = () => {
-    setTimeInputs([...timeInputs, { start: '', end: '' }]);
   };
 
-  const removeTimeInput = (index) => {
-    if (timeInputs.length > 1) {
-      const newInputs = [...timeInputs];
+  const removeDatetimeInput = (index) => {
+    if (datetimeInputs.length > 1) {
+      const newInputs = [...datetimeInputs];
       newInputs.splice(index, 1);
-      setTimeInputs(newInputs);
+      setDatetimeInputs(newInputs);
     } else {
-      // If it's the last input, just clear the values
-      const newInputs = [...timeInputs];
-      newInputs[0] = { start: '', end: '' };
-      setTimeInputs(newInputs);
+      // If it's the last input, just clear the value
+      const newInputs = [...datetimeInputs];
+      newInputs[0] = '';
+      setDatetimeInputs(newInputs);
     }
   };
 
-  const handleTimeChange = (index, field, value) => {
-    const newInputs = [...timeInputs];
-    newInputs[index][field] = value;
-    setTimeInputs(newInputs);
+  const handleDatetimeChange = (index, value) => {
+    const newInputs = [...datetimeInputs];
+    newInputs[index] = value;
+    setDatetimeInputs(newInputs);
   };
 
-  const handleSubmit = (e) => {
+  const formatDatetimeForDisplay = (datetimeStr) => {
+    if (!datetimeStr) return '';
+    
+    const date = new Date(datetimeStr);
+    const options = { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    };
+    
+    return date.toLocaleString('ar-EG', options);
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!selectedGroup) {
@@ -139,55 +175,99 @@ useEffect(() => {
       return;
     }
     
-    if (!meetingDate) {
-      alert('الرجاء اختيار التاريخ');
-      return;
-    }
-    
-    const validTimes = timeInputs.filter(time => time.start && time.end);
+    const validTimes = datetimeInputs.filter(time => time);
     if (validTimes.length === 0) {
       alert('الرجاء تحديد موعد واحد على الأقل');
       return;
     }
     
-    const selectedGroupObj = groups.find(group => group.value === selectedGroup);
-    const groupName = selectedGroupObj ? selectedGroupObj.label : '';
-    
-    const newMeeting = {
-      id: editingId || meetings.length + 1,
-      group: groupName,
-      date: new Date(meetingDate).toLocaleDateString('ar-EG'),
-      times: validTimes.map(time => `${time.start} - ${time.end}`),
-      topic: meetingTopic || '-',
-      status: 'active'
-    };
-    
-    if (editingId) {
-      // Update existing meeting
-      setMeetings(meetings.map(meeting => meeting.id === editingId ? newMeeting : meeting));
-      setEditingId(null);
-    } else {
-      // Add new meeting
-      setMeetings([newMeeting, ...meetings]);
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const requestData = {
+        group_id: selectedGroup,
+        proposed_times: validTimes,
+        description: meetingDescription || null
+      };
+
+      const response = await axios.post(
+        'http://localhost:8000/api/supervisor/meetings/propose',
+        requestData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.status !== 201 || !response.data.success) {
+        throw new Error('Failed to create meeting proposals');
+      }
+
+      // Update local state with the new meetings
+      const newMeetings = response.data.data.map(meeting => ({
+        id: meeting.id,
+        group: meeting.group_name,
+        datetime: meeting.meeting_time,
+        description: meeting.description || '-',
+        status: meeting.status
+      }));
+
+      setMeetings([...newMeetings, ...meetings]);
+
+      // Reset form
+      setDatetimeInputs(['']);
+      setSelectedGroup('');
+      setMeetingDescription('');
+
+      // Show confirmation
+      const selectedGroupObj = groups.find(group => group.value === selectedGroup);
+      const groupName = selectedGroupObj ? selectedGroupObj.label : '';
+      
+      setConfirmationData({
+        groupName: groupName,
+        times: validTimes.map(time => formatDatetimeForDisplay(time)).join('، ')
+      });
+      setShowConfirmation(true);
+      
+    } catch (error) {
+      console.error('Failed to submit meeting proposals:', error);
+      alert('فشل في إرسال مقترحات الاجتماع. يرجى التحقق من البيانات والمحاولة مرة أخرى');
     }
-    
-    // Reset form
-    setTimeInputs([{ start: '', end: '' }]);
-    setSelectedGroup('');
-    setMeetingDate('');
-    setMeetingTopic('');
-    
-    // Show confirmation
-    setConfirmationData({
-      groupName: groupName,
-      times: validTimes.map(time => `${time.start} - ${time.end}`).join('، ')
-    });
-    setShowConfirmation(true);
   };
 
-  const deleteMeeting = (id) => {
+  const deleteMeeting = async (id) => {
     if (window.confirm('هل أنت متأكد من حذف هذا الاجتماع؟')) {
-      setMeetings(meetings.filter(meeting => meeting.id !== id));
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        const response = await axios.delete(
+          `http://localhost:8000/api/supervisor/meetings/${id}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+
+        if (response.status !== 200 || !response.data.success) {
+          throw new Error('Failed to delete meeting');
+        }
+
+        setMeetings(meetings.filter(meeting => meeting.id !== id));
+      } catch (error) {
+        console.error('Failed to delete meeting:', error);
+        alert('فشل في حذف الاجتماع. يرجى المحاولة مرة أخرى');
+      }
     }
   };
 
@@ -198,17 +278,11 @@ useEffect(() => {
     const group = groups.find(g => g.label === meetingToEdit.group);
     setSelectedGroup(group ? group.value : '');
     
-    const [day, month, year] = meetingToEdit.date.split('/');
-    setMeetingDate(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`);
+    setMeetingDescription(meetingToEdit.description === '-' ? '' : meetingToEdit.description);
     
-    setMeetingTopic(meetingToEdit.topic === '-' ? '' : meetingToEdit.topic);
+    // For editing, we'll just show the first datetime (API may need adjustment for multiple times)
+    setDatetimeInputs([meetingToEdit.datetime]);
     
-    const newTimeInputs = meetingToEdit.times.map(time => {
-      const [start, end] = time.split(' - ');
-      return { start, end };
-    });
-    
-    setTimeInputs(newTimeInputs);
     setEditingId(id);
     
     // Scroll to form
@@ -240,153 +314,98 @@ useEffect(() => {
           }}
           searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
         />
-        
-        {/* Stats Cards */}
-        <div className="stats-cards">
-          <div className="card stat-card">
-            <div className="stat-details">
-              <h3>عدد المستخدمين</h3>
-              <p>24 مستخدم نشط</p>
-            </div>
-            <div className="stat-icon users">
-              <FontAwesomeIcon icon={faUsers} size="lg" />
-            </div>
-          </div>
-          
-          <div className="card stat-card">
-            <div className="stat-details">
-              <h3>عدد المجموعات</h3>
-              <p>{groups.length} مجموعات</p>
-            </div>
-            <div className="stat-icon groups">
-              <FontAwesomeIcon icon={faUsers} size="lg" />
-            </div>
-          </div>
-          
-          <div className="card stat-card">
-            <div className="stat-details">
-              <h3>الاجتماعات المجدولة</h3>
-              <p>3 اجتماعات هذا الأسبوع</p>
-            </div>
-            <div className="stat-icon schedule">
-              <FontAwesomeIcon icon={faCalendarAlt} size="lg" />
-            </div>
-          </div>
-        </div>
-
-        {/* Schedule Form */}
+      {/* Schedule Form */}
         <div className="card schedule-form">
           <h3 className="form-title">جدولة اجتماع جديد</h3>
           <form id="scheduleForm" onSubmit={handleSubmit}>
-         <div className="form-group">
-  <label htmlFor="groupSelect">المجموعة</label>
-  {loadingGroups ? (
-    <div className="loading-message">جاري تحميل المجموعات...</div>
-  ) : groups.length > 0 ? (
-    <select 
-      id="groupSelect" 
-      className="form-control" 
-      required
-      value={selectedGroup}
-      onChange={(e) => setSelectedGroup(e.target.value)}
-    >
-      <option value="">اختر المجموعة</option>
-      {groups.map(group => (
-        <option key={group.value} value={group.value}>
-          {group.label}
-        </option>
-      ))}
-    </select>
-  ) : (
-    <div className="error-message">
-      لا توجد مجموعات متاحة. يرجى التحقق من اتصالك بالخادم.
-    </div>
-  )}
-</div>
             <div className="form-group">
-              <label htmlFor="meetingDate">تاريخ الاجتماع</label>
-              <input 
-                type="date" 
-                id="meetingDate" 
-                className="form-control" 
-                required
-                value={meetingDate}
-                onChange={(e) => setMeetingDate(e.target.value)}
-              />
+              <label htmlFor="groupSelect">المجموعة</label>
+              {loadingGroups ? (
+                <div className="loading-message">جاري تحميل المجموعات...</div>
+              ) : groups.length > 0 ? (
+                <select 
+                  id="groupSelect" 
+                  className="form-control" 
+                  required
+                  value={selectedGroup}
+                  onChange={(e) => setSelectedGroup(e.target.value)}
+                >
+                  <option value="">اختر المجموعة</option>
+                  {groups.map(group => (
+                    <option key={group.value} value={group.value}>
+                      {group.label}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <div className="error-message">
+                  لا توجد مجموعات متاحة. يرجى التحقق من اتصالك بالخادم.
+                </div>
+              )}
             </div>
 
             <div className="form-group">
-              <label>إضافة المواعيد</label>
-              <div id="timeInputsContainer">
-                {timeInputs.map((time, index) => (
-                  <div className="time-input-container" key={index}>
+              <label>إضافة المواعيد المقترحة (يسمح بحد أقصى 5 مواعيد)</label>
+              <div id="datetimeInputsContainer">
+                {datetimeInputs.map((datetime, index) => (
+                  <div className="form-control" key={index}>
                     <input 
-                      type="time" 
-                      className="start-time" 
+                      type="datetime-local" 
+                      className="datetime-input" 
                       required
-                      value={time.start}
-                      onChange={(e) => handleTimeChange(index, 'start', e.target.value)}
-                    />
-                    <FontAwesomeIcon icon={faArrowLeft} />
-                    <input 
-                      type="time" 
-                      className="end-time" 
-                      required
-                      value={time.end}
-                      onChange={(e) => handleTimeChange(index, 'end', e.target.value)}
+                      value={datetime}
+                      onChange={(e) => handleDatetimeChange(index, e.target.value)}
+                      min={new Date(new Date().getTime() + 60 * 60 * 1000).toISOString().slice(0, 16)}
+                      max={new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
                     />
                     {index > 0 && (
                       <FontAwesomeIcon 
                         icon={faTimes} 
-                        className="remove-time" 
-                        onClick={() => removeTimeInput(index)}
+                        className="remove-datetime" 
+                        onClick={() => removeDatetimeInput(index)}
                       />
                     )}
                   </div>
                 ))}
               </div>
-              <button 
-                type="button" 
-                className="add-time-btn" 
-                id="addTimeBtn"
-                onClick={addTimeInput}
-              >
-                <FontAwesomeIcon icon={faPlus} /> إضافة وقت آخر
-              </button>
+              {datetimeInputs.length < 5 && (
+                <button 
+                  type="button" 
+                  className="add-datetime-btn" 
+                  id="addDatetimeBtn"
+                  onClick={addDatetimeInput}
+                >
+                  <FontAwesomeIcon icon={faPlus} /> إضافة وقت آخر
+                </button>
+              )}
 
               <div 
-                className="selected-times-list" 
-                id="selectedTimesList" 
-                style={{ display: timeInputs.some(t => t.start && t.end) ? 'block' : 'none' }}
+                className="selected-datetimes-list" 
+                id="selectedDatetimesList" 
+                style={{ display: datetimeInputs.some(dt => dt) ? 'block' : 'none' }}
               >
-                {timeInputs.filter(time => time.start && time.end).map((time, index) => (
-                  <div className="time-slot-item" key={index}>
-                    <span>{time.start} - {time.end}</span>
+                {datetimeInputs.filter(datetime => datetime).map((datetime, index) => (
+                  <div className="datetime-slot-item" key={index}>
+                    <span>{formatDatetimeForDisplay(datetime)}</span>
                     <FontAwesomeIcon 
                       icon={faTimes} 
-                      className="remove-time" 
-                      onClick={() => removeTimeInput(index)}
+                      className="remove-datetime" 
+                      onClick={() => removeDatetimeInput(index)}
                     />
                   </div>
                 ))}
               </div>
-              <input 
-                type="hidden" 
-                id="selectedTimes" 
-                name="selectedTimes" 
-                value={timeInputs.filter(time => time.start && time.end).map(time => `${time.start} - ${time.end}`).join('; ')}
-              />
             </div>
 
             <div className="form-group">
-              <label htmlFor="meetingTopic">موضوع الاجتماع (اختياري)</label>
+              <label htmlFor="meetingDescription">وصف الاجتماع (اختياري)</label>
               <input 
                 type="text" 
-                id="meetingTopic" 
+                id="meetingDescription" 
                 className="form-control" 
                 placeholder="مثال: مناقشة المشروع النهائي"
-                value={meetingTopic}
-                onChange={(e) => setMeetingTopic(e.target.value)}
+                value={meetingDescription}
+                onChange={(e) => setMeetingDescription(e.target.value)}
               />
             </div>
 
@@ -400,54 +419,53 @@ useEffect(() => {
         <div className="card scheduled-meetings">
           <h3 className="form-title">الاجتماعات المجدولة</h3>
           <div className="table-responsive">
-            <table className="meetings-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>المجموعة</th>
-                  <th>التاريخ</th>
-                  <th>المواعيد</th>
-                  <th>الموضوع</th>
-                  <th>الحالة</th>
-                  <th>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {meetings.map((meeting, index) => (
-                  <tr key={meeting.id}>
-                    <td data-label="#">{index + 1}</td>
-                    <td data-label="المجموعة">{meeting.group}</td>
-                    <td data-label="التاريخ">{meeting.date}</td>
-                    <td data-label="المواعيد">
-                      {meeting.times.map((time, i) => (
-                        <React.Fragment key={i}>
-                          {time}
-                          {i < meeting.times.length - 1 && <br />}
-                        </React.Fragment>
-                      ))}
-                    </td>
-                    <td data-label="الموضوع">{meeting.topic}</td>
-                    <td data-label="الحالة">
-                      <span className={`badge ${meeting.status === 'active' ? 'badge-success' : 'badge-warning'}`}>
-                        {meeting.status === 'active' ? 'نشطة' : 'قيد الانتظار'}
-                      </span>
-                    </td>
-                    <td data-label="الإجراءات" className="actions">
-                      <FontAwesomeIcon 
-                        icon={faEdit} 
-                        title="تعديل" 
-                        onClick={() => editMeeting(meeting.id)}
-                      />
-                      <FontAwesomeIcon 
-                        icon={faTrash} 
-                        title="حذف" 
-                        onClick={() => deleteMeeting(meeting.id)}
-                      />
-                    </td>
+            {loadingMeetings ? (
+              <div className="loading-message">جاري تحميل الاجتماعات...</div>
+            ) : meetings.length > 0 ? (
+              <table className="meetings-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>المجموعة</th>
+                    <th>الموعد</th>
+                    <th>الوصف</th>
+                    <th>الحالة</th>
+                    <th>الإجراءات</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {meetings.map((meeting, index) => (
+                    <tr key={meeting.id}>
+                      <td data-label="#">{index + 1}</td>
+                      <td data-label="المجموعة">{meeting.group}</td>
+                      <td data-label="الموعد">{formatDatetimeForDisplay(meeting.datetime)}</td>
+                      <td data-label="الوصف">{meeting.description}</td>
+                      <td data-label="الحالة">
+                        <span className={`badge ${meeting.status === 'approved' ? 'badge-success' : 
+                                         meeting.status === 'rejected' ? 'badge-danger' : 'badge-warning'}`}>
+                          {meeting.status === 'approved' ? 'مقبول' : 
+                           meeting.status === 'rejected' ? 'مرفوض' : 'قيد الانتظار'}
+                        </span>
+                      </td>
+                      <td data-label="الإجراءات" className="actions">
+                        <FontAwesomeIcon 
+                          icon={faEdit} 
+                          title="تعديل" 
+                          onClick={() => editMeeting(meeting.id)}
+                        />
+                        <FontAwesomeIcon 
+                          icon={faTrash} 
+                          title="حذف" 
+                          onClick={() => deleteMeeting(meeting.id)}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="no-meetings-message">لا توجد اجتماعات مجدولة</div>
+            )}
           </div>
         </div>
 
@@ -458,7 +476,9 @@ useEffect(() => {
             <div className="confirmation-message">
               <h3>تمت الجدولة بنجاح</h3>
               <p id="messageContent">
-                تم جدولة الاجتماع للمجموعة <span id="groupName">{confirmationData.groupName}</span> في المواعيد المحددة.
+                تم جدولة الاجتماع للمجموعة <span id="groupName">{confirmationData.groupName}</span> في المواعيد التالية:
+                <br />
+                <span id="meetingTimes">{confirmationData.times}</span>
               </p>
               <div className="message-buttons">
                 <button className="btn" onClick={closeConfirmation}>إغلاق</button>
