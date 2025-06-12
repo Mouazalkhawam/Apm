@@ -617,12 +617,17 @@ class ProjectController extends Controller
                 ]);
             }
 
-            // التحقق من أن المشرف معتمد في المجموعة
-            $isApprovedSupervisor = $user->supervisor->isApprovedForGroup($groupId);
+            // استخدام الاستعلام المباشر على جدول group_supervisor
+            $isApprovedSupervisor = DB::table('group_supervisor')
+                ->where('supervisorId', $user->supervisor->supervisorId)
+                ->where('groupid', $groupId)
+                ->where('status', 'approved')
+                ->exists();
 
             return response()->json([
                 'success' => true,
                 'is_supervisor' => $isApprovedSupervisor,
+                'supervisor_id' => $user->supervisor->supervisorId,
                 'message' => $isApprovedSupervisor 
                     ? 'User is an approved supervisor for this group' 
                     : 'User is not an approved supervisor for this group'

@@ -24,7 +24,7 @@ const TeamMembers = () => {
   const [error, setError] = useState(null);
   const [formData, setFormData] = useState({
     memberName: '',
-    studentId: ''
+    userId: ''
   });
   
   // States for students dropdown
@@ -58,7 +58,8 @@ const TeamMembers = () => {
         );
 
         if (response.data.success) {
-          setTeamMembers(response.data.data.map(member => ({
+          setTeamMembers(response.data.data.map((member, index) => ({
+            userId: member.userId || `member-${index}`,
             studentId: member.studentId,
             name: member.name,
             email: member.email,
@@ -89,8 +90,12 @@ const TeamMembers = () => {
         );
 
         if (response.data.success) {
-          setStudentsList(response.data.data);
-          setFilteredStudents(response.data.data);
+          const studentsWithUserId = response.data.data.map((student, index) => ({
+            ...student,
+            userId: student.userId || student.id || `student-${index}`
+          }));
+          setStudentsList(studentsWithUserId);
+          setFilteredStudents(studentsWithUserId);
         }
       } catch (err) {
         console.error('Error fetching students:', err);
@@ -102,7 +107,6 @@ const TeamMembers = () => {
     fetchRecommendations();
   }, []);
 
-  // Filter students based on input
   const filterStudents = (input) => {
     if (!input) {
       setFilteredStudents(studentsList);
@@ -114,16 +118,14 @@ const TeamMembers = () => {
     setFilteredStudents(filtered);
   };
 
-  // Handle student selection from dropdown
   const handleStudentSelect = (student) => {
     setFormData({
       memberName: student.name,
-      studentId: student.studentId
+      userId: student.userId
     });
     setIsDropdownOpen(false);
   };
 
-  // Fetch recommended students from API
   const fetchRecommendations = async (query = '') => {
     setIsLoadingRecommendations(true);
     try {
@@ -139,8 +141,9 @@ const TeamMembers = () => {
       );
 
       if (response.data.status === 'success') {
-        setRecommendedStudents(response.data.data.map(student => ({
-          id: student.student_id,
+        setRecommendedStudents(response.data.data.map((student, index) => ({
+          id: student.student_id || `rec-${index}`,
+          userId: student.user_id || `user-${index}`,
           name: student.name,
           specialty: `GPA: ${student.gpa}`,
           skills: student.skills ? student.skills.split(', ') : [],
@@ -157,7 +160,6 @@ const TeamMembers = () => {
     }
   };
 
-  // Handle search for students
   const handleSearch = async (e) => {
     e.preventDefault();
     setSearchLoading(true);
@@ -168,23 +170,22 @@ const TeamMembers = () => {
     }
   };
 
-  // Add student to selected list
   const handleAddStudent = (student) => {
-    if (!selectedStudents.some(s => s.id === student.id)) {
+    if (!selectedStudents.some(s => s.userId === student.userId) && 
+        !teamMembers.some(m => m.userId === student.userId)) {
       const updatedSelected = [...selectedStudents, student];
       setSelectedStudents(updatedSelected);
       localStorage.setItem('selectedStudents', JSON.stringify(updatedSelected));
+      setIsModalOpen(true);
     }
   };
 
-  // Remove student from selected list
-  const handleRemoveStudent = (studentId) => {
-    const updatedSelected = selectedStudents.filter(s => s.id !== studentId);
+  const handleRemoveStudent = (userId) => {
+    const updatedSelected = selectedStudents.filter(s => s.userId !== userId);
     setSelectedStudents(updatedSelected);
     localStorage.setItem('selectedStudents', JSON.stringify(updatedSelected));
   };
 
-  // Handle form input changes
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData(prev => ({
@@ -197,25 +198,39 @@ const TeamMembers = () => {
     }
   };
 
-  // Submit new member form
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       const groupId = localStorage.getItem('selectedGroupId');
       const token = localStorage.getItem('access_token');
       
-      if (!formData.studentId) {
-        alert('الرجاء اختيار طالب من القائمة');
+      const membersToAdd = [];
+      
+      // Add selected students from recommendations
+      selectedStudents.forEach(student => {
+        membersToAdd.push({
+          user_id: student.userId,
+          type: 'student'
+        });
+      });
+
+      // Add student from dropdown if selected
+      if (formData.userId) {
+        membersToAdd.push({
+          user_id: formData.userId,
+          type: 'student'
+        });
+      }
+
+      if (membersToAdd.length === 0) {
+        alert('الرجاء اختيار طالب واحد على الأقل');
         return;
       }
 
       const response = await axios.post(
         `http://127.0.0.1:8000/api/groups/${groupId}/members`,
         {
-          members: [{
-            id: formData.studentId,
-            type: 'student'
-          }]
+          members: membersToAdd
         },
         {
           headers: {
@@ -225,7 +240,6 @@ const TeamMembers = () => {
       );
 
       if (response.data.success) {
-        // Refresh the members list after adding
         const updatedResponse = await axios.get(
           `http://127.0.0.1:8000/api/groups/${groupId}/students`,
           {
@@ -235,7 +249,8 @@ const TeamMembers = () => {
           }
         );
         
-        setTeamMembers(updatedResponse.data.data.map(member => ({
+        setTeamMembers(updatedResponse.data.data.map((member, index) => ({
+          userId: member.userId || `new-member-${index}`,
           studentId: member.studentId,
           name: member.name,
           email: member.email,
@@ -247,7 +262,7 @@ const TeamMembers = () => {
         setIsModalOpen(false);
         setFormData({
           memberName: '',
-          studentId: ''
+          userId: ''
         });
         setSelectedStudents([]);
         localStorage.removeItem('selectedStudents');
@@ -310,8 +325,8 @@ const TeamMembers = () => {
             </div>
           ) : (
             <div className="team-grid">
-              {teamMembers.map(member => (
-                <div className="team-card" key={member.studentId}>
+              {teamMembers.map((member, index) => (
+                <div className="team-card" key={`team-member-${member.userId}-${index}`}>
                   <div className="flex justify-between items-start team-member">
                     <h3 className="member-name">{member.name}</h3>
                     {member.is_leader && (
@@ -369,38 +384,44 @@ const TeamMembers = () => {
             <div className="text-center py-4">جاري تحميل التوصيات...</div>
           ) : recommendedStudents.length > 0 ? (
             <div className="recommendation-grid">
-              {recommendedStudents.map(student => (
-                <div className="recommendation-card" key={student.id}>
-                  <div className="recommendation-avatar">
-                    <img src={student.avatar} alt={`صورة ${student.name}`} />
-                  </div>
-                  <h4 className="recommendation-name">{student.name}</h4>
-                  <p className="recommendation-specialty">المعدل: {student.gpa}</p>
-                  {student.experience && (
-                    <p className="recommendation-experience">
-                      <i className="fas fa-briefcase mr-1"></i>
-                      {student.experience.length > 50 
-                        ? `${student.experience.substring(0, 50)}...` 
-                        : student.experience}
-                    </p>
-                  )}
-                  <div className="recommendation-skills">
-                    {student.skills.slice(0, 5).map((skill, index) => (
-                      <span key={index} className="skill-tag">{skill}</span>
-                    ))}
-                    {student.skills.length > 5 && (
-                      <span className="skill-tag">+{student.skills.length - 5}</span>
+              {recommendedStudents.map((student, index) => {
+                const isSelected = selectedStudents.some(s => s.userId === student.userId);
+                const isInTeam = teamMembers.some(m => m.userId === student.userId);
+                
+                return (
+                  <div className="recommendation-card" key={`rec-${student.userId}-${index}`}>
+                    <div className="recommendation-avatar">
+                      <img src={student.avatar} alt={`صورة ${student.name}`} />
+                    </div>
+                    <h4 className="recommendation-name">{student.name}</h4>
+                    <p className="recommendation-specialty">المعدل: {student.gpa}</p>
+                    {student.experience && (
+                      <p className="recommendation-experience">
+                        <i className="fas fa-briefcase mr-1"></i>
+                        {student.experience.length > 50 
+                          ? `${student.experience.substring(0, 50)}...` 
+                          : student.experience}
+                      </p>
                     )}
+                    <div className="recommendation-skills">
+                      {student.skills.slice(0, 5).map((skill, skillIndex) => (
+                        <span key={`skill-${student.userId}-${skillIndex}`} className="skill-tag">{skill}</span>
+                      ))}
+                      {student.skills.length > 5 && (
+                        <span className="skill-tag">+{student.skills.length - 5}</span>
+                      )}
+                    </div>
+                    <button 
+                      className={`invite-btn ${isSelected ? 'selected' : ''}`}
+                      onClick={() => handleAddStudent(student)}
+                      disabled={isSelected || isInTeam}
+                    >
+                      {isSelected ? 'تم الاختيار' : 
+                       isInTeam ? 'موجود بالفعل' : 'اختيار'}
+                    </button>
                   </div>
-                  <button 
-                    className={`invite-btn ${selectedStudents.some(s => s.id === student.id) ? 'selected' : ''}`}
-                    onClick={() => handleAddStudent(student)}
-                    disabled={selectedStudents.some(s => s.id === student.id)}
-                  >
-                    {selectedStudents.some(s => s.id === student.id) ? 'تم الاختيار' : 'اختيار'}
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-4 text-gray-500">لا توجد نتائج</div>
@@ -424,8 +445,8 @@ const TeamMembers = () => {
               </div>
               
               <div className="selected-students-grid">
-                {selectedStudents.map(student => (
-                  <div key={student.id} className="selected-student-card">
+                {selectedStudents.map((student, index) => (
+                  <div key={`selected-${student.userId}-${index}`} className="selected-student-card">
                     <div className="flex items-center">
                       <img 
                         src={student.avatar} 
@@ -446,23 +467,13 @@ const TeamMembers = () => {
                     </div>
                     <button 
                       className="remove-student-btn"
-                      onClick={() => handleRemoveStudent(student.id)}
+                      onClick={() => handleRemoveStudent(student.userId)}
                       title="إزالة"
                     >
                       <FontAwesomeIcon icon={faTimes} />
                     </button>
                   </div>
                 ))}
-              </div>
-              
-              <div className="mt-4 text-center">
-                <button 
-                  className="btn-primary-profile"
-                  onClick={() => setIsModalOpen(true)}
-                >
-                  <FontAwesomeIcon icon={faUserPlus} className="ml-2" />
-                  الانتقال إلى إضافة الأعضاء
-                </button>
               </div>
             </div>
           )}
@@ -493,39 +504,48 @@ const TeamMembers = () => {
                     value={formData.memberName}
                     onChange={handleInputChange}
                     onFocus={() => setIsDropdownOpen(true)}
-                    required
                   />
                   <FontAwesomeIcon 
                     icon={faChevronDown} 
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
                   />
                 </div>
                 {isDropdownOpen && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                  <div className="dropdown-list">
                     {filteredStudents.length > 0 ? (
-                      filteredStudents.map(student => (
+                      filteredStudents.map((student, index) => (
                         <div 
-                          key={student.id}
-                          className="px-4 py-2 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => handleStudentSelect(student)}
+                          key={`dropdown-${student.userId}-${index}`}
+                          className={`dropdown-item ${teamMembers.some(m => m.userId === student.userId) ? 'disabled' : ''}`}
+                          onClick={() => !teamMembers.some(m => m.userId === student.userId) && handleStudentSelect(student)}
                         >
                           {student.name}
+                          {teamMembers.some(m => m.userId === student.userId) && (
+                            <span className="already-member">(موجود بالفعل)</span>
+                          )}
                         </div>
                       ))
                     ) : (
-                      <div className="px-4 py-2 text-gray-500">لا توجد نتائج</div>
+                      <div className="dropdown-item disabled">لا توجد نتائج</div>
                     )}
                   </div>
                 )}
               </div>
               
               {selectedStudents.length > 0 && (
-                <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                  <h4 className="font-medium mb-2">الطلاب المختارون من التوصيات:</h4>
-                  <ul className="list-disc list-inside">
-                    {selectedStudents.map(student => (
-                      <li key={student.id} className="text-sm">
+                <div className="selected-members-container">
+                  <h4 className="selected-members-title">الطلاب المختارون من التوصيات:</h4>
+                  <ul className="selected-members-list">
+                    {selectedStudents.map((student, index) => (
+                      <li key={`selected-list-${student.userId}-${index}`} className="selected-member-item">
                         {student.name} - {student.skills.slice(0, 2).join(', ')}
+                        <button 
+                          type="button"
+                          className="remove-selected-btn"
+                          onClick={() => handleRemoveStudent(student.userId)}
+                        >
+                          <FontAwesomeIcon icon={faTimes} />
+                        </button>
                       </li>
                     ))}
                   </ul>
@@ -540,7 +560,11 @@ const TeamMembers = () => {
               >
                 إلغاء
               </button>
-              <button type="submit" className="btn btn-primary">
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={selectedStudents.length === 0 && !formData.userId}
+              >
                 إضافة العضو
               </button>
             </div>

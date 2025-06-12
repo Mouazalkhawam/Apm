@@ -414,4 +414,91 @@
   .search-btn {
     padding: 0.75rem;
   }
+  /* أنماط القائمة المنسدلة */
+.dropdown-list {
+  position: absolute;
+  z-index: 1000;
+  width: 100%;
+  max-height: 300px;
+  overflow-y: auto;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  margin-top: 5px;
+}
+
+.dropdown-item {
+  padding: 10px 15px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.dropdown-item:hover {
+  background-color: #f8f8f8;
+}
+
+.dropdown-item.disabled {
+  color: #999;
+  cursor: not-allowed;
+  background-color: #f5f5f5;
+}
+
+.already-member {
+  font-size: 0.8em;
+  color: #666;
+  margin-right: 5px;
+}
+
+/* أنماط الأعضاء المختارين */
+.selected-members-container {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+}
+
+.selected-members-title {
+  font-size: 1em;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: var(--primary);
+}
+
+.selected-members-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.selected-member-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #eee;
+}
+
+.remove-selected-btn {
+  background: none;
+  border: none;
+  color: #ff4444;
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* تعديلات إضافية */
+.form-group {
+  margin-bottom: 20px;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 }
