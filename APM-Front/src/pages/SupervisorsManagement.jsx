@@ -7,16 +7,30 @@ import {
   faCalendarAlt,
   faPen,
   faTrash,
-  faPlus
+  faPlus,
+  faTimes
 } from '@fortawesome/free-solid-svg-icons';
 import './SupervisorsManagement.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
 import axios from 'axios';
+import Select from 'react-select';
+import makeAnimated from 'react-select/animated';
+
+const animatedComponents = makeAnimated();
 
 const SupervisorsManagement = () => {
   const [supervisors, setSupervisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    role: 'academic',
+    since: new Date().toISOString().split('T')[0]
+  });
+  const [formErrors, setFormErrors] = useState({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const fetchSupervisors = async () => {
@@ -37,14 +51,14 @@ const SupervisorsManagement = () => {
         );
 
         if (response.data.success) {
-          // تحويل البيانات الواردة من API إلى الشكل المتوقع في الكومبوننت
           const formattedSupervisors = response.data.data.map(supervisor => ({
             id: supervisor.supervisorId,
             name: supervisor.name,
-            role: "مشرف أكاديمي", // يمكنك تعديل هذا حسب احتياجاتك
+            role: supervisor.role || "مشرف أكاديمي",
             email: supervisor.email,
-            since: supervisor.since,
-            isMain: false // يمكنك تحديد المشرف الرئيسي إذا كان متاحاً في API
+            since: supervisor.since || new Date().toISOString().split('T')[0],
+            isMain: supervisor.isMain || false,
+            roleType: supervisor.roleType || 'academic'
           }));
           
           setSupervisors(formattedSupervisors);
@@ -78,10 +92,104 @@ const SupervisorsManagement = () => {
         };
       default:
         return {
-          text: "",
-          bg: "",
-          border: ""
+          text: "role-academic",
+          bg: "bg-academic",
+          border: "border-academic"
         };
+    }
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    // Clear error when user types
+    if (formErrors[name]) {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: null
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    if (!formData.name.trim()) {
+      errors.name = 'اسم المشرف مطلوب';
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = 'البريد الإلكتروني مطلوب';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = 'البريد الإلكتروني غير صالح';
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const groupId = localStorage.getItem('selectedGroupId');
+      
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/groups/${groupId}/supervisors`,
+        {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          since: formData.since
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        // Add the new supervisor to the list
+        const newSupervisor = {
+          id: response.data.supervisorId,
+          name: formData.name,
+          role: formData.role === 'quality' ? 'مشرف جودة' : 
+               formData.role === 'development' ? 'مشرف تطوير' : 'مشرف أكاديمي',
+          email: formData.email,
+          since: formData.since,
+          isMain: false,
+          roleType: formData.role
+        };
+        
+        setSupervisors(prev => [...prev, newSupervisor]);
+        setShowAddModal(false);
+        setFormData({
+          name: '',
+          email: '',
+          role: 'academic',
+          since: new Date().toISOString().split('T')[0]
+        });
+      } else {
+        throw new Error(response.data.message || 'فشل في إضافة المشرف');
+      }
+    } catch (err) {
+      console.error('Error adding supervisor:', err);
+      setError(err.response?.data?.message || err.message || 'حدث خطأ أثناء إضافة المشرف');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -115,16 +223,17 @@ const SupervisorsManagement = () => {
 
   return (
     <div className="supervisors-management" dir="rtl">
-      {/* Header Component */}
       <ProjectHeader 
         title=" المشرفين على المشروع "
         description="إدارة المشرفين المسؤولين عن متابعة سير العمل في المشروع"
       />
 
       <main className="container">
-        {/* Supervisors Section Header */}
         <div className="section-header">
-          <button className="add-supervisor-btn">
+          <button 
+            className="add-supervisor-btn"
+            onClick={() => setShowAddModal(true)}
+          >
             <FontAwesomeIcon icon={faPlus} />
             <span>إضافة مشرف جديد</span>
           </button>
@@ -135,9 +244,7 @@ const SupervisorsManagement = () => {
           </div>
         </div>
         
-        {/* Supervisors Grid */}
         <div className="supervisors-grid">
-          {/* Existing Supervisors */}
           {supervisors.map(supervisor => (
             <div className="supervisor-card" key={supervisor.id}>
               {supervisor.isMain && (
@@ -182,8 +289,7 @@ const SupervisorsManagement = () => {
             </div>
           ))}
           
-          {/* Add Supervisor Card */}
-          <div className="add-new-card">
+          <div className="add-new-card" onClick={() => setShowAddModal(true)}>
             <div className="add-new-content">
               <div className="add-icon">
                 <FontAwesomeIcon icon={faPlus} />
@@ -194,6 +300,64 @@ const SupervisorsManagement = () => {
           </div>
         </div>
       </main>
+
+      {/* Add Supervisor Modal */}
+      {showAddModal && (
+        <div className="modal-overlay-profile">
+          <div className="modal-content">
+            <span 
+              className="close-modal" 
+              onClick={() => {
+                setShowAddModal(false);
+                setFormErrors({});
+              }}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </span>
+            <h2 className="modal-title">إضافة مشرف جديد</h2>
+            
+            {error && (
+              <div className="alert alert-danger">
+                <FontAwesomeIcon icon={faTimes} /> {error}
+              </div>
+            )}
+            
+            <form onSubmit={handleSubmit}>
+              <div className="form-group">
+                <label>اسم المشرف *</label>
+                <input 
+                  type="text" 
+                  className={`form-input-profile ${formErrors.name ? 'is-invalid' : ''}`}
+                  name="name"
+                  value={formData.name}
+                  onChange={handleInputChange}
+                  required
+                  placeholder="أدخل اسم المشرف"
+                />
+                {formErrors.name && (
+                  <div className="invalid-feedback">{formErrors.name}</div>
+                )}
+              </div>
+          
+              <button 
+                className="btn-profile btn-primary-profile" 
+                type="submit"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <FontAwesomeIcon icon={faPlus} spin /> جاري الإضافة...
+                  </>
+                ) : (
+                  <>
+                    <FontAwesomeIcon icon={faPlus} /> إضافة المشرف
+                  </>
+                )}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
