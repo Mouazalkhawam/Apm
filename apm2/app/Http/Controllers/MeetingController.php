@@ -64,15 +64,16 @@ class MeetingController extends Controller
             }
 
             $validator = Validator::make($request->all(), [
-                'group_id' => 'required|integer|exists:groups,groupid',
-                'proposed_times' => 'required|array|min:1|max:5',
-                'proposed_times.*' => [
-                    'required',
-                    'date_format:Y-m-d H:i:s',
-                    'after:now +1 hour',
-                    'before:now +30 days'
-                ]
-            ]);
+                  'group_id' => 'required|integer|exists:groups,groupid',
+                  'proposed_times' => 'required|array|min:1|max:5',
+                  'proposed_times.*' => [
+                  'required',
+                  'date_format:Y-m-d H:i:s',
+                  'after:now +1 hour',
+                  'before:now +30 days'
+                    ],
+                  'description' => 'nullable|string|max:1000' // إضافة التحقق من حقل الوصف
+              ]);
 
             if ($validator->fails()) {
                 return response()->json([
@@ -94,16 +95,17 @@ class MeetingController extends Controller
                 ], 403);
             }
 
-            $meetings = [];
-            foreach ($request->proposed_times as $time) {
-                $meetings[] = Meeting::create([
-                    'group_id' => $request->group_id,
-                    'supervisor_id' => $supervisor->supervisorId,
-                    'meeting_time' => $time,
-                    'end_time' => Carbon::parse($time)->addHour(), // أضف ساعة واحدة
-                    'status' => 'proposed'
-                ]);
-            }
+           $meetings = [];
+foreach ($request->proposed_times as $time) {
+    $meetings[] = Meeting::create([
+        'group_id' => $request->group_id,
+        'supervisor_id' => $supervisor->supervisorId,
+        'meeting_time' => $time,
+        'end_time' => Carbon::parse($time)->addHour(),
+        'status' => 'proposed',
+        'description' => $request->description ?? null // إضافة الوصف
+    ]);
+}
 
             return response()->json([
                 'success' => true,
