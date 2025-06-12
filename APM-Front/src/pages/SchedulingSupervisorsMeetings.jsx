@@ -33,6 +33,8 @@ const SchedulingSupervisorsMeetings = () => {
   const [confirmationData, setConfirmationData] = useState({});
   const [editingId, setEditingId] = useState(null);
   const [loadingMeetings, setLoadingMeetings] = useState(true);
+  const [supervisorId, setSupervisorId] = useState(localStorage.getItem('supervisor_id') || null);
+  const [errors, setErrors] = useState({});
 
   // Fetch groups from API
   useEffect(() => {
@@ -82,11 +84,12 @@ const SchedulingSupervisorsMeetings = () => {
     const fetchMeetings = async () => {
       try {
         const token = localStorage.getItem('access_token');
-        if (!token) {
-          throw new Error('No authentication token found');
+        if (!token || !supervisorId) {
+          setLoadingMeetings(false);
+          return;
         }
 
-        const response = await axios.get('http://localhost:8000/api/supervisor/meetings', {
+        const response = await axios.get(`http://localhost:8000/api/supervisors/${supervisorId}/meetings`, {
           headers: {
             'Authorization': `Bearer ${token}`,
             'Accept': 'application/json'
@@ -101,26 +104,82 @@ const SchedulingSupervisorsMeetings = () => {
           throw new Error('API request was not successful');
         }
 
-        const formattedMeetings = response.data.data.map(meeting => ({
-          id: meeting.id,
-          group: meeting.group_name,
-          datetime: meeting.meeting_time,
-          description: meeting.description || '-',
-          status: meeting.status
-        }));
-        
+        // Handle case where data might not be an array
+        const meetingsData = response.data.data || [];
+        const formattedMeetings = Array.isArray(meetingsData) 
+          ? meetingsData.map(meeting => ({
+              id: meeting.id,
+              group: groups.find(g => g.value === meeting.group_id.toString())?.label || meeting.group_id.toString(),
+              datetime: meeting.meeting_time,
+              description: meeting.description || '-',
+              status: meeting.status || 'pending'
+            }))
+          : [];
+
         setMeetings(formattedMeetings);
         setLoadingMeetings(false);
         
       } catch (error) {
         console.error('Failed to fetch meetings:', error);
         setLoadingMeetings(false);
-        alert('فشل في جلب الاجتماعات. يرجى التحقق من اتصالك بالإنترنت أو إعادة تسجيل الدخول');
+        setMeetings([]); // Set empty array if error occurs
       }
     };
-    
-    fetchMeetings();
-  }, []);
+
+    if (supervisorId && groups.length > 0) {
+      fetchMeetings();
+    }
+  }, [supervisorId, groups]);
+
+  // Function to check if user is supervisor of selected group
+  const checkSupervisor = async (groupId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      // Check if we already have a supervisor_id for this group in localStorage
+      const storedSupervisorId = localStorage.getItem('supervisor_id');
+      const storedGroupId = localStorage.getItem('supervisor_group_id');
+      
+      if (storedSupervisorId && storedGroupId === groupId) {
+        setSupervisorId(storedSupervisorId);
+        return true;
+      }
+
+      const response = await axios.get(`http://localhost:8000/api/groups/${groupId}/is-supervisor`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
+        }
+      });
+
+      if (response.status !== 200) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      if (!response.data.success) {
+        throw new Error('API request was not successful');
+      }
+
+      // If user is supervisor, store the supervisor_id and group_id in localStorage
+      if (response.data.is_supervisor) {
+        localStorage.setItem('supervisor_id', response.data.supervisor_id);
+        localStorage.setItem('supervisor_group_id', groupId);
+        setSupervisorId(response.data.supervisor_id);
+        return true;
+      } else {
+        alert('أنت لست المشرف على هذه المجموعة');
+        return false;
+      }
+      
+    } catch (error) {
+      console.error('Failed to verify supervisor:', error);
+      alert('فشل في التحقق من صلاحيات المشرف. يرجى المحاولة مرة أخرى');
+      return false;
+    }
+  };
 
   const toggleSidebar = () => {
     setCollapsed(!collapsed);
@@ -167,17 +226,31 @@ const SchedulingSupervisorsMeetings = () => {
     return date.toLocaleString('ar-EG', options);
   };
 
+  const formatDatetimeForAPI = (datetimeStr) => {
+    if (!datetimeStr) return '';
+    const date = new Date(datetimeStr);
+    return date.toISOString().replace('T', ' ').slice(0, 19);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setErrors({});
     
     if (!selectedGroup) {
-      alert('الرجاء اختيار المجموعة');
+      setErrors(prev => ({...prev, group: 'الرجاء اختيار المجموعة'}));
+      return;
+    }
+    
+    // First verify that the user is supervisor of the selected group
+    const isSupervisor = await checkSupervisor(selectedGroup);
+    if (!isSupervisor || !supervisorId) {
+      alert('فشل في التحقق من صلاحيات المشرف');
       return;
     }
     
     const validTimes = datetimeInputs.filter(time => time);
     if (validTimes.length === 0) {
-      alert('الرجاء تحديد موعد واحد على الأقل');
+      setErrors(prev => ({...prev, times: 'الرجاء تحديد موعد واحد على الأقل'}));
       return;
     }
     
@@ -188,13 +261,14 @@ const SchedulingSupervisorsMeetings = () => {
       }
 
       const requestData = {
-        group_id: selectedGroup,
-        proposed_times: validTimes,
-        description: meetingDescription || null
+        group_id: parseInt(selectedGroup),
+        proposed_times: validTimes.map(formatDatetimeForAPI),
+        description: meetingDescription || null,
+        supervisor_id: parseInt(supervisorId)
       };
 
       const response = await axios.post(
-        'http://localhost:8000/api/supervisor/meetings/propose',
+        `http://localhost:8000/api/supervisors/${supervisorId}/meetings/propose`,
         requestData,
         {
           headers: {
@@ -205,26 +279,28 @@ const SchedulingSupervisorsMeetings = () => {
         }
       );
 
-      if (response.status !== 201 || !response.data.success) {
+      if (response.status !== 201) {
         throw new Error('Failed to create meeting proposals');
       }
 
       // Update local state with the new meetings
-      const newMeetings = response.data.data.map(meeting => ({
-        id: meeting.id,
-        group: meeting.group_name,
-        datetime: meeting.meeting_time,
-        description: meeting.description || '-',
-        status: meeting.status
-      }));
+      const newMeetings = Array.isArray(response.data.data) 
+        ? response.data.data.map(meeting => ({
+            id: meeting.id,
+            group: groups.find(g => g.value === meeting.group_id.toString())?.label || meeting.group_id.toString(),
+            datetime: meeting.meeting_time,
+            description: meeting.description || '-',
+            status: meeting.status || 'pending'
+          }))
+        : [];
 
-      setMeetings([...newMeetings, ...meetings]);
+      setMeetings(prev => [...newMeetings, ...prev]);
 
       // Reset form
       setDatetimeInputs(['']);
       setSelectedGroup('');
       setMeetingDescription('');
-
+      
       // Show confirmation
       const selectedGroupObj = groups.find(group => group.value === selectedGroup);
       const groupName = selectedGroupObj ? selectedGroupObj.label : '';
@@ -237,7 +313,21 @@ const SchedulingSupervisorsMeetings = () => {
       
     } catch (error) {
       console.error('Failed to submit meeting proposals:', error);
-      alert('فشل في إرسال مقترحات الاجتماع. يرجى التحقق من البيانات والمحاولة مرة أخرى');
+      
+      if (error.response && error.response.status === 422) {
+        // Handle validation errors
+        const validationErrors = error.response.data.errors || {};
+        const errorMessages = {};
+        
+        Object.keys(validationErrors).forEach(key => {
+          errorMessages[key] = validationErrors[key][0]; // Get first error message for each field
+        });
+        
+        setErrors(errorMessages);
+        alert('يوجد أخطاء في البيانات المدخلة: ' + Object.values(errorMessages).join('، '));
+      } else {
+        alert('فشل في إرسال مقترحات الاجتماع. يرجى التحقق من البيانات والمحاولة مرة أخرى');
+      }
     }
   };
 
@@ -250,7 +340,7 @@ const SchedulingSupervisorsMeetings = () => {
         }
 
         const response = await axios.delete(
-          `http://localhost:8000/api/supervisor/meetings/${id}`,
+          `http://localhost:8000/api/supervisors/${supervisorId}/meetings/${id}`,
           {
             headers: {
               'Authorization': `Bearer ${token}`,
@@ -271,18 +361,26 @@ const SchedulingSupervisorsMeetings = () => {
     }
   };
 
-  const editMeeting = (id) => {
+  const editMeeting = async (id) => {
     const meetingToEdit = meetings.find(meeting => meeting.id === id);
     
     // Find the group in our groups list that matches the meeting's group name
     const group = groups.find(g => g.label === meetingToEdit.group);
-    setSelectedGroup(group ? group.value : '');
     
+    if (!group) {
+      alert('لا يمكن العثور على المجموعة المرتبطة بهذا الاجتماع');
+      return;
+    }
+    
+    // Verify that the user is still supervisor of this group
+    const isSupervisor = await checkSupervisor(group.value);
+    if (!isSupervisor) {
+      return;
+    }
+    
+    setSelectedGroup(group.value);
     setMeetingDescription(meetingToEdit.description === '-' ? '' : meetingToEdit.description);
-    
-    // For editing, we'll just show the first datetime (API may need adjustment for multiple times)
     setDatetimeInputs([meetingToEdit.datetime]);
-    
     setEditingId(id);
     
     // Scroll to form
@@ -314,18 +412,20 @@ const SchedulingSupervisorsMeetings = () => {
           }}
           searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
         />
-      {/* Schedule Form */}
+      
+        {/* Schedule Form */}
         <div className="card schedule-form">
           <h3 className="form-title">جدولة اجتماع جديد</h3>
           <form id="scheduleForm" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="groupSelect">المجموعة</label>
+              {errors.group && <div className="error-text">{errors.group}</div>}
               {loadingGroups ? (
                 <div className="loading-message">جاري تحميل المجموعات...</div>
               ) : groups.length > 0 ? (
                 <select 
                   id="groupSelect" 
-                  className="form-control" 
+                  className={`form-control ${errors.group ? 'is-invalid' : ''}`}
                   required
                   value={selectedGroup}
                   onChange={(e) => setSelectedGroup(e.target.value)}
@@ -346,9 +446,11 @@ const SchedulingSupervisorsMeetings = () => {
 
             <div className="form-group">
               <label>إضافة المواعيد المقترحة (يسمح بحد أقصى 5 مواعيد)</label>
+              {errors.times && <div className="error-text">{errors.times}</div>}
+              {errors.proposed_times && <div className="error-text">{errors.proposed_times}</div>}
               <div id="datetimeInputsContainer">
                 {datetimeInputs.map((datetime, index) => (
-                  <div className="form-control" key={index}>
+                  <div className={`form-control ${errors.proposed_times ? 'is-invalid' : ''}`} key={index}>
                     <input 
                       type="datetime-local" 
                       className="datetime-input" 
