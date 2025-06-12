@@ -32,38 +32,82 @@ const ProposalForm = () => {
     phone: '',
     specialization: ''
   });
-  const [groupInfo, setGroupInfo] = useState(null);
+  const [groupid, setGroupid] = useState(null);
   const [showNotification, setShowNotification] = useState(false);
   const [showChat, setShowChat] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
+    const storedGroupid = localStorage.getItem('selectedGroupId');
+    
     if (!token) {
       navigate('/login');
     } else {
       setIsAuthenticated(true);
-      fetchGroupInfo();
+      setGroupid(storedGroupid);
+      
+      if (storedGroupid) {
+        fetchProposalData(storedGroupid);
+      } else {
+        setIsLoading(false);
+      }
     }
   }, [navigate]);
 
-  const fetchGroupInfo = async () => {
+  const fetchProposalData = async (groupid) => {
     try {
+      setIsLoading(true);
       const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://localhost:8000/api/proposals/create', {
+      const response = await axios.get(`http://localhost:8000/api/proposals/group/${groupid}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      setGroupInfo(response.data);
+      
+      if (response.data) {
+        const proposalData = response.data;
+        setProjectType(proposalData.project_type || 'term-project');
+        setIsEditMode(true);
+        
+        setFormData({
+          title: proposalData.title || '',
+          problem_description: proposalData.problem_description || '',
+          problem_background: proposalData.problem_background || '',
+          problem_studies: proposalData.problem_studies || '',
+          solution_studies: proposalData.solution_studies || '',
+          proposed_solution: proposalData.proposed_solution || '',
+          platform: proposalData.platform || '',
+          tools: proposalData.tools || [],
+          programming_languages: proposalData.programming_languages || [],
+          database: proposalData.database || '',
+          packages: proposalData.packages || '',
+          management_plan: proposalData.management_plan || '',
+          team_roles: proposalData.team_roles || '',
+          functional_requirements: proposalData.functional_requirements || [],
+          non_functional_requirements: proposalData.non_functional_requirements || [],
+          technology_stack: proposalData.technology_stack || [],
+          problem_mindmap: proposalData.mindmap_url ? 
+            { name: 'تم تحميل الملف مسبقاً', url: proposalData.mindmap_url } : null,
+          experts: proposalData.experts || []
+        });
+      }
     } catch (error) {
-      console.error('Error fetching group info:', error);
-      if (error.response && error.response.status === 401) {
+      console.error('Error fetching proposal data:', error);
+      if (error.response && error.response.status === 404) {
+        // No proposal exists yet, this is fine
+        console.log('No existing proposal found, starting fresh');
+        setIsEditMode(false);
+      } else if (error.response && error.response.status === 401) {
         localStorage.removeItem('access_token');
         navigate('/login');
       }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -85,14 +129,14 @@ const ProposalForm = () => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
-const handleArrayInputChange = (e) => {
-  const { name, value } = e.target;
-  // استخدام تعبير منتظم يتعرف على الفواصل العربية والإنجليزية
-  const arrayValues = value.split(/[,،]\s*/)
-    .map(item => item.trim())
-    .filter(item => item !== '');
-  setFormData({ ...formData, [name]: arrayValues });
-};
+
+  const handleArrayInputChange = (e) => {
+    const { name, value } = e.target;
+    const arrayValues = value.split(/[,،]\s*/)
+      .map(item => item.trim())
+      .filter(item => item !== '');
+    setFormData({ ...formData, [name]: arrayValues });
+  };
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
@@ -100,20 +144,20 @@ const handleArrayInputChange = (e) => {
   };
 
   const addRequirement = (type, value) => {
-  const trimmedValue = value.trim();
-  if (!trimmedValue) return;
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return;
 
-  const fieldName = type === 'functional' 
-    ? 'functional_requirements' 
-    : 'non_functional_requirements';
+    const fieldName = type === 'functional' 
+      ? 'functional_requirements' 
+      : 'non_functional_requirements';
 
-  setFormData(prev => ({
-    ...prev,
-    [fieldName]: [...prev[fieldName], trimmedValue]
-  }));
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: [...prev[fieldName], trimmedValue]
+    }));
 
-  document.getElementById(`${fieldName}-input`).value = '';
-};
+    document.getElementById(`${fieldName}-input`).value = '';
+  };
 
   const removeRequirement = (type, index) => {
     const fieldName = type === 'functional' 
@@ -125,15 +169,17 @@ const handleArrayInputChange = (e) => {
       [fieldName]: formData[fieldName].filter((_, i) => i !== index)
     });
   };
- 
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     setError(null);
 
     const token = localStorage.getItem('access_token');
-    if (!token) {
-      setError('يجب تسجيل الدخول أولاً');
+    const groupid = localStorage.getItem('selectedGroupId');
+    
+    if (!token || !groupid) {
+      setError('يجب تسجيل الدخول أولاً والتأكد من وجود معرف المجموعة');
       setIsSubmitting(false);
       navigate('/login');
       return;
@@ -160,6 +206,7 @@ const handleArrayInputChange = (e) => {
       formDataToSend.append('functional_requirements', JSON.stringify(formData.functional_requirements));
       formDataToSend.append('non_functional_requirements', JSON.stringify(formData.non_functional_requirements));
       formDataToSend.append('technology_stack', JSON.stringify(formData.technology_stack));
+      formDataToSend.append('groupid', groupid);
 
       // إضافة الخبراء
       formData.experts.forEach((expert, index) => {
@@ -169,19 +216,28 @@ const handleArrayInputChange = (e) => {
       });
 
       // إضافة ملف الخريطة الذهنية إذا وجد
-      if (formData.problem_mindmap) {
+      if (formData.problem_mindmap && formData.problem_mindmap instanceof File) {
         formDataToSend.append('problem_mindmap', formData.problem_mindmap);
       }
 
-      const response = await axios.post('http://localhost:8000/api/proposals', formDataToSend, {
+      // تحديد إذا كان سيتم إنشاء جديد أو تحديث موجود
+      const method = isEditMode ? 'put' : 'post';
+      const url = isEditMode 
+        ? `http://localhost:8000/api/proposals/${groupid}`
+        : 'http://localhost:8000/api/proposals';
+
+      const response = await axios({
+        method,
+        url,
+        data: formDataToSend,
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
         }
       });
 
-      if (response.data.message === 'تم إنشاء المقترح بنجاح') {
-        alert('تم تقديم المقترح بنجاح!');
+      if (response.data.message === 'تم إنشاء المقترح بنجاح' || response.data.message === 'تم تحديث المقترح بنجاح') {
+        alert(response.data.message);
         navigate('/profile');
       } else {
         throw new Error(response.data.message || 'فشل في تقديم المقترح');
@@ -230,6 +286,20 @@ const handleArrayInputChange = (e) => {
     );
   }
 
+  if (isLoading) {
+    return (
+      <div className="min-height-wrapper">
+        <Header />
+        <main className="container-proposal">
+          <div className="loading-container">
+            <div className="loading-spinner"></div>
+            <p>جاري تحميل البيانات...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-height-wrapper">
       <Header 
@@ -239,7 +309,7 @@ const handleArrayInputChange = (e) => {
         toggleChat={toggleChat}
       />
       
-       <main className="container-proposal">
+      <main className="container-proposal">
         <div className="project-type-card">
           <h2>نوع المشروع</h2>
           <div className="type-options">
@@ -261,7 +331,15 @@ const handleArrayInputChange = (e) => {
             </div>
           </div>
         </div>
-<form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data" acceptCharset="UTF-8">
+
+        <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data" acceptCharset="UTF-8">
+          {isEditMode && (
+            <div className="existing-proposal-notice">
+              <i className="fas fa-info-circle"></i>
+              <span>أنت تقوم بتعديل مقترح موجود مسبقاً</span>
+            </div>
+          )}
+
           <div className="form-section-proposal">
             <h2 className="section-title-proposal">المعلومات الأساسية</h2>
             <div className="form-grid">
@@ -278,6 +356,7 @@ const handleArrayInputChange = (e) => {
                   required 
                 />
               </div>
+           
             </div>
           </div>
 
@@ -335,7 +414,19 @@ const handleArrayInputChange = (e) => {
                   <i className="fas fa-upload"></i> اختر ملف
                 </label>
                 {formData.problem_mindmap && (
-                  <span className="file-name">{formData.problem_mindmap.name}</span>
+                  <span className="file-name">
+                    {formData.problem_mindmap.name}
+                    {formData.problem_mindmap.url && (
+                      <a 
+                        href={formData.problem_mindmap.url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="view-file-link"
+                      >
+                        <i className="fas fa-eye"></i> عرض الملف
+                      </a>
+                    )}
+                  </span>
                 )}
               </div>
             </div>
@@ -542,7 +633,8 @@ const handleArrayInputChange = (e) => {
               ></textarea>
             </div>
           </div>
-           {error && (
+
+          {error && (
             <div className="error-message" style={{color: 'red', margin: '20px 0'}}>
               {error}
             </div>
@@ -558,7 +650,7 @@ const handleArrayInputChange = (e) => {
                 <span>جاري الإرسال...</span>
               ) : (
                 <>
-                  <i className="fas fa-paper-plane"></i> تقديم المقترح
+                  <i className="fas fa-paper-plane"></i> {isEditMode ? 'تحديث المقترح' : 'تقديم المقترح'}
                 </>
               )}
             </button>

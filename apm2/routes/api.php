@@ -90,7 +90,9 @@ Route::middleware('auth:api')->group(function () {
     Route::prefix('proposals')->group(function () {
         Route::get('/create', [ProjectProposalController::class, 'create']);
         Route::post('/', [ProjectProposalController::class, 'store']);
-        Route::get('/{proposal}', [ProjectProposalController::class, 'show']);
+        Route::get('/{id}', [ProjectProposalController::class, 'show']);
+        
+    Route::get('/group/{groupid}', [ProjectProposalController::class, 'showByGroup']);
     });
     
     Route::prefix('notifications')->group(function () {
