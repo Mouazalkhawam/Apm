@@ -13,6 +13,7 @@ const StudentProjectManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isLeader, setIsLeader] = useState(false);
+  const [isSupervisor, setIsSupervisor] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [showForms, setShowForms] = useState({});
   const [showModal, setShowModal] = useState(false);
@@ -40,12 +41,29 @@ const StudentProjectManagement = () => {
         });
         setCurrentUser(userRes.data);
 
-        // Check if leader
-        const leaderRes = await axios.get(
-          `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        setIsLeader(leaderRes.data.is_leader);
+        // Check if supervisor first (since supervisors don't need leader check)
+        try {
+          const supervisorRes = await axios.get(
+            `http://127.0.0.1:8000/api/groups/${groupId}/is-supervisor`,
+            { headers: { 'Authorization': `Bearer ${token}` } }
+          );
+          setIsSupervisor(supervisorRes.data.is_supervisor);
+        } catch (supervisorError) {
+          setIsSupervisor(false);
+        }
+
+        // Only check for leader if not a supervisor
+        if (!isSupervisor) {
+          try {
+            const leaderRes = await axios.get(
+              `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            setIsLeader(leaderRes.data.is_leader);
+          } catch (leaderError) {
+            setIsLeader(false);
+          }
+        }
 
         // Fetch group students
         const studentsRes = await axios.get(
@@ -99,7 +117,7 @@ const StudentProjectManagement = () => {
     };
 
     fetchData();
-  }, []);
+  }, [isSupervisor]);
 
   // Helper functions
   const isTaskAssignedToCurrentUser = (task) => {
@@ -361,7 +379,7 @@ const StudentProjectManagement = () => {
           <span>إضافة مرفق</span>
         </button>
 
-        {isTaskAssignedToCurrentUser(task) && task.status !== 'completed' && (
+        {!isSupervisor && isTaskAssignedToCurrentUser(task) && task.status !== 'completed' && (
           <button 
             className="action-btn-management primary supmit-spm" 
             onClick={() => {
@@ -396,7 +414,7 @@ const StudentProjectManagement = () => {
       <ProjectHeader 
         title="إدارة المشروع"
         description={projectData.description || "لا يوجد وصف للمشروع"}
-        teamMembers={5}
+        teamMembers={groupStudents.length}
         startDate="01/01/2023"
         endDate="15/06/2023"
       />
@@ -441,7 +459,7 @@ const StudentProjectManagement = () => {
                 )}
               </div>
               
-              {isLeader && (
+              {(isLeader || isSupervisor) && (
                 <button 
                   className="toggle-form-btn" 
                   onClick={() => toggleForm(stage.id)}
@@ -450,113 +468,115 @@ const StudentProjectManagement = () => {
                 </button>
               )}
 
-              <div className={`add-task-form ${showForms[stage.id] ? 'show' : ''}`}>
-                <div className="form-group-tasks">
-                  <label htmlFor={`task-title-${stage.id}`}>عنوان المهمة:</label>
-                  <input 
-                    type="text" 
-                    id={`task-title-${stage.id}`}
-                    placeholder="أدخل عنوان المهمة"
-                    value={newTasks[stage.id]?.title || ''}
-                    onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="form-group-tasks">
-                  <label htmlFor={`task-desc-${stage.id}`}>وصف المهمة (اختياري):</label>
-                  <textarea 
-                    id={`task-desc-${stage.id}`}
-                    placeholder="أدخل وصف المهمة"
-                    value={newTasks[stage.id]?.description || ''}
-                    onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
-                  />
-                </div>
-                <div className="form-row-tasks">
+              {(isLeader || isSupervisor) && showForms[stage.id] && (
+                <div className="add-task-form">
                   <div className="form-group-tasks">
-                    <label htmlFor={`task-resp-${stage.id}`}>المسؤول:</label>
-                    <select
-                      id={`task-resp-${stage.id}`}
-                      value={newTasks[stage.id]?.responsibleId || ''}
-                      onChange={(e) => handleNewTaskChange(stage.id, 'responsibleId', e.target.value)}
-                      className="student-select"
-                      required
-                    >
-                      <option value="">اختر طالب من المجموعة</option>
-                      {groupStudents.map(student => (
-                        <option key={student.name} value={student.studentId}>
-                          {student.user?.name || ` ${student.name}`}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group-tasks">
-                    <label htmlFor={`task-due-${stage.id}`}>موعد التسليم:</label>
+                    <label htmlFor={`task-title-${stage.id}`}>عنوان المهمة:</label>
                     <input 
-                      type="date" 
-                      id={`task-due-${stage.id}`}
-                      value={newTasks[stage.id]?.deadline || ''}
-                      onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
+                      type="text" 
+                      id={`task-title-${stage.id}`}
+                      placeholder="أدخل عنوان المهمة"
+                      value={newTasks[stage.id]?.title || ''}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'title', e.target.value)}
                       required
                     />
                   </div>
-                </div>
-                <div className="form-group-tasks">
-                  <label htmlFor={`task-priority-${stage.id}`}>الأولوية:</label>
-                  <select 
-                    id={`task-priority-${stage.id}`}
-                    value={newTasks[stage.id]?.priority || 'medium'}
-                    onChange={(e) => handleNewTaskChange(stage.id, 'priority', e.target.value)}
-                    required
+                  <div className="form-group-tasks">
+                    <label htmlFor={`task-desc-${stage.id}`}>وصف المهمة (اختياري):</label>
+                    <textarea 
+                      id={`task-desc-${stage.id}`}
+                      placeholder="أدخل وصف المهمة"
+                      value={newTasks[stage.id]?.description || ''}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'description', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-row-tasks">
+                    <div className="form-group-tasks">
+                      <label htmlFor={`task-resp-${stage.id}`}>المسؤول:</label>
+                      <select
+                        id={`task-resp-${stage.id}`}
+                        value={newTasks[stage.id]?.responsibleId || ''}
+                        onChange={(e) => handleNewTaskChange(stage.id, 'responsibleId', e.target.value)}
+                        className="student-select"
+                        required
+                      >
+                        <option value="">اختر طالب من المجموعة</option>
+                        {groupStudents.map(student => (
+                          <option key={student.studentId} value={student.studentId}>
+                            {student.user?.name || student.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group-tasks">
+                      <label htmlFor={`task-due-${stage.id}`}>موعد التسليم:</label>
+                      <input 
+                        type="date" 
+                        id={`task-due-${stage.id}`}
+                        value={newTasks[stage.id]?.deadline || ''}
+                        onChange={(e) => handleNewTaskChange(stage.id, 'deadline', e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="form-group-tasks">
+                    <label htmlFor={`task-priority-${stage.id}`}>الأولوية:</label>
+                    <select 
+                      id={`task-priority-${stage.id}`}
+                      value={newTasks[stage.id]?.priority || 'medium'}
+                      onChange={(e) => handleNewTaskChange(stage.id, 'priority', e.target.value)}
+                      required
+                    >
+                      <option value="high">عالي</option>
+                      <option value="medium">متوسط</option>
+                      <option value="low">منخفض</option>
+                    </select>
+                  </div>
+                  <div 
+                    className="file-upload-area"
+                    id={`file-upload-area-${stage.id}`}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragLeave={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      handleNewTaskFileChange(stage.id, { target: { files: e.dataTransfer.files } });
+                      e.currentTarget.querySelector('.file-upload-text').textContent = 
+                        `تم اختيار: ${Array.from(e.dataTransfer.files).map(f => f.name).join(', ')}`;
+                    }}
                   >
-                    <option value="high">عالي</option>
-                    <option value="medium">متوسط</option>
-                    <option value="low">منخفض</option>
-                  </select>
-                </div>
-                <div 
-                  className="file-upload-area"
-                  id={`file-upload-area-${stage.id}`}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragLeave={(e) => e.preventDefault()}
-                  onDrop={(e) => {
-                    e.preventDefault();
-                    handleNewTaskFileChange(stage.id, { target: { files: e.dataTransfer.files } });
-                    e.currentTarget.querySelector('.file-upload-text').textContent = 
-                      `تم اختيار: ${Array.from(e.dataTransfer.files).map(f => f.name).join(', ')}`;
-                  }}
-                >
-                  <div className="file-upload-text">
-                    {newTasks[stage.id]?.files?.length > 0 ? 
-                      `تم اختيار: ${newTasks[stage.id].files.map(f => f.name).join(', ')}` : 
-                      'قم بسحب وإسقاط الملفات هنا أو'}
+                    <div className="file-upload-text">
+                      {newTasks[stage.id]?.files?.length > 0 ? 
+                        `تم اختيار: ${newTasks[stage.id].files.map(f => f.name).join(', ')}` : 
+                        'قم بسحب وإسقاط الملفات هنا أو'}
+                    </div>
+                    <button 
+                      type="button"
+                      onClick={() => document.getElementById(`file-input-${stage.id}`).click()}
+                    >
+                      اختر ملفات
+                    </button>
+                    <input 
+                      type="file" 
+                      id={`file-input-${stage.id}`}
+                      className="file-input"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                      multiple
+                      onChange={(e) => {
+                        handleNewTaskFileChange(stage.id, e);
+                        document.querySelector(`#file-upload-area-${stage.id} .file-upload-text`).textContent = 
+                          `تم اختيار: ${Array.from(e.target.files).map(f => f.name).join(', ')}`;
+                      }}
+                    />
                   </div>
                   <button 
                     type="button"
-                    onClick={() => document.getElementById(`file-input-${stage.id}`).click()}
+                    className="add-task-btn" 
+                    onClick={() => addNewTask(stage.id)}
                   >
-                    اختر ملفات
+                    إضافة المهمة
                   </button>
-                  <input 
-                    type="file" 
-                    id={`file-input-${stage.id}`}
-                    className="file-input"
-                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
-                    multiple
-                    onChange={(e) => {
-                      handleNewTaskFileChange(stage.id, e);
-                      document.querySelector(`#file-upload-area-${stage.id} .file-upload-text`).textContent = 
-                        `تم اختيار: ${Array.from(e.target.files).map(f => f.name).join(', ')}`;
-                    }}
-                  />
                 </div>
-                <button 
-                  type="button"
-                  className="add-task-btn" 
-                  onClick={() => addNewTask(stage.id)}
-                >
-                  إضافة المهمة
-                </button>
-              </div>
+              )}
             </div>
           ))
         )}

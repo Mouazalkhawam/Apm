@@ -7,30 +7,91 @@ const StudentEvaluation = () => {
   const [activeTab, setActiveTab] = useState('students-evaluation');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
-  const [workQuality, setWorkQuality] = useState(0);
-  const [technicalSupport, setTechnicalSupport] = useState(0);
   const [students, setStudents] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+  const [criteria, setCriteria] = useState([]);
+  const [loadingCriteria, setLoadingCriteria] = useState(true);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   
-  const [formValues, setFormValues] = useState({
-    teamwork: '',
-    deadlines: '',
-    initiative: '',
-    comments: '',
-    supervisionQuality: '',
-    feedback: '',
-    availability: '',
-    supervisorComments: ''
+  const [studentRatings, setStudentRatings] = useState({
+    teamwork: 0,
+    deadlines: 0,
+    workQuality: 0,
+    initiative: 0
+  });
+
+  const [supervisorRatings, setSupervisorRatings] = useState({
+    supervisionQuality: 0,
+    technicalSupport: 0,
+    feedback: 0,
+    availability: 0
   });
 
   // Get data from localStorage
   const selectedGroupId = localStorage.getItem('selectedGroupId');
   const accessToken = localStorage.getItem('access_token');
 
-  // Fetch students from API
+  // Fetch current user data
+  useEffect(() => {
+    const fetchCurrentUser = async () => {
+      try {
+        const response = await axios.get(
+          'http://127.0.0.1:8000/api/user',
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        setCurrentUser(response.data);
+      } catch (err) {
+        console.error('Error fetching current user:', err);
+        setError('حدث خطأ أثناء جلب بيانات المستخدم');
+      } finally {
+        setLoadingUser(false);
+      }
+    };
+
+    if (accessToken) {
+      fetchCurrentUser();
+    } else {
+      setLoadingUser(false);
+    }
+  }, [accessToken]);
+
+  // Fetch evaluation criteria
+  useEffect(() => {
+    const fetchCriteria = async () => {
+      try {
+        const response = await axios.get(
+          'http://127.0.0.1:8000/api/evaluation-criteria',
+          {
+            headers: {
+              'Authorization': `Bearer ${accessToken}`,
+              'Accept': 'application/json'
+            }
+          }
+        );
+        setCriteria(response.data);
+      } catch (err) {
+        console.error('Error fetching evaluation criteria:', err);
+        setError('حدث خطأ أثناء جلب معايير التقييم');
+      } finally {
+        setLoadingCriteria(false);
+      }
+    };
+
+    if (accessToken) {
+      fetchCriteria();
+    }
+  }, [accessToken]);
+
+  // Fetch students from API (filter out current user)
   useEffect(() => {
     const fetchStudents = async () => {
       try {
@@ -45,12 +106,17 @@ const StudentEvaluation = () => {
         );
 
         if (response.data.success) {
-          // Ensure each student has a unique ID and key
-          const studentsWithIds = response.data.data.map((student, index) => ({
+          let studentsWithIds = response.data.data.map((student, index) => ({
             ...student,
-            id: student.userId || student.id || `temp-student-${index}`,
+            id: student.userId || student.id || `student-${index}`,
             uniqueKey: `student-${student.userId || student.id || index}`
           }));
+
+          // Filter out current user if they are a student
+          if (currentUser && currentUser.role === 'student') {
+            studentsWithIds = studentsWithIds.filter(student => student.userId !== currentUser.userId);
+          }
+
           setStudents(studentsWithIds);
         } else {
           setError('لا يوجد طلاب في هذه المجموعة');
@@ -67,21 +133,21 @@ const StudentEvaluation = () => {
       }
     };
 
-    if (selectedGroupId && accessToken) {
+    if (selectedGroupId && accessToken && !loadingUser) {
       fetchStudents();
     } else if (!accessToken) {
       setError('يجب تسجيل الدخول أولاً');
       setLoading(false);
-    } else {
+    } else if (!selectedGroupId) {
       setError('لم يتم تحديد مجموعة');
       setLoading(false);
     }
-  }, [selectedGroupId, accessToken]);
+  }, [selectedGroupId, accessToken, currentUser, loadingUser]);
 
-  // Fetch supervisors when supervisor tab is active
+  // Fetch supervisors when supervisor tab is active (filter out current user)
   useEffect(() => {
     const fetchSupervisors = async () => {
-      if (activeTab === 'supervisor-evaluation' && selectedGroupId) {
+      if (activeTab === 'supervisor-evaluation' && selectedGroupId && !loadingUser) {
         setLoadingSupervisors(true);
         try {
           const response = await axios.get(
@@ -95,12 +161,17 @@ const StudentEvaluation = () => {
           );
 
           if (response.data.success) {
-            // Ensure each supervisor has a unique ID and key
-            const supervisorsWithIds = response.data.data.map((supervisor, index) => ({
+            let supervisorsWithIds = response.data.data.map((supervisor, index) => ({
               ...supervisor,
-              id: supervisor.supervisorId || supervisor.id || `temp-supervisor-${index}`,
+              id: supervisor.supervisorId || supervisor.id || `supervisor-${index}`,
               uniqueKey: `supervisor-${supervisor.supervisorId || supervisor.id || index}`
             }));
+
+            // Filter out current user if they are a supervisor
+            if (currentUser && currentUser.role === 'supervisor') {
+              supervisorsWithIds = supervisorsWithIds.filter(supervisor => supervisor.userId !== currentUser.userId);
+            }
+
             setSupervisors(supervisorsWithIds);
           } else {
             setError('لا يوجد مشرفين لهذه المجموعة');
@@ -119,79 +190,94 @@ const StudentEvaluation = () => {
     };
 
     fetchSupervisors();
-  }, [activeTab, selectedGroupId, accessToken]);
+  }, [activeTab, selectedGroupId, accessToken, currentUser, loadingUser]);
 
   const handleStudentSelect = (studentId) => {
     setSelectedStudent(studentId);
     setSelectedSupervisor(null);
-    setWorkQuality(0);
-    setFormValues({
-      ...formValues,
-      teamwork: '',
-      deadlines: '',
-      initiative: '',
-      comments: ''
+    setStudentRatings({
+      teamwork: 0,
+      deadlines: 0,
+      workQuality: 0,
+      initiative: 0
     });
   };
 
   const handleSupervisorSelect = (supervisorId) => {
     setSelectedSupervisor(supervisorId);
     setSelectedStudent(null);
-    setTechnicalSupport(0);
-    setFormValues({
-      ...formValues,
-      supervisionQuality: '',
-      feedback: '',
-      availability: '',
-      supervisorComments: ''
+    setSupervisorRatings({
+      supervisionQuality: 0,
+      technicalSupport: 0,
+      feedback: 0,
+      availability: 0
     });
   };
 
-  const handleRatingSelect = (value, setter) => {
-    setter(value);
-  };
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormValues({
-      ...formValues,
-      [name]: value
-    });
+  const handleRatingSelect = (criteria, value, isStudent) => {
+    if (isStudent) {
+      setStudentRatings(prev => ({
+        ...prev,
+        [criteria]: value
+      }));
+    } else {
+      setSupervisorRatings(prev => ({
+        ...prev,
+        [criteria]: value
+      }));
+    }
   };
 
   const handleStudentSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        'http://127.0.0.1:8000/api/evaluations',
+      // Submit each criteria rating separately
+      const submissions = [
         {
           evaluated_user_id: selectedStudent,
           group_id: selectedGroupId,
-          criteria_id: 1,
-          rate: workQuality,
-          comments: formValues.comments,
-          teamwork: formValues.teamwork,
-          deadlines: formValues.deadlines,
-          initiative: formValues.initiative
+          criteria_id: 1, // Teamwork criteria
+          rate: studentRatings.teamwork
         },
         {
+          evaluated_user_id: selectedStudent,
+          group_id: selectedGroupId,
+          criteria_id: 2, // Deadlines criteria
+          rate: studentRatings.deadlines
+        },
+        {
+          evaluated_user_id: selectedStudent,
+          group_id: selectedGroupId,
+          criteria_id: 3, // Work quality criteria
+          rate: studentRatings.workQuality
+        },
+        {
+          evaluated_user_id: selectedStudent,
+          group_id: selectedGroupId,
+          criteria_id: 4, // Initiative criteria
+          rate: studentRatings.initiative
+        }
+      ];
+
+      const requests = submissions.map(submission => 
+        axios.post('http://127.0.0.1:8000/api/evaluations', submission, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           }
-        }
+        })
       );
 
-      if (response.data) {
+      const responses = await Promise.all(requests);
+
+      if (responses.every(res => res.data)) {
         alert('تم إرسال تقييم الطالب بنجاح. شكرًا لك!');
-        setFormValues({
-          ...formValues,
-          teamwork: '',
-          deadlines: '',
-          initiative: '',
-          comments: ''
+        setStudentRatings({
+          teamwork: 0,
+          deadlines: 0,
+          workQuality: 0,
+          initiative: 0
         });
-        setWorkQuality(0);
         setSelectedStudent(null);
       }
     } catch (err) {
@@ -203,36 +289,53 @@ const StudentEvaluation = () => {
   const handleSupervisorSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(
-        'http://127.0.0.1:8000/api/evaluations',
+      // Submit each criteria rating separately
+      const submissions = [
         {
           evaluated_user_id: selectedSupervisor,
           group_id: selectedGroupId,
-          criteria_id: 2,
-          rate: technicalSupport,
-          comments: formValues.supervisorComments,
-          supervision_quality: formValues.supervisionQuality,
-          feedback_quality: formValues.feedback,
-          availability: formValues.availability
+          criteria_id: 1, // Supervision quality (using teamwork criteria ID as example)
+          rate: supervisorRatings.supervisionQuality
         },
         {
+          evaluated_user_id: selectedSupervisor,
+          group_id: selectedGroupId,
+          criteria_id: 2, // Technical support (using deadlines criteria ID as example)
+          rate: supervisorRatings.technicalSupport
+        },
+        {
+          evaluated_user_id: selectedSupervisor,
+          group_id: selectedGroupId,
+          criteria_id: 3, // Feedback quality (using work quality criteria ID as example)
+          rate: supervisorRatings.feedback
+        },
+        {
+          evaluated_user_id: selectedSupervisor,
+          group_id: selectedGroupId,
+          criteria_id: 4, // Availability (using initiative criteria ID as example)
+          rate: supervisorRatings.availability
+        }
+      ];
+
+      const requests = submissions.map(submission => 
+        axios.post('http://127.0.0.1:8000/api/evaluations', submission, {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
             'Content-Type': 'application/json'
           }
-        }
+        })
       );
 
-      if (response.data) {
+      const responses = await Promise.all(requests);
+
+      if (responses.every(res => res.data)) {
         alert('تم إرسال تقييم المشرف بنجاح. شكرًا لك!');
-        setFormValues({
-          ...formValues,
-          supervisionQuality: '',
-          feedback: '',
-          availability: '',
-          supervisorComments: ''
+        setSupervisorRatings({
+          supervisionQuality: 0,
+          technicalSupport: 0,
+          feedback: 0,
+          availability: 0
         });
-        setTechnicalSupport(0);
         setSelectedSupervisor(null);
       }
     } catch (err) {
@@ -241,12 +344,15 @@ const StudentEvaluation = () => {
     }
   };
 
-  if (loading) {
+  if (loading || loadingCriteria || loadingUser) {
     return (
       <div className="evaluation-system">
         <ProjectHeader 
-          title="نظام التقييم"
-          description={"تقييم أعضاء الفريق والمشرفين"}
+          title="إدارة المشروع"
+          description={"لا يوجد وصف للمشروع"}
+          teamMembers={0}
+          startDate="01/01/2023"
+          endDate="15/06/2023"
         />
         <div className="container" style={{ textAlign: 'center', padding: '2rem' }}>
           <div className="loading-spinner"></div>
@@ -260,8 +366,11 @@ const StudentEvaluation = () => {
     return (
       <div className="evaluation-system">
         <ProjectHeader 
-          title="نظام التقييم"
-          description={"تقييم أعضاء الفريق والمشرفين"}
+          title="إدارة المشروع"
+          description={"لا يوجد وصف للمشروع"}
+          teamMembers={0}
+          startDate="01/01/2023"
+          endDate="15/06/2023"
         />
         <div className="container" style={{ textAlign: 'center', padding: '2rem' }}>
           <div className="error-message">
@@ -284,8 +393,11 @@ const StudentEvaluation = () => {
   return (
     <div className="evaluation-system">
       <ProjectHeader 
-        title="نظام التقييم"
-        description={"تقييم أعضاء الفريق والمشرفين"}
+        title="إدارة المشروع"
+        description={"لا يوجد وصف للمشروع"}
+        teamMembers={students.length}
+        startDate="01/01/2023"
+        endDate="15/06/2023"
       />
 
       <div className="container">
@@ -304,8 +416,8 @@ const StudentEvaluation = () => {
           </button>
         </div>
 
-        <div className={`tab-content ${activeTab === 'students-evaluation' ? 'active' : ''}`}>
-          <h2 className="section-title">تقييم الطلاب المشاركين</h2>
+        <div className={`tab-content ${activeTab === 'students-evaluation' ? 'active' : ''}`} id="students-evaluation">
+          <h2 style={{ color: 'var(--gold)', marginBottom: '1.5rem', textAlign: 'center' }}>تقييم الطلاب المشاركين</h2>
           
           <div className="students-list">
             {students.length > 0 ? (
@@ -316,7 +428,7 @@ const StudentEvaluation = () => {
                 >
                   <div className="student-info">
                     <div className="student-name">{student.name}</div>
-                    <div className="student-role">{student.major || 'لا يوجد تخصص'}</div>
+                    <div className="student-role">{student.major || student.role || 'لا يوجد تخصص'}</div>
                     {student.is_leader && <div className="leader-badge">قائد المجموعة</div>}
                   </div>
                   <button 
@@ -328,104 +440,111 @@ const StudentEvaluation = () => {
                 </div>
               ))
             ) : (
-              <p className="no-data-message">لا يوجد طلاب في هذه المجموعة</p>
+              <p className="no-data-message">لا يوجد طلاب متاحين للتقييم في هذه المجموعة</p>
             )}
           </div>
 
           {selectedStudent && (
-            <div className="evaluation-form-container">
+            <div id="student-evaluation-form">
               <div className="evaluation-card gold-theme">
                 <h3 className="card-title">
-                  تقييم الطالب: {students.find(s => s.id === selectedStudent)?.name}
+                  <span>تقييم الطالب: {students.find(s => s.id === selectedStudent)?.name}</span>
                 </h3>
                 
-                <form className="evaluation-form" onSubmit={handleStudentSubmit}>
-                  <div className="form-group">
-                    <label>مستوى التعاون والعمل الجماعي</label>
-                    <select
-                      name="teamwork"
-                      value={formValues.teamwork}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">اختر التقييم</option>
-                      <option value="5">ممتاز - التعاون دائمًا وبناء</option>
-                      <option value="4">جيد جدًا - متعاون معظم الوقت</option>
-                      <option value="3">جيد - تعاون بشكل مقبول</option>
-                      <option value="2">ضعيف - يحتاج لتحسين</option>
-                      <option value="1">سيء - عدم تعاون</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label>جودة العمل المقدم</label>
+                <form id="student-evaluation" onSubmit={handleStudentSubmit}>
+                  <div className="evaluation-item">
+                    <label className="evaluation-label">
+                      {criteria.find(c => c.criteria_id === 1)?.title || 'التعاون في الفريق'}
+                      <span className="criteria-description"> ({criteria.find(c => c.criteria_id === 1)?.description || 'مدى المشاركة الفعالة في أنشطة الفريق'})</span>
+                    </label>
                     <div className="rating-container">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <span
-                          key={`work-quality-${selectedStudent}-star-${star}`}
-                          className={`star ${workQuality >= star ? 'filled' : ''}`}
-                          onClick={() => setWorkQuality(star)}
-                        >
-                          ★
-                        </span>
-                      ))}
-                      <span className="rating-text">{workQuality} من 5</span>
+                      <div className="rating-options">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <div 
+                            key={`teamwork-${selectedStudent}-${value}`}
+                            className={`rating-option ${studentRatings.teamwork >= value ? 'selected' : ''}`}
+                            onClick={() => handleRatingSelect('teamwork', value, true)}
+                          >
+                            {value}
+                          </div>
+                        ))}
+                      </div>
+                      <span>من 5</span>
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>الإلتزام بالمواعيد النهائية</label>
-                    <select
-                      name="deadlines"
-                      value={formValues.deadlines}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">اختر التقييم</option>
-                      <option value="5">دائمًا يلتزم بالمواعيد</option>
-                      <option value="4">غالبًا يلتزم بالمواعيد</option>
-                      <option value="3">أحيانًا يتأخر قليلاً</option>
-                      <option value="2">غالبًا يتأخر</option>
-                      <option value="1">دائمًا يتأخر</option>
-                    </select>
+                  <div className="evaluation-item">
+                    <label className="evaluation-label">
+                      {criteria.find(c => c.criteria_id === 2)?.title || 'الالتزام بالمواعيد'}
+                      <span className="criteria-description"> ({criteria.find(c => c.criteria_id === 2)?.description || 'التسليم في الوقت المحدد'})</span>
+                    </label>
+                    <div className="rating-container">
+                      <div className="rating-options">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <div 
+                            key={`deadlines-${selectedStudent}-${value}`}
+                            className={`rating-option ${studentRatings.deadlines >= value ? 'selected' : ''}`}
+                            onClick={() => handleRatingSelect('deadlines', value, true)}
+                          >
+                            {value}
+                          </div>
+                        ))}
+                      </div>
+                      <span>من 5</span>
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>المبادرة وتحمل المسؤولية</label>
-                    <select
-                      name="initiative"
-                      value={formValues.initiative}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">اختر التقييم</option>
-                      <option value="5">قائد ويمتلك روح المبادرة</option>
-                      <option value="4">يظهر مبادرات جيدة</option>
-                      <option value="3">يقوم بما يُطلب منه</option>
-                      <option value="2">يحتاج للتوجيه المستمر</option>
-                      <option value="1">غير مسؤول</option>
-                    </select>
+                  <div className="evaluation-item">
+                    <label className="evaluation-label">
+                      {criteria.find(c => c.criteria_id === 3)?.title || 'جودة العمل'}
+                      <span className="criteria-description"> ({criteria.find(c => c.criteria_id === 3)?.description || 'دقة وإتقان المهام المكلف بها'})</span>
+                    </label>
+                    <div className="rating-container">
+                      <div className="rating-options">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <div 
+                            key={`workQuality-${selectedStudent}-${value}`}
+                            className={`rating-option ${studentRatings.workQuality >= value ? 'selected' : ''}`}
+                            onClick={() => handleRatingSelect('workQuality', value, true)}
+                          >
+                            {value}
+                          </div>
+                        ))}
+                      </div>
+                      <span>من 5</span>
+                    </div>
                   </div>
 
-                  <div className="form-group">
-                    <label>ملاحظات إضافية</label>
-                    <textarea
-                      name="comments"
-                      value={formValues.comments}
-                      onChange={handleInputChange}
-                      placeholder="أي ملاحظات إضافية أو نقاط تستحق التقدير..."
-                    ></textarea>
+                  <div className="evaluation-item">
+                    <label className="evaluation-label">
+                      {criteria.find(c => c.criteria_id === 4)?.title || 'المبادرة'}
+                      <span className="criteria-description"> ({criteria.find(c => c.criteria_id === 4)?.description || 'تقديم أفكار جديدة وتحمل المسؤوليات الإضافية'})</span>
+                    </label>
+                    <div className="rating-container">
+                      <div className="rating-options">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <div 
+                            key={`initiative-${selectedStudent}-${value}`}
+                            className={`rating-option ${studentRatings.initiative >= value ? 'selected' : ''}`}
+                            onClick={() => handleRatingSelect('initiative', value, true)}
+                          >
+                            {value}
+                          </div>
+                        ))}
+                      </div>
+                      <span>من 5</span>
+                    </div>
                   </div>
 
-                  <button type="submit" className="submit-btn">إرسال التقييم</button>
+                  <button type="submit" className="btn btn-gold">إرسال التقييم</button>
                 </form>
               </div>
             </div>
           )}
         </div>
 
-        <div className={`tab-content ${activeTab === 'supervisor-evaluation' ? 'active' : ''}`}>
-          <h2 className="section-title">تقييم المشرفين على المشروع</h2>
+        <div className={`tab-content ${activeTab === 'supervisor-evaluation' ? 'active' : ''}`} id="supervisor-evaluation">
+          <h2 style={{ color: 'var(--purple)', marginBottom: '1.5rem', textAlign: 'center' }}>تقييم المشرفين على المشروع</h2>
           
           {loadingSupervisors ? (
             <div className="loading-container">
@@ -454,96 +573,103 @@ const StudentEvaluation = () => {
                     </div>
                   ))
                 ) : (
-                  <p className="no-data-message">لا يوجد مشرفين لهذه المجموعة</p>
+                  <p className="no-data-message">لا يوجد مشرفين متاحين للتقييم في هذه المجموعة</p>
                 )}
               </div>
 
               {selectedSupervisor && (
-                <div className="evaluation-form-container">
+                <div id="supervisor-evaluation-form">
                   <div className="evaluation-card purple-theme">
                     <h3 className="card-title">
-                      تقييم المشرف: {supervisors.find(s => s.id === selectedSupervisor)?.name}
+                      <span>تقييم المشرف: {supervisors.find(s => s.id === selectedSupervisor)?.name}</span>
                     </h3>
                     
-                    <form className="evaluation-form" onSubmit={handleSupervisorSubmit}>
-                      <div className="form-group">
-                        <label>جودة الإشراف والمتابعة</label>
-                        <select
-                          name="supervisionQuality"
-                          value={formValues.supervisionQuality}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="">اختر التقييم</option>
-                          <option value="5">إشراف ممتاز ومتابعة دقيقة</option>
-                          <option value="4">إشراف جيد جدًا</option>
-                          <option value="3">إشراف جيد</option>
-                          <option value="2">إشراف مقبول</option>
-                          <option value="1">إشراف ضعيف</option>
-                        </select>
-                      </div>
-
-                      <div className="form-group">
-                        <label>الدعم الفني المقدم</label>
+                    <form id="supervisor-evaluation-form-content" onSubmit={handleSupervisorSubmit}>
+                      <div className="evaluation-item">
+                        <label className="evaluation-label">
+                          جودة الإشراف والمتابعة
+                          <span className="criteria-description"> (مدى فعالية الإشراف والمتابعة المستمرة)</span>
+                        </label>
                         <div className="rating-container">
-                          {[1, 2, 3, 4, 5].map((star) => (
-                            <span
-                              key={`tech-support-${selectedSupervisor}-star-${star}`}
-                              className={`star ${technicalSupport >= star ? 'filled' : ''}`}
-                              onClick={() => setTechnicalSupport(star)}
-                            >
-                              ★
-                            </span>
-                          ))}
-                          <span className="rating-text">{technicalSupport} من 5</span>
+                          <div className="rating-options">
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <div 
+                                key={`supervisionQuality-${selectedSupervisor}-${value}`}
+                                className={`rating-option ${supervisorRatings.supervisionQuality >= value ? 'selected' : ''}`}
+                                onClick={() => handleRatingSelect('supervisionQuality', value, false)}
+                              >
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                          <span>من 5</span>
                         </div>
                       </div>
 
-                      <div className="form-group">
-                        <label>جودة الملاحظات والتغذية الراجعة</label>
-                        <select
-                          name="feedback"
-                          value={formValues.feedback}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="">اختر التقييم</option>
-                          <option value="5">ملاحظات بناءة وقيمة للغاية</option>
-                          <option value="4">ملاحظات جيدة ومفيدة</option>
-                          <option value="3">ملاحظات مقبولة</option>
-                          <option value="2">ملاحظات سطحية</option>
-                          <option value="1">لا توجد ملاحظات</option>
-                        </select>
+                      <div className="evaluation-item">
+                        <label className="evaluation-label">
+                          الدعم الفني المقدم
+                          <span className="criteria-description"> (جودة الدعم الفني والإرشادات المقدمة)</span>
+                        </label>
+                        <div className="rating-container">
+                          <div className="rating-options">
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <div 
+                                key={`technicalSupport-${selectedSupervisor}-${value}`}
+                                className={`rating-option ${supervisorRatings.technicalSupport >= value ? 'selected' : ''}`}
+                                onClick={() => handleRatingSelect('technicalSupport', value, false)}
+                              >
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                          <span>من 5</span>
+                        </div>
                       </div>
 
-                      <div className="form-group">
-                        <label>التوافر والاستجابة</label>
-                        <select
-                          name="availability"
-                          value={formValues.availability}
-                          onChange={handleInputChange}
-                          required
-                        >
-                          <option value="">اختر التقييم</option>
-                          <option value="5">دائمًا متاح ومستجيب بسرعة</option>
-                          <option value="4">غالبًا متاح</option>
-                          <option value="3">متاح في الأوقات المتفق عليها</option>
-                          <option value="2">أحيانًا غير متاح</option>
-                          <option value="1">صعب التواصل معه</option>
-                        </select>
+                      <div className="evaluation-item">
+                        <label className="evaluation-label">
+                          جودة الملاحظات والتغذية الراجعة
+                          <span className="criteria-description"> (فائدة الملاحظات المقدمة ووضوحها)</span>
+                        </label>
+                        <div className="rating-container">
+                          <div className="rating-options">
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <div 
+                                key={`feedback-${selectedSupervisor}-${value}`}
+                                className={`rating-option ${supervisorRatings.feedback >= value ? 'selected' : ''}`}
+                                onClick={() => handleRatingSelect('feedback', value, false)}
+                              >
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                          <span>من 5</span>
+                        </div>
                       </div>
 
-                      <div className="form-group">
-                        <label>ملاحظات إضافية</label>
-                        <textarea
-                          name="supervisorComments"
-                          value={formValues.supervisorComments}
-                          onChange={handleInputChange}
-                          placeholder="أي ملاحظات إضافية أو اقتراحات للتحسين..."
-                        ></textarea>
+                      <div className="evaluation-item">
+                        <label className="evaluation-label">
+                          التوافر والاستجابة
+                          <span className="criteria-description"> (سرعة الاستجابة والتوفر عند الحاجة)</span>
+                        </label>
+                        <div className="rating-container">
+                          <div className="rating-options">
+                            {[1, 2, 3, 4, 5].map((value) => (
+                              <div 
+                                key={`availability-${selectedSupervisor}-${value}`}
+                                className={`rating-option ${supervisorRatings.availability >= value ? 'selected' : ''}`}
+                                onClick={() => handleRatingSelect('availability', value, false)}
+                              >
+                                {value}
+                              </div>
+                            ))}
+                          </div>
+                          <span>من 5</span>
+                        </div>
                       </div>
 
-                      <button type="submit" className="submit-btn">إرسال التقييم</button>
+                      <button type="submit" className="btn btn-purple">إرسال التقييم</button>
                     </form>
                   </div>
                 </div>

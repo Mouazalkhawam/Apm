@@ -159,9 +159,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/groups/{groupId}/supervisors', [ProjectController::class, 'getGroupSupervisors']);
     Route::get('/groups/{groupId}/students', [ProjectController::class, 'getGroupStudents']);
     Route::get('/groups/{groupId}/is-leader', [ProjectController::class, 'isStudentLeader']);
+    Route::get('/groups/{groupId}/is-supervisor', [ProjectController::class, 'isUserSupervisor']);
 
 
     Route::post('/evaluations', [EvaluationController::class, 'store']);
     Route::get('/evaluations', [EvaluationController::class, 'index']);
+    Route::get('/evaluation-criteria', [EvaluationController::class, 'getCriteria']);
 
 });

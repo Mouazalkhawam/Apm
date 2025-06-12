@@ -387,97 +387,104 @@ class ProjectController extends Controller
         ]);
     }
  
-public function getGroupSupervisors($groupId)
-{
-    // 1. التحقق من وجود المجموعة
-    $group = Group::find($groupId);
-    if (!$group) {
-        return response()->json(['message' => 'Group not found'], 404);
-    }
-
-    // 2. جلب البيانات باستخدام query builder للتأكد
-    $supervisors = DB::table('group_supervisor')
-                   ->where('groupid', $groupId)
-                   ->where('status', 'approved')
-                   ->join('supervisors', 'group_supervisor.supervisorId', '=', 'supervisors.supervisorId')
-                   ->join('users', 'supervisors.userId', '=', 'users.userId')
-                   ->select(
-                       'supervisors.supervisorId',
-                       'users.name',
-                       'users.email',
-                       'group_supervisor.created_at'
-                   )
-                   ->get()
-                   ->map(function ($item) {
-                       return [
-                           'supervisorId' => $item->supervisorId,
-                           'name' => $item->name,
-                           'email' => $item->email,
-                           'since' => \Carbon\Carbon::parse($item->created_at)->diffForHumans()
-                       ];
-                   });
-
-    if ($supervisors->isEmpty()) {
+    public function getGroupSupervisors($groupId)
+    {
+        // 1. التحقق من وجود المجموعة
+        $group = Group::find($groupId);
+        if (!$group) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+    
+        // 2. جلب المشرفين المعتمدين مع معلومات المستخدم
+        $supervisors = DB::table('group_supervisor')
+            ->where('groupid', $groupId)
+            ->where('status', 'approved')
+            ->join('supervisors', 'group_supervisor.supervisorId', '=', 'supervisors.supervisorId')
+            ->join('users', 'supervisors.userId', '=', 'users.userId')
+            ->select(
+                'supervisors.supervisorId',
+                'users.userId',
+                'users.name',
+                'users.email',
+                'users.profile_picture',
+                'group_supervisor.created_at'
+            )
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'supervisorId' => $item->supervisorId,
+                    'userId' => $item->userId,
+                    'name' => $item->name,
+                    'email' => $item->email,
+                    'profile_picture' => $item->profile_picture,
+                    'since' => Carbon::parse($item->created_at)->diffForHumans()
+                ];
+            });
+    
+        if ($supervisors->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No approved supervisors found'
+            ], 404);
+        }
+    
         return response()->json([
-            'success' => false,
-            'message' => 'No approved supervisors found',
-            'debug' => DB::table('group_supervisor')
-                         ->where('groupid', $groupId)
-                         ->get()
-        ], 404);
+            'success' => true,
+            'data' => $supervisors
+        ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'data' => $supervisors
-    ]);
-}
-public function getGroupStudents($groupId)
-{
-    // 1. التحقق من وجود المجموعة
-    $group = Group::find($groupId);
-    if (!$group) {
-        return response()->json(['message' => 'Group not found'], 404);
-    }
-
-    // 2. جلب الطلاب المعتمدة عضويتهم في المجموعة مع معلوماتهم
-    $students = DB::table('group_student')
-        ->where('groupid', $groupId)
-        ->where('status', 'approved')
-        ->join('students', 'group_student.studentId', '=', 'students.studentId')
-        ->join('users', 'students.userId', '=', 'users.userId')
-        ->select(
-            'students.studentId',
-            'users.name',
-            'users.email',
-            'students.major',
-            'group_student.is_leader',
-            'group_student.created_at'
-        )
-        ->get()
-        ->map(function ($item) {
-            return [
-                'studentId' => $item->studentId,
-                'name' => $item->name,
-                'email' => $item->email,
-                'major' => $item->major,
-                'is_leader' => (bool)$item->is_leader,
-                'since' => Carbon::parse($item->created_at)->diffForHumans()
-            ];
-        });
-
-    if ($students->isEmpty()) {
+    public function getGroupStudents($groupId)
+    {
+        // 1. التحقق من وجود المجموعة
+        $group = Group::find($groupId);
+        if (!$group) {
+            return response()->json(['message' => 'Group not found'], 404);
+        }
+    
+        // 2. جلب الطلاب المعتمدين مع معلومات المستخدم
+        $students = DB::table('group_student')
+            ->where('groupid', $groupId)
+            ->where('status', 'approved')
+            ->join('students', 'group_student.studentId', '=', 'students.studentId')
+            ->join('users', 'students.userId', '=', 'users.userId')
+            ->select(
+                'students.studentId',
+                'users.userId',
+                'users.name',
+                'users.email',
+                'users.profile_picture',
+                'students.major',
+                'students.university_number',
+                'group_student.is_leader',
+                'group_student.created_at'
+            )
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'studentId' => $item->studentId,
+                    'userId' => $item->userId,
+                    'name' => $item->name,
+                    'email' => $item->email,
+                    'profile_picture' => $item->profile_picture,
+                    'major' => $item->major,
+                    'university_number' => $item->university_number,
+                    'is_leader' => (bool)$item->is_leader,
+                    'since' => Carbon::parse($item->created_at)->diffForHumans()
+                ];
+            });
+    
+        if ($students->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No approved students found in this group'
+            ], 404);
+        }
+    
         return response()->json([
-            'success' => false,
-            'message' => 'No approved students found in this group'
-        ], 404);
+            'success' => true,
+            'data' => $students
+        ]);
     }
-
-    return response()->json([
-        'success' => true,
-        'data' => $students
-    ]);
-}
     public function getAcademicAchievements()
     {
         try {
@@ -593,6 +600,39 @@ public function getGroupStudents($groupId)
             return response()->json([
                 'success' => false,
                 'message' => 'Failed to check leadership status: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+    public function isUserSupervisor($groupId)
+    {
+        try {
+            $user = Auth::user();
+            
+            // التحقق من أن المستخدم مشرف
+            if (!$user->supervisor) {
+                return response()->json([
+                    'success' => false,
+                    'is_supervisor' => false,
+                    'message' => 'User is not a supervisor'
+                ]);
+            }
+
+            // التحقق من أن المشرف معتمد في المجموعة
+            $isApprovedSupervisor = $user->supervisor->isApprovedForGroup($groupId);
+
+            return response()->json([
+                'success' => true,
+                'is_supervisor' => $isApprovedSupervisor,
+                'message' => $isApprovedSupervisor 
+                    ? 'User is an approved supervisor for this group' 
+                    : 'User is not an approved supervisor for this group'
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'is_supervisor' => false,
+                'message' => 'Failed to check supervisor status: ' . $e->getMessage()
             ], 500);
         }
     }

@@ -199,4 +199,10 @@ class EvaluationController extends Controller
             'criteria_id' => $criteriaId
         ])->exists();
     }
+    // استرجاع جميع معايير التقييم
+    public function getCriteria()
+    {
+        $criteria = EvaluationCriterion::all(['criteria_id', 'title', 'description']);
+        return response()->json($criteria);
+    }
 }
