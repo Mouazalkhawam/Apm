@@ -20,6 +20,7 @@ import DiscussionsStudent from './pages/DiscussionsStudent';
 import SchedulingSupervisorsMeetings from './pages/SchedulingSupervisorsMeetings';
 import SupervisorDashboard from './pages/SupervisorDashboard';
 import GroupManagementSupervisor from './pages/GroupManagementSupervisor';
+import SupervisorsProject from './pages/SupervisorsProject';
 
 function App() {
   return (
@@ -146,6 +147,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <GroupManagementSupervisor />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/supervisor-project" 
+                 element={
+                  <ProtectedRoute>
+                    <SupervisorsProject />
                             </ProtectedRoute>
                           } 
                />
