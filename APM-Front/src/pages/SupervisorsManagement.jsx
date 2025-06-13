@@ -8,7 +8,8 @@ import {
   faPen,
   faTrash,
   faPlus,
-  faTimes
+  faTimes,
+  faChevronDown
 } from '@fortawesome/free-solid-svg-icons';
 import './SupervisorsManagement.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
@@ -20,20 +21,23 @@ const animatedComponents = makeAnimated();
 
 const SupervisorsManagement = () => {
   const [supervisors, setSupervisors] = useState([]);
+  const [allSupervisors, setAllSupervisors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
+    id: null,
+    supervisorId: null,
     name: '',
-    email: '',
     role: 'academic',
     since: new Date().toISOString().split('T')[0]
   });
   const [formErrors, setFormErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingSupervisors, setIsLoadingSupervisors] = useState(false);
 
   useEffect(() => {
-    const fetchSupervisors = async () => {
+    const fetchData = async () => {
       try {
         const groupId = localStorage.getItem('selectedGroupId');
         if (!groupId) {
@@ -41,7 +45,9 @@ const SupervisorsManagement = () => {
         }
 
         const token = localStorage.getItem('access_token');
-        const response = await axios.get(
+        
+        // Fetch group supervisors
+        const supervisorsResponse = await axios.get(
           `http://127.0.0.1:8000/api/groups/${groupId}/supervisors`,
           {
             headers: {
@@ -50,9 +56,10 @@ const SupervisorsManagement = () => {
           }
         );
 
-        if (response.data.success) {
-          const formattedSupervisors = response.data.data.map(supervisor => ({
-            id: supervisor.supervisorId,
+        if (supervisorsResponse.data.success) {
+          const formattedSupervisors = supervisorsResponse.data.data.map(supervisor => ({
+            id: supervisor.id,
+            supervisorId: supervisor.supervisorId,
             name: supervisor.name,
             role: supervisor.role || "مشرف أكاديمي",
             email: supervisor.email,
@@ -65,15 +72,36 @@ const SupervisorsManagement = () => {
         } else {
           throw new Error('Failed to fetch supervisors');
         }
+
+        // Fetch all available supervisors
+        const allSupervisorsResponse = await axios.get(
+          'http://127.0.0.1:8000/api/supervisors',
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (allSupervisorsResponse.data.success) {
+          setAllSupervisors(allSupervisorsResponse.data.data.map(supervisor => ({
+            value: supervisor.id,
+            supervisorId: supervisor.supervisorId,
+            label: supervisor.name,
+            email: supervisor.email,
+            ...supervisor
+          })));
+        }
+
       } catch (err) {
         setError(err.message || 'حدث خطأ أثناء جلب بيانات المشرفين');
-        console.error('Error fetching supervisors:', err);
+        console.error('Error fetching data:', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchSupervisors();
+    fetchData();
   }, []);
 
   const getRoleClass = (roleType) => {
@@ -106,7 +134,6 @@ const SupervisorsManagement = () => {
       [name]: value
     }));
     
-    // Clear error when user types
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
@@ -115,17 +142,21 @@ const SupervisorsManagement = () => {
     }
   };
 
+  const handleSupervisorSelect = (selectedOption) => {
+    setFormData(prev => ({
+      ...prev,
+      id: selectedOption.value,
+      supervisorId: selectedOption.supervisorId,
+      name: selectedOption.label,
+      email: selectedOption.email
+    }));
+  };
+
   const validateForm = () => {
     const errors = {};
     
-    if (!formData.name.trim()) {
-      errors.name = 'اسم المشرف مطلوب';
-    }
-    
-    if (!formData.email.trim()) {
-      errors.email = 'البريد الإلكتروني مطلوب';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      errors.email = 'البريد الإلكتروني غير صالح';
+    if (!formData.id) {
+      errors.supervisor = 'يجب اختيار مشرف';
     }
     
     setFormErrors(errors);
@@ -145,13 +176,14 @@ const SupervisorsManagement = () => {
       const token = localStorage.getItem('access_token');
       const groupId = localStorage.getItem('selectedGroupId');
       
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/groups/${groupId}/supervisors`,
+      // Add the supervisor to group members
+      const addMemberResponse = await axios.post(
+        `http://127.0.0.1:8000/api/groups/${groupId}/members`,
         {
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          since: formData.since
+          members: [{
+            user_id: formData.id,
+            type: "supervisor"
+          }]
         },
         {
           headers: {
@@ -160,34 +192,52 @@ const SupervisorsManagement = () => {
           }
         }
       );
-      
-      if (response.data.success) {
-        // Add the new supervisor to the list
-        const newSupervisor = {
-          id: response.data.supervisorId,
-          name: formData.name,
-          role: formData.role === 'quality' ? 'مشرف جودة' : 
-               formData.role === 'development' ? 'مشرف تطوير' : 'مشرف أكاديمي',
-          email: formData.email,
-          since: formData.since,
-          isMain: false,
-          roleType: formData.role
-        };
+
+      if (!addMemberResponse.data.success) {
+        throw new Error('Failed to add supervisor to group members');
+      }
+
+      // Refresh the supervisors list
+      const supervisorsResponse = await axios.get(
+        `http://127.0.0.1:8000/api/groups/${groupId}/supervisors`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (supervisorsResponse.data.success) {
+        const formattedSupervisors = supervisorsResponse.data.data.map(supervisor => ({
+          id: supervisor.id,
+          supervisorId: supervisor.supervisorId,
+          name: supervisor.name,
+          role: supervisor.role || "مشرف أكاديمي",
+          email: supervisor.email,
+          since: supervisor.since || new Date().toISOString().split('T')[0],
+          isMain: supervisor.isMain || false,
+          roleType: supervisor.roleType || 'academic'
+        }));
         
-        setSupervisors(prev => [...prev, newSupervisor]);
+        setSupervisors(formattedSupervisors);
         setShowAddModal(false);
         setFormData({
+          id: null,
+          supervisorId: null,
           name: '',
-          email: '',
           role: 'academic',
           since: new Date().toISOString().split('T')[0]
         });
       } else {
-        throw new Error(response.data.message || 'فشل في إضافة المشرف');
+        throw new Error('Failed to fetch updated supervisors list');
       }
     } catch (err) {
       console.error('Error adding supervisor:', err);
-      setError(err.response?.data?.message || err.message || 'حدث خطأ أثناء إضافة المشرف');
+      const errorMessage = err.response?.data?.message || 
+                         err.response?.data?.errors?.members?.[0] || 
+                         err.message || 
+                         'حدث خطأ أثناء إضافة المشرف';
+      setError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
@@ -310,6 +360,7 @@ const SupervisorsManagement = () => {
               onClick={() => {
                 setShowAddModal(false);
                 setFormErrors({});
+                setError(null);
               }}
             >
               <FontAwesomeIcon icon={faTimes} />
@@ -324,21 +375,67 @@ const SupervisorsManagement = () => {
             
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>اسم المشرف *</label>
-                <input 
-                  type="text" 
-                  className={`form-input-profile ${formErrors.name ? 'is-invalid' : ''}`}
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                  placeholder="أدخل اسم المشرف"
+                <label>اختر المشرف *</label>
+                <Select
+                  options={allSupervisors}
+                  onChange={handleSupervisorSelect}
+                  placeholder="ابحث عن مشرف..."
+                  noOptionsMessage={() => "لا توجد نتائج"}
+                  loadingMessage={() => "جاري التحميل..."}
+                  className={`react-select-container ${formErrors.supervisor ? 'is-invalid' : ''}`}
+                  classNamePrefix="react-select"
+                  components={animatedComponents}
+                  isSearchable
+                  isLoading={isLoadingSupervisors}
+                  menuPortalTarget={document.body}
+                  styles={{
+                    menuPortal: base => ({ ...base, zIndex: 9999 }),
+                    control: (provided) => ({
+                      ...provided,
+                      textAlign: 'right',
+                      borderColor: formErrors.supervisor ? '#dc3545' : '#ced4da',
+                      minHeight: '44px'
+                    }),
+                    menu: (provided) => ({
+                      ...provided,
+                      textAlign: 'right'
+                    }),
+                    dropdownIndicator: (provided) => ({
+                      ...provided,
+                      padding: '8px'
+                    })
+                  }}
                 />
-                {formErrors.name && (
-                  <div className="invalid-feedback">{formErrors.name}</div>
+                {formErrors.supervisor && (
+                  <div className="invalid-feedback">{formErrors.supervisor}</div>
                 )}
               </div>
-          
+
+              <div className="form-group">
+                <label>دور المشرف</label>
+                <select 
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                  className="form-control"
+                >
+                  <option value="academic">مشرف أكاديمي</option>
+                  <option value="quality">مشرف جودة</option>
+                  <option value="development">مشرف تطوير</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>تاريخ البدء</label>
+                <input
+                  type="date"
+                  name="since"
+                  value={formData.since}
+                  onChange={handleInputChange}
+                  className="form-control"
+                />
+              </div>
+              
               <button 
                 className="btn-profile btn-primary-profile" 
                 type="submit"

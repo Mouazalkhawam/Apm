@@ -276,6 +276,7 @@ class ProjectController extends Controller
                 
                 return [
                     'student_id' => $student->studentId,
+                    'user_id' => $student->userId, // إضافة user_id هنا
                     'name' => $student->user->name,
                     'skills' => $skills_str,
                     'experience' => $experience_data['text'],
@@ -316,6 +317,7 @@ class ProjectController extends Controller
             
             if ($originalStudent) {
                 $item['experience_media'] = $originalStudent['experience_full'] ?? [];
+                $item['user_id'] = $originalStudent['user_id']; // إضافة user_id إلى النتائج
             }
             
             return $item;
@@ -326,7 +328,6 @@ class ProjectController extends Controller
             'data' => $processedRecommendations
         ]);
     }
-
     public function getStudentProjects()
     {
         $user = Auth::user();

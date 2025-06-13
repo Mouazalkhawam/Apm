@@ -700,3 +700,59 @@
             margin-left: 5px;
             vertical-align: middle;
         }
+        /* Add Stage Button */
+/* Add Stage Button */
+.add-stage-btn-container {
+    display: flex;
+    justify-content: flex-end;
+    padding: 0 20px;
+    margin-bottom: 20px;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  
+  .add-stage-btn {
+    background-color: #791770;
+    color: white;
+    border: none;
+    padding: 12px 25px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 16px;
+    transition: all 0.3s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(121, 23, 112, 0.3);
+    height: 50px;
+  }
+  
+  .add-stage-btn:hover {
+    background-color: #5a1253;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(121, 23, 112, 0.4);
+  }
+  
+  .add-stage-btn:active {
+    transform: translateY(0);
+  }
+  
+  .add-icon {
+    font-size: 1.2rem;
+    font-weight: bold;
+  }
+  
+  /* Responsive Styles */
+  @media (max-width: 768px) {
+    .add-stage-btn-container {
+      padding: 0 15px;
+      justify-content: center;
+    }
+    
+    .add-stage-btn {
+      width: 100%;
+      justify-content: center;
+    }
+  }
