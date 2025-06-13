@@ -239,85 +239,101 @@ class ProjectController extends Controller
     }
 
     public function getRecommendations(Request $request)
-    {
-        $validated = $request->validate([
-            'query' => 'nullable|string',
-            'top_n' => 'nullable|integer|min:1|max:20',
-            'min_gpa' => 'nullable|numeric|min:0|max:4',
-            'max_gpa' => 'nullable|numeric|min:0|max:4'
-        ]);
+{
+    // التحقق من صحة البيانات المدخلة
+    $validated = $request->validate([
+        'query' => 'nullable|string',
+        'top_n' => 'nullable|integer|min:1|max:20',
+        'min_gpa' => 'nullable|numeric|min:0|max:4',
+        'max_gpa' => 'nullable|numeric|min:0|max:4'
+    ]);
 
-        $students = Student::with(['skills', 'user', 'groups'])
-            ->get()
-            ->map(function ($student) {
-                $experience_data = [
-                    'text' => '',
-                    'media' => []
-                ];
-                
-                if (!empty($student->experience) && is_array($student->experience)) {
+    // جلب جميع الطلاب مع مهاراتهم ومعلومات المستخدم
+    $students = Student::with(['skills', 'user', 'groups'])
+        ->get()
+        ->map(function ($student) {
+            // تجميع النص الكامل للخبرة
+            $full_experience = '';
+            
+            if (!empty($student->experience) {
+                // إذا كانت الخبرة نصًا عاديًا
+                if (is_string($student->experience)) {
+                    $full_experience = $student->experience;
+                } 
+                // إذا كانت الخبرة مصفوفة
+                elseif (is_array($student->experience)) {
                     foreach ($student->experience as $item) {
                         if (is_array($item) && isset($item['type'], $item['content'])) {
                             if ($item['type'] === 'text') {
-                                $experience_data['text'] .= ' ' . $item['content'];
-                            } else {
-                                $experience_data['media'][] = [
-                                    'type' => $item['type'],
-                                    'content' => $item['content']
-                                ];
+                                $full_experience .= ' ' . $item['content'];
                             }
                         }
                     }
-                    $experience_data['text'] = trim($experience_data['text']);
                 }
-                
-                $skills = $student->skills->pluck('name')->toArray();
-                $skills_str = !empty($skills) ? implode(', ', $skills) : '';
-                
-                return [
-                    'student_id' => $student->studentId,
-                    'user_id' => $student->userId, // إضافة user_id هنا
-                    'name' => $student->user->name,
-                    'skills' => $skills_str,
-                    'experience' => $experience_data['text'],
-                    'experience_full' => $student->experience,
-                    'gpa' => (float)($student->gpa ?? 0.0)
-                ];
-            });
+            }
 
-        $requestData = [
-            'students' => $students,
-            'query' => $validated['query'] ?? '',
-            'top_n' => $validated['top_n'] ?? 5
-        ];
+            // تنظيف النص النهائي
+            $full_experience = trim($full_experience);
 
-        if (isset($validated['min_gpa'])) {
-            $requestData['min_gpa'] = (float)$validated['min_gpa'];
-        }
-        if (isset($validated['max_gpa'])) {
-            $requestData['max_gpa'] = (float)$validated['max_gpa'];
-        }
+            return [
+                'student_id' => $student->studentId,
+                'user_id' => $student->userId,
+                'name' => $student->user->name,
+                'email' => $student->user->email,
+                'profile_picture' => $student->user->profile_picture,
+                'skills' => $student->skills->pluck('name')->implode(', '),
+                'experience' => $full_experience, // النص الكامل للخبرة
+                'experience_full' => $student->experience, // البيانات الكاملة للخبرة
+                'gpa' => (float)($student->gpa ?? 0.0),
+                'university_number' => $student->university_number,
+                'major' => $student->major
+            ];
+        });
 
-        $response = Http::post('http://localhost:5001/recommend', $requestData);
+    // تحضير البيانات للإرسال لنظام التوصية
+    $requestData = [
+        'students' => $students,
+        'query' => $validated['query'] ?? '',
+        'top_n' => $validated['top_n'] ?? 5
+    ];
+
+    // إضافة فلتر GPA إذا وجد
+    if (isset($validated['min_gpa'])) {
+        $requestData['min_gpa'] = (float)$validated['min_gpa'];
+    }
+    if (isset($validated['max_gpa'])) {
+        $requestData['max_gpa'] = (float)$validated['max_gpa'];
+    }
+
+    try {
+        // إرسال الطلب لنظام التوصية
+        $response = Http::timeout(30)->post('http://localhost:5001/recommend', $requestData);
 
         if ($response->failed()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to get recommendations',
-                'error' => $response->json()
-            ], 500);
+            throw new \Exception('Failed to get recommendations from service');
         }
 
         $recommendations = $response->json()['data'] ?? [];
+        
+        // إنشاء خريطة للطلاب للوصول السريع
         $studentsMap = collect($students)->keyBy('student_id');
         
+        // معالجة التوصيات وإضافة البيانات الكاملة
         $processedRecommendations = array_map(function($item) use ($studentsMap) {
             $studentId = $item['student_id'];
             $originalStudent = $studentsMap[$studentId] ?? null;
             
             if ($originalStudent) {
-                $item['experience_media'] = $originalStudent['experience_full'] ?? [];
-                $item['user_id'] = $originalStudent['user_id']; // إضافة user_id إلى النتائج
+                // دمج جميع البيانات الأصلية مع نتائج التوصية
+                return array_merge($item, [
+                    'user_id' => $originalStudent['user_id'],
+                    'email' => $originalStudent['email'],
+                    'profile_picture' => $originalStudent['profile_picture'],
+                    'experience' => $originalStudent['experience'], // النص الكامل
+                    'experience_full' => $originalStudent['experience_full'], // التفاصيل الكاملة
+                    'university_number' => $originalStudent['university_number'],
+                    'major' => $originalStudent['major']
+                ]);
             }
             
             return $item;
@@ -325,9 +341,20 @@ class ProjectController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'data' => $processedRecommendations
+            'data' => $processedRecommendations,
+            'message' => 'Recommendations retrieved successfully'
         ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Recommendation error: ' . $e->getMessage());
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to get recommendations',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
     public function getStudentProjects()
     {
         $user = Auth::user();
@@ -744,46 +771,80 @@ class ProjectController extends Controller
             ]);
         });
     }
-    public function getSupervisorGroups()
-{
-    try {
-        $user = Auth::user();
-        
-        if (!$user->supervisor) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User is not a supervisor'
-            ], 403);
-        }
-
-        // جلب أسماء المجموعات المعتمدة للمشرف فقط
-        $groups = Group::whereHas('supervisors', function($query) use ($user) {
-                $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
-                      ->where('group_supervisor.status', 'approved');
-            })
-            ->pluck('name', 'groupId');
-
-        if ($groups->isEmpty()) {
+    public function getSupervisorProjects()
+    {
+        try {
+            $user = Auth::user();
+            
+            // التحقق من أن المستخدم مشرف
+            if (!$user->supervisor) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User is not a supervisor'
+                ], 403);
+            }
+    
+            // جلب المشاريع المعتمدة للمشرف مع تفاصيل المشروع الأساسية
+            $projects = Project::select([
+                    'projects.projectid',
+                    'projects.title',
+                    'projects.description',
+                    'projects.type',
+                    'projects.status',
+                    'projects.startdate',
+                    'projects.enddate'
+                ])
+                ->whereHas('group.supervisors', function($query) use ($user) {
+                    $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
+                          ->where('group_supervisor.status', 'approved');
+                })
+                ->with(['group' => function($query) {
+                    $query->select(['groupid', 'projectid', 'name'])
+                          ->withCount(['approvedStudents', 'approvedSupervisors']);
+                }])
+                ->orderBy('projects.created_at', 'desc')
+                ->get();
+    
+            if ($projects->isEmpty()) {
+                return response()->json([
+                    'success' => true,
+                    'data' => [],
+                    'message' => 'No projects found for this supervisor'
+                ]);
+            }
+    
+            // تنسيق البيانات للإرجاع
+            $formattedProjects = $projects->map(function ($project) {
+                return [
+                    'project_id' => $project->projectid,
+                    'title' => $project->title,
+                    'description' => $project->description,
+                    'type' => $project->type,
+                    'status' => $project->status,
+                    'start_date' => $project->startdate,
+                    'end_date' => $project->enddate,
+                    'group' => [
+                        'id' => $project->group->groupid,
+                        'name' => $project->group->name,
+                        'students_count' => $project->group->approved_students_count,
+                        'supervisors_count' => $project->group->approved_supervisors_count
+                    ]
+                ];
+            });
+    
             return response()->json([
                 'success' => true,
-                'data' => [],
-                'message' => 'No approved groups found for this supervisor'
+                'data' => $formattedProjects,
+                'message' => 'Supervisor projects retrieved successfully'
             ]);
+    
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to retrieve supervisor projects: ' . $e->getMessage()
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $groups,
-            'message' => 'Supervisor groups retrieved successfully'
-        ]);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Failed to retrieve supervisor groups: ' . $e->getMessage()
-        ], 500);
     }
-}
 /**
  * جلب جميع المشاريع المرتبطة بالمشرف الحالي
  *

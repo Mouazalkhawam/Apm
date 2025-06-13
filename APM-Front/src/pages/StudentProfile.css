@@ -1343,6 +1343,9 @@
     justify-content: space-between;
     align-items: center;
   }
+  .achievement-date-icon{
+    margin-left: 10px;
+  }
   
   .selected-student-avatar {
     width: 40px;

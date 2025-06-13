@@ -280,15 +280,9 @@ const SupervisorsManagement = () => {
 
       <main className="container">
         <div className="section-header">
-          <button 
-            className="add-supervisor-btn"
-            onClick={() => setShowAddModal(true)}
-          >
-            <FontAwesomeIcon icon={faPlus} />
-            <span>إضافة مشرف جديد</span>
-          </button>
           
-          <div>
+          
+          <div className='section-header2'>
             <h2 className="section-title">قائمة المشرفين</h2>
             <p className="section-description">إدارة المشرفين المسؤولين عن متابعة سير العمل في المشروع</p>
           </div>

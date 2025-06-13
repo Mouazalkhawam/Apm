@@ -387,6 +387,9 @@ textarea {
     gap: 8px;
     margin-bottom: 16px;
 }
+.existing-proposal-notice-i{
+    margin-left: 10px;
+}
 
 .member-chip {
     background-color: white;

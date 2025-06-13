@@ -142,9 +142,7 @@ const LoginPage = () => {
           <a href="/register">سجل الآن</a>
         </div>
 
-        <div className="forgot-password arabic-font">
-          <a href="/forgot-password">نسيت كلمة المرور؟</a>
-        </div>
+       
       </div>
     </div>
   );

@@ -7,6 +7,13 @@
   direction: rtl;
   text-align: right;
 }
+.section-header2{
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 30px;
+}
 
 .container {
   width: 100%;
@@ -16,13 +23,13 @@
 }
 
 /* Section Header */
-.section-header {
+/*.section-header {
   display: flex;
   flex-direction: row-reverse;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
-}
+}*/
 
 .section-title {
   font-size: 1.5rem;

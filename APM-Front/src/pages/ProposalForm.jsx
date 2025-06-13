@@ -335,7 +335,7 @@ const ProposalForm = () => {
         <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data" acceptCharset="UTF-8">
           {isEditMode && (
             <div className="existing-proposal-notice">
-              <i className="fas fa-info-circle"></i>
+              <i className="fas fa-info-circle existing-proposal-notice-i"></i>
               <span>أنت تقوم بتعديل مقترح موجود مسبقاً</span>
             </div>
           )}

@@ -768,7 +768,7 @@ const AchievementsCard = () => {
                   <p>{achievement.notes || 'إنجاز أكاديمي مميز'}</p>
                   <div className="achievement-meta">
                     <span className="achievement-date">
-                      <i className="fas fa-calendar-alt"></i>
+                      <i className="fas fa-calendar-alt achievement-date-icon"></i>
                       {new Date(achievement.featured_at).toLocaleDateString('ar-EG')}
                     </span>
                   </div>

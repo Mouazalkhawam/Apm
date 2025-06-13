@@ -97,9 +97,13 @@ Route::middleware('auth:api')->group(function () {
         Route::get('/create', [ProjectProposalController::class, 'create']);
         Route::post('/', [ProjectProposalController::class, 'store']);
         Route::get('/{id}', [ProjectProposalController::class, 'show']);
+        Route::get('/group/{groupid}', [ProjectProposalController::class, 'showByGroup']);
         
-    Route::get('/group/{groupid}', [ProjectProposalController::class, 'showByGroup']);
+    
     });
+    
+  
+    Route::put('/proposals/{groupid}', [ProjectProposalController::class, 'update']);
     
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);

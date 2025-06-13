@@ -25,7 +25,7 @@ const ProjectHeader = ({
 
 
   return (
-    <header className='project-header'>
+    <header className='project-header-main'>
       <div className="header-bg-project"></div>
       <button className="back-button-project" onClick={handleGoBack}>
         <i className="fas fa-arrow-right"></i> 
