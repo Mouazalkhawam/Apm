@@ -36,6 +36,18 @@ const StudentProjectManagement = () => {
     description: '',
     due_date: ''
   });
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [currentTaskDetails, setCurrentTaskDetails] = useState(null);
+  const [showStageSubmissionModal, setShowStageSubmissionModal] = useState(false);
+  const [currentStageToSubmit, setCurrentStageToSubmit] = useState(null);
+  const [stageSubmissionNotes, setStageSubmissionNotes] = useState('');
+  const [stageSubmissionFiles, setStageSubmissionFiles] = useState([]);
+  const [stageSubmissions, setStageSubmissions] = useState({});
+  const [showStageGradeModal, setShowStageGradeModal] = useState(false);
+  const [currentStageToGrade, setCurrentStageToGrade] = useState(null);
+  const [stageGrade, setStageGrade] = useState('');
+  const [stageFeedback, setStageFeedback] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch data on component mount
   useEffect(() => {
@@ -90,12 +102,33 @@ const StudentProjectManagement = () => {
         );
 
         if (stagesRes.data?.data) {
-          const stagesWithTasks = await Promise.all(
+          const stagesWithTasksAndSubmissions = await Promise.all(
             stagesRes.data.data.map(async (stage) => {
+              // Fetch tasks for this stage
               const tasksRes = await axios.get(
                 `http://127.0.0.1:8000/api/stages/${stage.id}/tasks`,
                 { headers: { 'Authorization': `Bearer ${token}` } }
               );  
+
+              // Fetch stage submission status
+              let stageSubmission = null;
+              try {
+                const submissionRes = await axios.get(
+                  `http://127.0.0.1:8000/api/stages/${stage.id}/submission`,
+                  { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                if (submissionRes.data.data) {
+                  stageSubmission = submissionRes.data.data;
+                }
+              } catch (submissionError) {
+                console.log('No submission found for stage', stage.id);
+              }
+
+              // Store submission status
+              setStageSubmissions(prev => ({
+                ...prev,
+                [stage.id]: stageSubmission
+              }));
 
               // Fetch grading status for each completed task
               const tasksWithGradingStatus = await Promise.all(
@@ -139,7 +172,7 @@ const StudentProjectManagement = () => {
             })
           );
 
-          setProjectData(prev => ({ ...prev, stages: stagesWithTasks }));
+          setProjectData(prev => ({ ...prev, stages: stagesWithTasksAndSubmissions }));
         }
       } catch (err) {
         setError(err.message || 'Failed to fetch data');
@@ -150,7 +183,7 @@ const StudentProjectManagement = () => {
     };
 
     fetchData();
-  }, [isSupervisor]);
+  }, [isSupervisor, successMessage]); // Add successMessage as dependency to refresh when submission is successful
 
   // Helper functions
   const isTaskAssignedToCurrentUser = (task) => {
@@ -167,6 +200,10 @@ const StudentProjectManagement = () => {
 
   const handleSubmissionFileChange = (e) => {
     setSubmissionFiles(Array.from(e.target.files));
+  };
+
+  const handleStageSubmissionFileChange = (e) => {
+    setStageSubmissionFiles(Array.from(e.target.files));
   };
 
   const handleNewTaskFileChange = (stageId, e) => {
@@ -297,11 +334,105 @@ const StudentProjectManagement = () => {
         setGithubCommitUrl('');
         setCommitDescription('');
         
-        alert('تم تسليم المهمة بنجاح');
+        setSuccessMessage('تم تسليم المهمة بنجاح');
+        setTimeout(() => setSuccessMessage(''), 3000);
       }
     } catch (error) {
       console.error('Error submitting task:', error);
       alert('حدث خطأ أثناء تسليم المهمة: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const submitStageToAPI = async () => {
+    try {
+      if (!currentStageToSubmit) return;
+
+      const token = localStorage.getItem('access_token');
+      const formData = new FormData();
+
+      // Add required fields
+      formData.append('notes', stageSubmissionNotes);
+
+      // Add files if any
+      stageSubmissionFiles.forEach(file => {
+        formData.append('attachments[]', file);
+      });
+
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/project-stages/${currentStageToSubmit}/submit`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Update stage submission status
+        setStageSubmissions(prev => ({
+          ...prev,
+          [currentStageToSubmit]: response.data.data
+        }));
+        
+        // Reset modal
+        setShowStageSubmissionModal(false);
+        setCurrentStageToSubmit(null);
+        setStageSubmissionNotes('');
+        setStageSubmissionFiles([]);
+        
+        setSuccessMessage('تم تسليم المرحلة بنجاح');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error submitting stage:', error);
+      alert('حدث خطأ أثناء تسليم المرحلة: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const evaluateStage = async () => {
+    try {
+      if (!currentStageToGrade || !stageGrade) {
+        return alert('الرجاء إدخال العلامة');
+      }
+
+      const token = localStorage.getItem('access_token');
+      
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/stages/${currentStageToGrade}/evaluate`,
+        {
+          grade: parseInt(stageGrade),
+          feedback: stageFeedback || '',
+          status: 'reviewed'
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+
+      if (response.data.success) {
+        // Update stage submission status
+        setStageSubmissions(prev => ({
+          ...prev,
+          [currentStageToGrade]: response.data.data
+        }));
+        
+        // Reset modal
+        setShowStageGradeModal(false);
+        setCurrentStageToGrade(null);
+        setStageGrade('');
+        setStageFeedback('');
+        
+        setSuccessMessage('تم تقييم المرحلة بنجاح');
+        setTimeout(() => setSuccessMessage(''), 3000);
+      }
+    } catch (error) {
+      console.error('Error grading stage:', error);
+      alert('حدث خطأ أثناء تقييم المرحلة: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -366,7 +497,8 @@ const StudentProjectManagement = () => {
         setGrade('');
         setFeedback('');
         
-        alert('تم تقييم المهمة بنجاح');
+        setSuccessMessage('تم تقييم المهمة بنجاح');
+        setTimeout(() => setSuccessMessage(''), 3000);
       }
     } catch (error) {
       console.error('Error grading task:', error);
@@ -422,12 +554,18 @@ const StudentProjectManagement = () => {
           due_date: ''
         });
         setShowAddStageModal(false);
-        alert('تم إضافة المرحلة بنجاح');
+        setSuccessMessage('تم إضافة المرحلة بنجاح');
+        setTimeout(() => setSuccessMessage(''), 3000);
       }
     } catch (error) {
       console.error('Error adding stage:', error);
       alert('حدث خطأ أثناء إضافة المرحلة: ' + (error.response?.data?.message || error.message));
     }
+  };
+
+  const showTaskDetails = (task) => {
+    setCurrentTaskDetails(task);
+    setShowTaskModal(true);
   };
 
   const renderAttachments = (attachments) => {
@@ -501,9 +639,47 @@ const StudentProjectManagement = () => {
     }</span>;
   };
 
+  const renderStageSubmissionStatus = (stageId) => {
+    const submission = stageSubmissions[stageId];
+    
+    if (!submission) {
+      return (
+        <span className="stage-submission-status not-submitted">
+          <i className="fas fa-times-circle"></i> غير مسلمة
+        </span>
+      );
+    }
+
+    if (submission.status === 'submitted') {
+      return (
+        <span className="stage-submission-status submitted">
+          <i className="fas fa-clock"></i> مسلمة - بانتظار التقييم
+        </span>
+      );
+    }
+
+    if (submission.status === 'reviewed') {
+      return (
+        <span className="stage-submission-status graded">
+          <i className="fas fa-check-circle"></i> مسلمة ومقيمة ({submission.grade}/100)
+        </span>
+      );
+    }
+
+    return null;
+  };
+
   const renderTaskActions = (task) => {
     return (
       <>
+        <button 
+          className="action-btn-management" 
+          onClick={() => showTaskDetails(task)}
+        >
+          <span className="action-icon">👁️</span>
+          <span>عرض التفاصيل</span>
+        </button>
+
         <button 
           className="action-btn-management" 
           onClick={() => {
@@ -624,6 +800,15 @@ const StudentProjectManagement = () => {
         startDate="01/01/2023"
         endDate="15/06/2023"
       />
+
+      {successMessage && (
+        <div className="success-message">
+          {successMessage}
+          <button onClick={() => setSuccessMessage('')} className="close-message">
+            ×
+          </button>
+        </div>
+      )}
       
       <div className="stages-container">
         {projectData.stages.length === 0 ? (
@@ -632,7 +817,10 @@ const StudentProjectManagement = () => {
           projectData.stages.map(stage => (
             <div key={stage.id} className="stage">
               <div className="stage-header">
-                {stage.name}
+                <div className="stage-title-container">
+                  <div className="stage-title">{stage.name}</div>
+                  {renderStageSubmissionStatus(stage.id)}
+                </div>
                 <div className="stage-deadline">موعد التسليم: {formatDate(stage.deadline)}</div>
               </div>
             
@@ -786,6 +974,34 @@ const StudentProjectManagement = () => {
                   )}
                 </>
               )}
+
+              {/* Stage Submission Button - Visible to all except supervisor */}
+              {!isSupervisor && (
+                <button 
+                  className="submit-stage-btn"
+                  onClick={() => {
+                    setCurrentStageToSubmit(stage.id);
+                    setShowStageSubmissionModal(true);
+                  }}
+                >
+                  تسليم المرحلة
+                </button>
+              )}
+
+              {/* Stage Grade Button - Visible only to supervisor */}
+              {isSupervisor && stageSubmissions[stage.id] && stageSubmissions[stage.id].status === 'submitted' && (
+                <button 
+                  className="grade-stage-btn"
+                  onClick={() => {
+                    setCurrentStageToGrade(stage.id);
+                    setStageGrade(stageSubmissions[stage.id]?.grade || '');
+                    setStageFeedback(stageSubmissions[stage.id]?.feedback || '');
+                    setShowStageGradeModal(true);
+                  }}
+                >
+                  تقييم المرحلة
+                </button>
+              )}
             </div>
           ))
         )}
@@ -891,22 +1107,7 @@ const StudentProjectManagement = () => {
             </div>
           </div>
           <div className="modal-footer">
-            <button 
-              type="button"
-              className="modal-btn secondary" 
-              onClick={() => {
-                setShowModal(false);
-                setCurrentSubmissionTask(null);
-                setSubmissionNotes('');
-                setSubmissionFiles([]);
-                setGithubRepo('');
-                setGithubCommitUrl('');
-                setCommitDescription('');
-              }}
-            >
-              إلغاء
-            </button>
-            <button 
+          <button 
               type="button"
               className="modal-btn primary" 
               onClick={submitTaskToAPI}
@@ -918,8 +1119,8 @@ const StudentProjectManagement = () => {
         </div>
       </div>
 
-      {/* Grade Modal */}
-      <div className={`modal-overlay-tasks ${showGradeModal ? 'show' : ''}`}>
+     {/* Grade Modal */}
+     <div className={`modal-overlay-tasks ${showGradeModal ? 'show' : ''}`}>
         <div className="modal-content-tasks">
           <div className="modal-header-spm">تقييم المهمة</div>
           <div className="modal-body">
@@ -967,6 +1168,136 @@ const StudentProjectManagement = () => {
               disabled={!grade}
             >
               حفظ التقييم
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stage Grade Modal */}
+      <div className={`modal-overlay-tasks ${showStageGradeModal ? 'show' : ''}`}>
+        <div className="modal-content-tasks">
+          <div className="modal-header-spm">تقييم المرحلة</div>
+          <div className="modal-body">
+            <div className="form-group-tasks">
+              <label htmlFor="stageGrade">العلامة (من 100):</label>
+              <input 
+                type="number" 
+                id="stageGrade"
+                min="0"
+                max="100"
+                placeholder="أدخل العلامة من 0 إلى 100"
+                value={stageGrade}
+                onChange={(e) => setStageGrade(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="form-group-tasks">
+              <label htmlFor="stageFeedback">التعليق (اختياري):</label>
+              <textarea 
+                id="stageFeedback"
+                placeholder="أدخل تعليقك على المرحلة"
+                value={stageFeedback}
+                onChange={(e) => setStageFeedback(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button 
+              type="button"
+              className="modal-btn secondary" 
+              onClick={() => {
+                setShowStageGradeModal(false);
+                setCurrentStageToGrade(null);
+                setStageGrade('');
+                setStageFeedback('');
+              }}
+            >
+              إلغاء
+            </button>
+            <button 
+              type="button"
+              className="modal-btn primary" 
+              onClick={evaluateStage}
+              disabled={!stageGrade}
+            >
+              حفظ التقييم
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stage Submission Modal */}
+      <div className={`modal-overlay-tasks ${showStageSubmissionModal ? 'show' : ''}`}>
+        <div className="modal-content-tasks">
+          <div className="modal-header-spm">تسليم المرحلة</div>
+          <div className="modal-body">
+            <div className="form-group-tasks">
+              <label htmlFor="stageSubmissionNotes">ملاحظات حول التسليم:</label>
+              <textarea 
+                id="stageSubmissionNotes"
+                placeholder="أدخل ملاحظاتك حول تسليم المرحلة (اختياري)"
+                value={stageSubmissionNotes}
+                onChange={(e) => setStageSubmissionNotes(e.target.value)}
+              />
+            </div>
+
+            <div 
+              className="file-upload-area"
+              onDragOver={(e) => e.preventDefault()}
+              onDragLeave={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                setStageSubmissionFiles(Array.from(e.dataTransfer.files));
+              }}
+            >
+              <div className="file-upload-text">
+                {stageSubmissionFiles.length > 0 ? 
+                  `تم اختيار: ${stageSubmissionFiles.map(f => f.name).join(', ')}` : 
+                  'قم بسحب وإسقاط الملفات هنا أو'}
+              </div>
+              <button 
+                type="button"
+                onClick={() => document.getElementById('stageSubmissionFiles').click()}
+              >
+                اختر ملفات
+              </button>
+              <input 
+                type="file" 
+                id="stageSubmissionFiles"
+                className="file-input"
+                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.zip,.rar"
+                multiple
+                onChange={handleStageSubmissionFileChange}
+              />
+            </div>
+            <div className="file-preview">
+              {stageSubmissionFiles.map((file, index) => (
+                <div key={index} className="file-preview-item">
+                  <i className="fas fa-file"></i> {file.name}
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="modal-footer">
+            <button 
+              type="button"
+              className="modal-btn secondary" 
+              onClick={() => {
+                setShowStageSubmissionModal(false);
+                setCurrentStageToSubmit(null);
+                setStageSubmissionNotes('');
+                setStageSubmissionFiles([]);
+              }}
+            >
+              إلغاء
+            </button>
+            <button 
+              type="button"
+              className="modal-btn primary" 
+              onClick={submitStageToAPI}
+            >
+              تأكيد التسليم
             </button>
           </div>
         </div>
@@ -1032,6 +1363,103 @@ const StudentProjectManagement = () => {
               disabled={!newStage.title || !newStage.due_date}
             >
               إضافة المرحلة
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Task Details Modal */}
+      <div className={`modal-overlay-tasks ${showTaskModal ? 'show' : ''}`}>
+        <div className="modal-content-tasks">
+          <div className="modal-header-spm">تفاصيل المهمة</div>
+          <div className="modal-body">
+            {currentTaskDetails && (
+              <>
+                <div className="task-detail-row">
+                  <span className="task-detail-label">عنوان المهمة:</span>
+                  <span className="task-detail-value">{currentTaskDetails.title}</span>
+                </div>
+                
+                {currentTaskDetails.description && (
+                  <div className="task-detail-row">
+                    <span className="task-detail-label">الوصف:</span>
+                    <span className="task-detail-value">{currentTaskDetails.description}</span>
+                  </div>
+                )}
+                
+                <div className="task-detail-row">
+                  <span className="task-detail-label">المسؤول:</span>
+                  <span className="task-detail-value">{currentTaskDetails.responsible}</span>
+                </div>
+                
+                <div className="task-detail-row">
+                  <span className="task-detail-label">الحالة:</span>
+                  <span className="task-detail-value">
+                    {currentTaskDetails.status === 'completed' ? 'مكتمل' : 
+                     currentTaskDetails.status === 'in_progress' ? 'قيد التنفيذ' : 
+                     currentTaskDetails.status === 'pending' ? 'قيد الانتظار' : 'غير محدد'}
+                  </span>
+                </div>
+                
+                <div className="task-detail-row">
+                  <span className="task-detail-label">الأولوية:</span>
+                  <span className="task-detail-value">
+                    {currentTaskDetails.priority === 'high' ? 'عالي' : 
+                     currentTaskDetails.priority === 'medium' ? 'متوسط' : 
+                     currentTaskDetails.priority === 'low' ? 'منخفض' : 'غير محدد'}
+                  </span>
+                </div>
+                
+                <div className="task-detail-row">
+                  <span className="task-detail-label">الموعد النهائي:</span>
+                  <span className="task-detail-value">{formatDate(currentTaskDetails.deadline)}</span>
+                </div>
+                
+                {currentTaskDetails.attachments?.length > 0 && (
+                  <div className="task-detail-row">
+                    <span className="task-detail-label">المرفقات:</span>
+                    <div className="task-attachments-container">
+                      {currentTaskDetails.attachments.map((attachment, index) => (
+                        <div key={index} className="attachment-item">
+                          <a href={attachment.url} className="attachment-link" target="_blank" rel="noopener noreferrer">
+                            <span className="attachment-icon">
+                              {attachment.type === 'image' ? '🖼️' : '📄'}
+                            </span>
+                            {attachment.name}
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {currentTaskDetails.status === 'completed' && (
+                  <>
+                    <div className="task-detail-row">
+                      <span className="task-detail-label">التقييم:</span>
+                      <span className="task-detail-value">
+                        {currentTaskDetails.grade ? `${currentTaskDetails.grade}/100` : 'لم يتم التقييم بعد'}
+                      </span>
+                    </div>
+                    
+                    {currentTaskDetails.feedback && (
+                      <div className="task-detail-row">
+                        <span className="task-detail-label">التعليق:</span>
+                        <span className="task-detail-value">{currentTaskDetails.feedback}</span>
+                      </div>
+                    )}
+                  </>
+                )}
+              </>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button 
+              type="button"
+              className="modal-btn primary" 
+              onClick={() => setShowTaskModal(false)}
+            >
+              إغلاق
             </button>
           </div>
         </div>

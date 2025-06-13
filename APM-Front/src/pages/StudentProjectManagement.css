@@ -318,7 +318,7 @@
         
         /* Add Task Form */
         .add-task-form {
-            display: none;
+           /* display: none;*/
             padding: 20px;
             background-color: #f8f9fa;
             border-top: 1px solid #e1e5ee;
@@ -755,4 +755,38 @@
       width: 100%;
       justify-content: center;
     }
+  }
+  /* زر تسليم المرحلة */
+.submit-stage-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    margin: 15px 0;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    display: block;
+    width: 100%;
+    text-align: center;
+    transition: background-color 0.3s;
+  }
+  
+  .submit-stage-btn:hover {
+    background-color: #45a049;
+  }
+  
+  /* تحسينات للزر في الوضع المظلم (إذا كنت تستخدمه) */
+  .dark-mode .submit-stage-btn {
+    background-color: #2E7D32;
+  }
+  
+  .dark-mode .submit-stage-btn:hover {
+    background-color: #1B5E20;
+  }
+  
+  /* تحسينات للزر عند التعطيل */
+  .submit-stage-btn:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
   }
