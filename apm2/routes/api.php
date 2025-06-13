@@ -170,4 +170,5 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/evaluations', [EvaluationController::class, 'index']);
     Route::get('/evaluation-criteria', [EvaluationController::class, 'getCriteria']);
 
+    Route::get('/supervisor/projects', [ProjectController::class, 'getSupervisorProjects']);
 });

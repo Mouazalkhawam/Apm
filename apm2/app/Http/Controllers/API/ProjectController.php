@@ -784,4 +784,83 @@ class ProjectController extends Controller
         ], 500);
     }
 }
+/**
+ * جلب جميع المشاريع المرتبطة بالمشرف الحالي
+ *
+ * @return \Illuminate\Http\JsonResponse
+ */
+public function getSupervisorProjects()
+{
+    try {
+        $user = Auth::user();
+        
+        // التحقق من أن المستخدم مشرف
+        if (!$user->supervisor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'User is not a supervisor'
+            ], 403);
+        }
+
+        // جلب المشاريع المعتمدة للمشرف مع تفاصيل المشروع الأساسية
+        $projects = Project::select([
+                'projects.projectid',
+                'projects.title',
+                'projects.description',
+                'projects.type',
+                'projects.status',
+                'projects.startdate',
+                'projects.enddate'
+            ])
+            ->whereHas('group.supervisors', function($query) use ($user) {
+                $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
+                      ->where('group_supervisor.status', 'approved');
+            })
+            ->with(['group' => function($query) {
+                $query->select(['groupid', 'projectid', 'name'])
+                      ->withCount(['approvedStudents', 'approvedSupervisors']);
+            }])
+            ->orderBy('projects.created_at', 'desc')
+            ->get();
+
+        if ($projects->isEmpty()) {
+            return response()->json([
+                'success' => true,
+                'data' => [],
+                'message' => 'No projects found for this supervisor'
+            ]);
+        }
+
+        // تنسيق البيانات للإرجاع
+        $formattedProjects = $projects->map(function ($project) {
+            return [
+                'project_id' => $project->projectid,
+                'title' => $project->title,
+                'description' => $project->description,
+                'type' => $project->type,
+                'status' => $project->status,
+                'start_date' => $project->startdate,
+                'end_date' => $project->enddate,
+                'group' => [
+                    'id' => $project->group->groupid,
+                    'name' => $project->group->name,
+                    'students_count' => $project->group->approved_students_count,
+                    'supervisors_count' => $project->group->approved_supervisors_count
+                ]
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedProjects,
+            'message' => 'Supervisor projects retrieved successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Failed to retrieve supervisor projects: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
