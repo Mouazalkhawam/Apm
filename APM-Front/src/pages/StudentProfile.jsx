@@ -4,6 +4,7 @@ import Header from '../components/Header/Header';
 import axios from 'axios';
 import Select from 'react-select';
 import makeAnimated from 'react-select/animated';
+import { useNavigate } from 'react-router-dom';
 
 const animatedComponents = makeAnimated();
 
@@ -15,6 +16,29 @@ const StudentProfile = () => {
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.post('http://127.0.0.1:8000/api/logout', {}, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // Clear local storage and redirect to login
+      localStorage.clear();
+      navigate('/login');
+    } catch (err) {
+      console.error('Logout error:', err);
+      // Force logout even if API call fails
+      localStorage.clear();
+      navigate('/login');
+    }
+  };
 
   useEffect(() => {
     const fetchStudentProfile = async () => {
@@ -95,6 +119,7 @@ const StudentProfile = () => {
         showChat={showChat}
         toggleNotification={toggleNotification}
         toggleChat={toggleChat}
+        handleLogout={handleLogout}
       />
 
       <div className="container-profile">
@@ -103,13 +128,13 @@ const StudentProfile = () => {
             studentData={studentData}
           />
 
-<div className="profile-content">
-        <StatsCard />
-        <ProjectsCard 
-          setShowTasksPage={setShowTasksPage} 
-          setShowProjectModal={setShowProjectModal}
-        />
-        {showTasksPage && <TasksPage setShowTasksPage={setShowTasksPage} projectId={showTasksPage} />}
+          <div className="profile-content">
+            <StatsCard />
+            <ProjectsCard 
+              setShowTasksPage={setShowTasksPage} 
+              setShowProjectModal={setShowProjectModal}
+            />
+            {showTasksPage && <TasksPage setShowTasksPage={setShowTasksPage} projectId={showTasksPage} />}
             <AchievementsCard />
           </div>
         </div>
@@ -402,8 +427,7 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
   };
 
   const calculateProgress = (project) => {
-    // يمكنك استبدال هذا بحساب التقدم الفعلي من المهام المكتملة
-    return Math.floor(Math.random() * 50) + 50; // قيمة عشوائية للتوضيح
+    return Math.floor(Math.random() * 50) + 50;
   };
 
   if (loading) {
@@ -484,7 +508,7 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
                       </div>
                     </div>
                     <div className="project-actions">
-                    <button 
+                      <button 
                         className="btn-profile btn-outline btn-sm"
                         onClick={() => {
                           localStorage.setItem('selectedGroupId', project.group.groupid);
@@ -522,7 +546,6 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
   );
 };
 
-
 const TasksPage = ({ setShowTasksPage, projectId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -534,7 +557,6 @@ const TasksPage = ({ setShowTasksPage, projectId }) => {
       try {
         const token = localStorage.getItem('access_token');
         
-        // جلب المهام الخاصة بالمشروع
         const response = await axios.get(
           `http://127.0.0.1:8000/api/student/projects/${projectId}/tasks`,
           {
@@ -547,11 +569,9 @@ const TasksPage = ({ setShowTasksPage, projectId }) => {
         if (response.data.success) {
           setTasks(response.data.data);
           
-          // جلب عنوان المشروع من بيانات المهام (إذا كان متوفراً)
           if (response.data.data.length > 0 && response.data.data[0].stage?.project) {
             setProjectTitle(response.data.data[0].stage.project.title);
           } else {
-            // إذا لم يتوفر العنوان في بيانات المهام، نجلب المشاريع للحصول على العنوان
             const projectsResponse = await axios.get(
               'http://127.0.0.1:8000/api/student/projects',
               {
@@ -766,6 +786,7 @@ const AchievementsCard = () => {
     </div>
   );
 };
+
 const ProjectModal = ({ setShowProjectModal }) => {
   const [formData, setFormData] = useState({
     title: '',
@@ -774,16 +795,6 @@ const ProjectModal = ({ setShowProjectModal }) => {
     students: [],
     supervisors: []
   });
-  useEffect(() => {
-    const savedStudents = JSON.parse(localStorage.getItem('selectedStudents') || '[]');
-    if (savedStudents.length > 0) {
-      setFormData(prev => ({
-        ...prev,
-        students: savedStudents.map(s => s.id)
-      }));
-    }
-  }, []);
-
   const [studentsOptions, setStudentsOptions] = useState([]);
   const [supervisorsOptions, setSupervisorsOptions] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -954,29 +965,21 @@ const ProjectModal = ({ setShowProjectModal }) => {
           </div>
           
           <div className="form-group">
-          <label>اختر الطلاب *</label>
-          <Select
-            closeMenuOnSelect={false}
-            components={animatedComponents}
-            isMulti
-            options={studentsOptions}
-            value={studentsOptions.filter(option => 
-              formData.students.includes(option.value)
-            )}
-            onChange={handleStudentsChange}
-            placeholder="ابحث واختر الطلاب..."
-            noOptionsMessage={() => "لا توجد خيارات متاحة"}
-            className="react-select-container"
-            classNamePrefix="react-select"
-            isRtl={true}
-            required
-          />
-          {formData.students.length > 0 && (
-            <div className="mt-2 text-sm text-gray-600">
-              تم اختيار {formData.students.length} طالب(ة) من نظام التوصية
-            </div>
-          )}
-        </div>
+            <label>اختر الطلاب *</label>
+            <Select
+              closeMenuOnSelect={false}
+              components={animatedComponents}
+              isMulti
+              options={studentsOptions}
+              onChange={handleStudentsChange}
+              placeholder="ابحث واختر الطلاب..."
+              noOptionsMessage={() => "لا توجد خيارات متاحة"}
+              className="react-select-container"
+              classNamePrefix="react-select"
+              isRtl={true}
+              required
+            />
+          </div>
 
           <div className="form-group">
             <label>اختر المشرفين *</label>
@@ -1015,7 +1018,5 @@ const ProjectModal = ({ setShowProjectModal }) => {
     </div>
   );
 };
-
-
 
 export default StudentProfile;

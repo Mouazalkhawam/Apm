@@ -1,11 +1,13 @@
 import React, { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 import "./LoginPage.css";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -16,26 +18,36 @@ const LoginPage = () => {
         password
       });
 
-      // مع axios البيانات تكون متاحة مباشرة في response.data
       const data = response.data;
 
-      // حفظ التوكن في التخزين المحلي
+      // حفظ بيانات المستخدم في التخزين المحلي
       localStorage.setItem("access_token", data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
-      alert("تم تسجيل الدخول بنجاح!");
+      localStorage.setItem("user_role", data.user.role);
+      localStorage.setItem("user_id", data.user.userId);
+      localStorage.setItem("user_name", data.user.name);
 
-      // توجيه المستخدم إلى لوحة التحكم
-      window.location.href = "/profile";
+      // توجيه المستخدم بناءً على دوره
+      switch(data.user.role) {
+        case 'student':
+          navigate("/profile");
+          break;
+        case 'supervisor':
+          navigate("/supervisors-dashboard");
+          break;
+        case 'admin':
+          navigate("/admin-dashboard");
+          break;
+        default:
+          navigate("/");
+      }
+
     } catch (err) {
-      // مع axios يتم التعامل مع الأخطاء بشكل مختلف
       if (err.response) {
-        // الخادم رد برمز حالة غير ناجح (غير 2xx)
         setError(err.response.data.message || "حدث خطأ أثناء تسجيل الدخول");
       } else if (err.request) {
-        // تم إجراء الطلب ولكن لم يتم استقبال أي رد
         setError("لا يوجد اتصال بالخادم");
       } else {
-        // حدث خطأ أثناء إعداد الطلب
         setError("حدث خطأ أثناء إعداد طلب تسجيل الدخول");
       }
     }
@@ -92,6 +104,7 @@ const LoginPage = () => {
                 placeholder="ادخل بريدك الجامعي"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                required
               />
               <div className="input-icon">
                 <i className="far fa-envelope"></i>
@@ -111,12 +124,12 @@ const LoginPage = () => {
                 placeholder="ادخل كلمة المرور"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                required
               />
               <div className="input-icon">
                 <i className="fas fa-lock"></i>
               </div>
             </div>
-           
           </div>
 
           <button type="submit" className="submit-btn arabic-font">
@@ -126,7 +139,11 @@ const LoginPage = () => {
 
         <div className="signup-link arabic-font">
           <span>ليس لديك حساب؟ </span>
-          <a href="#">سجل الآن</a>
+          <a href="/register">سجل الآن</a>
+        </div>
+
+        <div className="forgot-password arabic-font">
+          <a href="/forgot-password">نسيت كلمة المرور؟</a>
         </div>
       </div>
     </div>
