@@ -800,6 +800,17 @@ const StudentProjectManagement = () => {
         startDate="01/01/2023"
         endDate="15/06/2023"
       />
+      {isSupervisor && (
+        <div className="add-stage-btn-container">
+          <button 
+            className="add-stage-btn"
+            onClick={() => setShowAddStageModal(true)}
+          >
+            إضافة مرحلة جديدة
+          </button>
+        </div>
+      )}
+    
 
       {successMessage && (
         <div className="success-message">
@@ -1008,17 +1019,7 @@ const StudentProjectManagement = () => {
       </div>
 
       {/* Add Stage Button for Supervisor */}
-      {isSupervisor && (
-        <div className="add-stage-btn-container">
-          <button 
-            className="add-stage-btn"
-            onClick={() => setShowAddStageModal(true)}
-          >
-            إضافة مرحلة جديدة
-          </button>
-        </div>
-      )}
-    
+      
       {/* Submission Modal */}
       <div className={`modal-overlay-tasks ${showModal ? 'show' : ''}`}>
         <div className="modal-content-tasks">

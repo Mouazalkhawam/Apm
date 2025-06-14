@@ -405,31 +405,7 @@ const SupervisorsManagement = () => {
                 )}
               </div>
 
-              <div className="form-group">
-                <label>دور المشرف</label>
-                <select 
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  className="form-control"
-                >
-                  <option value="academic">مشرف أكاديمي</option>
-                  <option value="quality">مشرف جودة</option>
-                  <option value="development">مشرف تطوير</option>
-                </select>
-              </div>
-
-              <div className="form-group">
-                <label>تاريخ البدء</label>
-                <input
-                  type="date"
-                  name="since"
-                  value={formData.since}
-                  onChange={handleInputChange}
-                  className="form-control"
-                />
-              </div>
-              
+            
               <button 
                 className="btn-profile btn-primary-profile" 
                 type="submit"

@@ -238,7 +238,7 @@ const ProposalForm = () => {
 
       if (response.data.message === 'تم إنشاء المقترح بنجاح' || response.data.message === 'تم تحديث المقترح بنجاح') {
         alert(response.data.message);
-        navigate('/profile');
+        navigate('/proposal');
       } else {
         throw new Error(response.data.message || 'فشل في تقديم المقترح');
       }

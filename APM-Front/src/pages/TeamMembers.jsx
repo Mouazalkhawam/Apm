@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faUsers, 
@@ -31,6 +31,7 @@ const TeamMembers = () => {
   const [studentsList, setStudentsList] = useState([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [filteredStudents, setFilteredStudents] = useState([]);
+  const dropdownRef = useRef(null);
   
   // States for recommendation system
   const [searchQuery, setSearchQuery] = useState('');
@@ -38,6 +39,20 @@ const TeamMembers = () => {
   const [selectedStudents, setSelectedStudents] = useState([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const fetchTeamMembers = async () => {
@@ -124,6 +139,13 @@ const TeamMembers = () => {
       userId: student.userId
     });
     setIsDropdownOpen(false);
+  };
+
+  const toggleDropdown = () => {
+    setIsDropdownOpen(!isDropdownOpen);
+    if (!isDropdownOpen) {
+      filterStudents(formData.memberName);
+    }
   };
 
   const fetchRecommendations = async (query = '') => {
@@ -493,7 +515,7 @@ const TeamMembers = () => {
           </div>
           <form onSubmit={handleSubmit}>
             <div className="modal-body">
-              <div className="form-group relative">
+              <div className="form-group relative" ref={dropdownRef}>
                 <label htmlFor="memberName" className="form-label">اسم الطالب</label>
                 <div className="relative">
                   <input 
@@ -505,10 +527,13 @@ const TeamMembers = () => {
                     onChange={handleInputChange}
                     onFocus={() => setIsDropdownOpen(true)}
                   />
-                  <FontAwesomeIcon 
-                    icon={faChevronDown} 
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 pointer-events-none"
-                  />
+                  <button 
+                    type="button"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 row-select"
+                    onClick={toggleDropdown}
+                  >
+                    <FontAwesomeIcon icon={faChevronDown} />
+                  </button>
                 </div>
                 {isDropdownOpen && (
                   <div className="dropdown-list">

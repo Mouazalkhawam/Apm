@@ -8,6 +8,8 @@
 .supervisors-project {
     background-color: #f5f7fa;
     color: #333;
+    width: 80%;
+    margin: 20px;
 }
 
 /* Header Styles */

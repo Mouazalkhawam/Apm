@@ -15,7 +15,7 @@ const SupervisorDashboard = () => {
             
     <div className="supervisor-dashboard">
         <TopNav />
-      <main className="main-content">
+      <main className="main-content-supervisor">
       
         
         <h1 className="page-title">نظرة عامة</h1>

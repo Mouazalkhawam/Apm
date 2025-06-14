@@ -32,9 +32,9 @@
   flex: 1;
 }
 /* Main Content */
-.main-content {
+.main-content-supervisor {
   flex: 1;
- /* padding: 1.5rem;*/
+  padding: 1.5rem
 
 }
 

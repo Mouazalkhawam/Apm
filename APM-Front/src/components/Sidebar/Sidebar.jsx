@@ -16,7 +16,7 @@ const Sidebar = React.forwardRef(({
     },
     navItems = [
       { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
-      { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/group-supervisor" },
+      { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
       { icon: faUsers, text: "الطلاب", path: "/students" },
       { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
       { icon: faFileAlt, text: "التقارير", path: "/reports" },

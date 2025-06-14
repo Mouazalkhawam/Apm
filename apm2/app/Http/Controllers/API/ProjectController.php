@@ -239,122 +239,139 @@ class ProjectController extends Controller
     }
 
     public function getRecommendations(Request $request)
-    {
-        // التحقق من صحة البيانات المدخلة
-        $validated = $request->validate([
-            'query' => 'nullable|string',
-            'top_n' => 'nullable|integer|min:1|max:20',
-            'min_gpa' => 'nullable|numeric|min:0|max:4',
-            'max_gpa' => 'nullable|numeric|min:0|max:4'
-        ]);
-    
-        // جلب جميع الطلاب مع مهاراتهم ومعلومات المستخدم
-        $students = Student::with(['skills', 'user', 'groups'])
-            ->get()
-            ->map(function ($student) {
-                // تجميع النص الكامل للخبرة
-                $full_experience = '';
-                
-                if (!empty($student->experience)) {
-                    // إذا كانت الخبرة نصًا عاديًا
-                    if (is_string($student->experience)) {
-                        $full_experience = $student->experience;
-                    } 
-                    // إذا كانت الخبرة مصفوفة
-                    elseif (is_array($student->experience)) {
-                        foreach ($student->experience as $item) {
-                            if (is_array($item) && isset($item['type'], $item['content'])) {
-                                if ($item['type'] === 'text') {
-                                    $full_experience .= ' ' . $item['content'];
-                                }
-                            }
-                        }
-                    }
-                }
-    
-                // تنظيف النص النهائي
-                $full_experience = trim($full_experience);
-    
-                return [
-                    'student_id' => $student->studentId,
-                    'user_id' => $student->userId,
-                    'name' => $student->user->name,
-                    'email' => $student->user->email,
-                    'profile_picture' => $student->user->profile_picture,
-                    'skills' => $student->skills->pluck('name')->implode(', '),
-                    'experience' => $full_experience, // النص الكامل للخبرة
-                    'experience_full' => $student->experience, // البيانات الكاملة للخبرة
-                    'gpa' => (float)($student->gpa ?? 0.0),
-                    'university_number' => $student->university_number,
-                    'major' => $student->major
-                ];
-            });
-    
-        // تحضير البيانات للإرسال لنظام التوصية
-        $requestData = [
-            'students' => $students,
-            'query' => $validated['query'] ?? '',
-            'top_n' => $validated['top_n'] ?? 5
-        ];
-    
-        // إضافة فلتر GPA إذا وجد
-        if (isset($validated['min_gpa'])) {
-            $requestData['min_gpa'] = (float)$validated['min_gpa'];
-        }
-        if (isset($validated['max_gpa'])) {
-            $requestData['max_gpa'] = (float)$validated['max_gpa'];
-        }
-    
-        try {
-            // إرسال الطلب لنظام التوصية
-            $response = Http::timeout(30)->post('http://localhost:5001/recommend', $requestData);
-    
-            if ($response->failed()) {
-                throw new \Exception('Failed to get recommendations from service');
-            }
-    
-            $recommendations = $response->json()['data'] ?? [];
+{
+    // التحقق من صحة البيانات المدخلة
+    $validated = $request->validate([
+        'query' => 'nullable|string',
+        'top_n' => 'nullable|integer|min:1|max:20',
+        'min_gpa' => 'nullable|numeric|min:0|max:4',
+        'max_gpa' => 'nullable|numeric|min:0|max:4'
+    ]);
+
+    // جلب جميع الطلاب مع مهاراتهم ومعلومات المستخدم
+    $students = Student::with(['skills', 'user', 'groups'])
+        ->get()
+        ->map(function ($student) {
+            // استخراج النص من الخبرات باستخدام دالة مساعدة
+            $experienceText = $this->extractExperienceText($student->experience);
             
-            // إنشاء خريطة للطلاب للوصول السريع
-            $studentsMap = collect($students)->keyBy('student_id');
-            
-            // معالجة التوصيات وإضافة البيانات الكاملة
-            $processedRecommendations = array_map(function($item) use ($studentsMap) {
-                $studentId = $item['student_id'];
-                $originalStudent = $studentsMap[$studentId] ?? null;
-                
-                if ($originalStudent) {
-                    // دمج جميع البيانات الأصلية مع نتائج التوصية
-                    return array_merge($item, [
-                        'user_id' => $originalStudent['user_id'],
-                        'email' => $originalStudent['email'],
-                        'profile_picture' => $originalStudent['profile_picture'],
-                        'experience' => $originalStudent['experience'], // النص الكامل
-                        'experience_full' => $originalStudent['experience_full'], // التفاصيل الكاملة
-                        'university_number' => $originalStudent['university_number'],
-                        'major' => $originalStudent['major']
-                    ]);
-                }
-                
-                return $item;
-            }, $recommendations);
-    
-            return response()->json([
-                'status' => 'success',
-                'data' => $processedRecommendations,
-                'message' => 'Recommendations retrieved successfully'
-            ]);
-    
-        } catch (\Exception $e) {
-            \Log::error('Recommendation error: ' . $e->getMessage());
-            
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Failed to get recommendations',
-                'error' => $e->getMessage()
-            ], 500);
-        }
+            return [
+                'student_id' => $student->studentId,
+                'user_id' => $student->userId,
+                'name' => $student->user->name,
+                'email' => $student->user->email,
+                'profile_picture' => $student->user->profile_picture,
+                'skills' => $student->skills->pluck('name')->implode(', '),
+                'experience' => $experienceText, // النص المستخرج فقط
+                'gpa' => (float)($student->gpa ?? 0.0),
+                'university_number' => $student->university_number,
+                'major' => $student->major
+            ];
+        });
+
+    // تحضير البيانات للإرسال لنظام التوصية
+    $requestData = [
+        'students' => $students,
+        'query' => $validated['query'] ?? '',
+        'top_n' => $validated['top_n'] ?? 5
+    ];
+
+    // إضافة فلتر GPA إذا وجد
+    if (isset($validated['min_gpa'])) {
+        $requestData['min_gpa'] = (float)$validated['min_gpa'];
     }
+    if (isset($validated['max_gpa'])) {
+        $requestData['max_gpa'] = (float)$validated['max_gpa'];
+    }
+
+    try {
+        // إرسال الطلب لنظام التوصية
+        $response = Http::timeout(30)->post('http://localhost:5001/recommend', $requestData);
+
+        if ($response->failed()) {
+            throw new \Exception('Failed to get recommendations from service');
+        }
+
+        $recommendations = $response->json()['data'] ?? [];
+        
+        // إنشاء خريطة للطلاب للوصول السريع
+        $studentsMap = collect($students)->keyBy('student_id');
+        
+        // معالجة التوصيات وإضافة البيانات الكاملة
+        $processedRecommendations = array_map(function($item) use ($studentsMap) {
+            $studentId = $item['student_id'];
+            $originalStudent = $studentsMap[$studentId] ?? null;
+            
+            if ($originalStudent) {
+                // دمج جميع البيانات الأصلية مع نتائج التوصية
+                return array_merge($item, [
+                    'user_id' => $originalStudent['user_id'],
+                    'email' => $originalStudent['email'],
+                    'profile_picture' => $originalStudent['profile_picture'],
+                    'university_number' => $originalStudent['university_number'],
+                    'major' => $originalStudent['major']
+                ]);
+            }
+            
+            return $item;
+        }, $recommendations);
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $processedRecommendations,
+            'message' => 'Recommendations retrieved successfully'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Recommendation error: ' . $e->getMessage());
+        
+        return response()->json([
+            'status' => 'error',
+            'message' => 'Failed to get recommendations',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * دالة مساعدة لاستخراج النص من خبرات الطالب
+ */
+protected function extractExperienceText($experience)
+{
+    if (empty($experience)) {
+        return '';
+    }
+
+    // إذا كانت الخبرة نصًا عاديًا
+    if (is_string($experience)) {
+        return $experience;
+    } 
+    
+    // إذا كانت الخبرة مصفوفة
+    if (is_array($experience)) {
+        $textParts = [];
+        
+        foreach ($experience as $item) {
+            if (is_array($item) && isset($item['type'], $item['content'])) {
+                if ($item['type'] === 'text') {
+                    $textParts[] = $item['content'];
+                }
+            } elseif (is_string($item)) {
+                $textParts[] = $item;
+            }
+        }
+        
+        return implode(' ', $textParts);
+    }
+    
+    // إذا كانت الخبرة JSON
+    if (is_string($experience) && json_decode($experience)) {
+        $decoded = json_decode($experience, true);
+        return $this->extractExperienceText($decoded);
+    }
+
+    return '';
+}
     public function getStudentProjects()
     {
         $user = Auth::user();

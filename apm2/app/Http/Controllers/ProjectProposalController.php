@@ -192,19 +192,22 @@ public function showByGroup($groupid)
 
 public function update(Request $request, $group_id)
 {
-    // 1. التحقق من المصادقة
+    // التحقق من المصادقة
     $user = Auth::user();
     if (!$user) {
         return response()->json(['message' => 'غير مصرح بالوصول، يرجى تسجيل الدخول'], 401);
     }
 
-    // 2. البحث عن المقترح
+    Log::info('بدأ عملية التحديث', ['user_id' => $user->id, 'group_id' => $group_id]);
+
+    // البحث عن المقترح
     $proposal = ProjectProposal::with(['experts'])->where('group_id', $group_id)->first();
     if (!$proposal) {
+        Log::error('المقترح غير موجود', ['group_id' => $group_id]);
         return response()->json(['message' => 'لا يوجد مقترح مرتبط بهذه المجموعة'], 404);
     }
 
-    // 3. التحقق من الصلاحيات
+    // التحقق من الصلاحيات
     $isAuthorized = false;
     if ($user->student) {
         $isAuthorized = GroupStudent::where('studentId', $user->student->studentId)
@@ -219,10 +222,14 @@ public function update(Request $request, $group_id)
     }
 
     if (!$isAuthorized) {
+        Log::warning('محاولة وصول غير مصرح بها', ['user_id' => $user->id, 'group_id' => $group_id]);
         return response()->json(['message' => 'ليست لديك صلاحية تعديل هذا المقترح'], 403);
     }
 
-    // 4. التحقق من صحة البيانات
+    // سجل البيانات الواردة
+    Log::info('البيانات الواردة:', $request->all());
+
+    // التحقق من صحة البيانات
     $validator = Validator::make($request->all(), [
         'project_type' => 'sometimes|in:term-project,grad-project',
         'title' => 'sometimes|string|max:255',
@@ -232,15 +239,15 @@ public function update(Request $request, $group_id)
         'solution_studies' => 'sometimes|string',
         'proposed_solution' => 'sometimes|string',
         'platform' => 'nullable|string|max:255',
-        'tools' => 'sometimes|array',
-        'programming_languages' => 'sometimes|array',
+        'tools' => 'sometimes|string',
+        'programming_languages' => 'sometimes|string',
         'database' => 'nullable|string|max:255',
         'packages' => 'nullable|string',
         'management_plan' => 'sometimes|string',
         'team_roles' => 'sometimes|string',
-        'functional_requirements' => 'sometimes|array',
-        'non_functional_requirements' => 'sometimes|array',
-        'technology_stack' => 'nullable|array',
+        'functional_requirements' => 'sometimes|string',
+        'non_functional_requirements' => 'sometimes|string',
+        'technology_stack' => 'nullable|string',
         'problem_mindmap' => 'nullable|file|mimes:jpg,jpeg,png,pdf,xmind|max:2048',
         'experts' => 'nullable|array',
         'experts.*.name' => 'required_with:experts|string',
@@ -249,6 +256,7 @@ public function update(Request $request, $group_id)
     ]);
 
     if ($validator->fails()) {
+        Log::error('خطأ في التحقق من صحة البيانات', ['errors' => $validator->errors()]);
         return response()->json([
             'message' => 'خطأ في البيانات المدخلة',
             'errors' => $validator->errors()
@@ -257,8 +265,9 @@ public function update(Request $request, $group_id)
 
     DB::beginTransaction();
     try {
-        // 5. معالجة ملف الخريطة الذهنية
+        // معالجة ملف الخريطة الذهنية
         if ($request->hasFile('problem_mindmap')) {
+            Log::info('تم استلام ملف الخريطة الذهنية');
             // حذف الملف القديم إذا كان موجودًا
             if ($proposal->problem_mindmap_path) {
                 Storage::disk('public')->delete($proposal->problem_mindmap_path);
@@ -270,26 +279,67 @@ public function update(Request $request, $group_id)
             $path = $file->storeAs('mindmaps', $filename, 'public');
             
             $proposal->problem_mindmap_path = $path;
+            Log::info('تم حفظ ملف الخريطة الذهنية', ['path' => $path]);
         }
 
-        // 6. تحديث البيانات الأساسية
+        // تحضير البيانات للتحديث
         $data = $request->except(['experts', 'problem_mindmap']);
-        $proposal->update($data);
+        Log::info('البيانات المعدة للتحديث:', $data);
+        
+        // تحويل حقول JSON إلى arrays
+        $arrayFields = [
+            'tools',
+            'programming_languages',
+            'functional_requirements',
+            'non_functional_requirements',
+            'technology_stack'
+        ];
 
-        // 7. معالجة الخبراء
+        foreach ($arrayFields as $field) {
+            if (isset($data[$field])) {
+                Log::info('معالجة الحقل:', ['field' => $field, 'value' => $data[$field]]);
+                if (is_array($data[$field])) {
+                    continue;
+                }
+                if (is_string($data[$field])) {
+                    $decoded = json_decode($data[$field], true);
+                    if (json_last_error() === JSON_ERROR_NONE) {
+                        $data[$field] = $decoded;
+                        Log::info('تم تحليل JSON بنجاح', ['field' => $field, 'result' => $decoded]);
+                    } else {
+                        Log::error('خطأ في تحليل JSON', ['field' => $field, 'value' => $data[$field]]);
+                        $data[$field] = [];
+                    }
+                }
+            }
+        }
+
+        // تحديث البيانات الأساسية
+        Log::info('بيانات ما قبل التحديث:', $data);
+        $updated = $proposal->update($data);
+        Log::info('نتيجة التحديث:', ['updated' => $updated]);
+
+        // معالجة الخبراء
         if ($request->has('experts')) {
+            Log::info('معالجة بيانات الخبراء', ['experts' => $request->input('experts')]);
             $proposal->experts()->delete(); // حذف الخبراء الحاليين
             
             foreach ($request->input('experts') as $expert) {
-                $proposal->experts()->create([
+                $createdExpert = $proposal->experts()->create([
                     'name' => $expert['name'],
                     'phone' => $expert['phone'] ?? null,
                     'specialization' => $expert['specialization'] ?? null,
                 ]);
+                Log::info('تم إنشاء خبير جديد', ['expert' => $createdExpert]);
             }
         }
 
         DB::commit();
+        Log::info('تم تحديث المقترح بنجاح', ['proposal_id' => $proposal->proposalId]);
+
+        // إعادة تحميل المقترح مع العلاقات
+        $proposal->refresh();
+        $proposal->load(['experts', 'group.students', 'group.supervisors']);
 
         return response()->json([
             'message' => 'تم تحديث المقترح بنجاح',
@@ -298,68 +348,16 @@ public function update(Request $request, $group_id)
 
     } catch (\Exception $e) {
         DB::rollBack();
-        Log::error('فشل في تحديث المقترح: ' . $e->getMessage());
+        Log::error('فشل في تحديث المقترح: ' . $e->getMessage(), [
+            'exception' => $e,
+            'trace' => $e->getTraceAsString()
+        ]);
         return response()->json([
             'message' => 'حدث خطأ أثناء تحديث المقترح',
             'error' => $e->getMessage()
         ], 500);
     }
 }
-
-    // ============ الدوال المساعدة ============
-
-    private function checkAccess(ProjectProposal $proposal)
-    {
-            $user = Auth::user();
-            
-            if (!$user) {
-                Log::error('No authenticated user');
-                return false;
-            }
-        
-            Log::info('Checking access for proposal:', [
-                'proposal_id' => $proposal->proposalId,
-                'group_id' => $proposal->group_id,
-                'has_group' => !is_null($proposal->group_id)
-            ]);
-        
-            // إذا كان group_id فارغاً
-            if (is_null($proposal->group_id)) {
-                Log::error('Proposal has no group assigned');
-                return false;
-            }
-        
-            if ($user->student) {
-                $isMember = GroupStudent::where('studentId', $user->student->studentId)
-                    ->where('groupid', $proposal->group_id)
-                    ->where('status', 'approved')
-                    ->exists();
-                
-                Log::info('Student check:', [
-                    'studentId' => $user->student->studentId ?? null,
-                    'group_id' => $proposal->group_id,
-                    'exists' => $isMember
-                ]);
-                return $isMember;
-            }
-            
-        
-        if ($user->supervisor) {
-            $isSupervisor = GroupSupervisor::where('supervisorId', $user->supervisor->supervisorId)
-                ->where('groupid', $proposal->group_id)
-                ->where('status', 'approved')
-                ->exists();
-            
-            Log::info('Supervisor check:', [
-                'supervisorId' => $user->supervisor->supervisorId ?? null,
-                'exists' => $isSupervisor
-            ]);
-            return $isSupervisor;
-        }
-
-        Log::info('User is neither student nor supervisor');
-        return false;
-    }
     private function formatProposalResponse(ProjectProposal $proposal)
     {
         return [
