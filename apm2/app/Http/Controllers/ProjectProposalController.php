@@ -198,12 +198,9 @@ public function update(Request $request, $group_id)
         return response()->json(['message' => 'غير مصرح بالوصول، يرجى تسجيل الدخول'], 401);
     }
 
-    Log::info('بدأ عملية التحديث', ['user_id' => $user->id, 'group_id' => $group_id]);
-
     // البحث عن المقترح
     $proposal = ProjectProposal::with(['experts'])->where('group_id', $group_id)->first();
     if (!$proposal) {
-        Log::error('المقترح غير موجود', ['group_id' => $group_id]);
         return response()->json(['message' => 'لا يوجد مقترح مرتبط بهذه المجموعة'], 404);
     }
 
@@ -222,12 +219,8 @@ public function update(Request $request, $group_id)
     }
 
     if (!$isAuthorized) {
-        Log::warning('محاولة وصول غير مصرح بها', ['user_id' => $user->id, 'group_id' => $group_id]);
         return response()->json(['message' => 'ليست لديك صلاحية تعديل هذا المقترح'], 403);
     }
-
-    // سجل البيانات الواردة
-    Log::info('البيانات الواردة:', $request->all());
 
     // التحقق من صحة البيانات
     $validator = Validator::make($request->all(), [
@@ -239,15 +232,15 @@ public function update(Request $request, $group_id)
         'solution_studies' => 'sometimes|string',
         'proposed_solution' => 'sometimes|string',
         'platform' => 'nullable|string|max:255',
-        'tools' => 'sometimes|string',
-        'programming_languages' => 'sometimes|string',
+        'tools' => 'sometimes|json',
+        'programming_languages' => 'sometimes|json',
         'database' => 'nullable|string|max:255',
         'packages' => 'nullable|string',
         'management_plan' => 'sometimes|string',
         'team_roles' => 'sometimes|string',
-        'functional_requirements' => 'sometimes|string',
-        'non_functional_requirements' => 'sometimes|string',
-        'technology_stack' => 'nullable|string',
+        'functional_requirements' => 'sometimes|json',
+        'non_functional_requirements' => 'sometimes|json',
+        'technology_stack' => 'nullable|json',
         'problem_mindmap' => 'nullable|file|mimes:jpg,jpeg,png,pdf,xmind|max:2048',
         'experts' => 'nullable|array',
         'experts.*.name' => 'required_with:experts|string',
@@ -256,7 +249,6 @@ public function update(Request $request, $group_id)
     ]);
 
     if ($validator->fails()) {
-        Log::error('خطأ في التحقق من صحة البيانات', ['errors' => $validator->errors()]);
         return response()->json([
             'message' => 'خطأ في البيانات المدخلة',
             'errors' => $validator->errors()
@@ -267,7 +259,6 @@ public function update(Request $request, $group_id)
     try {
         // معالجة ملف الخريطة الذهنية
         if ($request->hasFile('problem_mindmap')) {
-            Log::info('تم استلام ملف الخريطة الذهنية');
             // حذف الملف القديم إذا كان موجودًا
             if ($proposal->problem_mindmap_path) {
                 Storage::disk('public')->delete($proposal->problem_mindmap_path);
@@ -279,14 +270,12 @@ public function update(Request $request, $group_id)
             $path = $file->storeAs('mindmaps', $filename, 'public');
             
             $proposal->problem_mindmap_path = $path;
-            Log::info('تم حفظ ملف الخريطة الذهنية', ['path' => $path]);
         }
 
         // تحضير البيانات للتحديث
         $data = $request->except(['experts', 'problem_mindmap']);
-        Log::info('البيانات المعدة للتحديث:', $data);
-        
-        // تحويل حقول JSON إلى arrays
+
+        // تحويل الحقول JSON إلى arrays
         $arrayFields = [
             'tools',
             'programming_languages',
@@ -296,62 +285,43 @@ public function update(Request $request, $group_id)
         ];
 
         foreach ($arrayFields as $field) {
-            if (isset($data[$field])) {
-                Log::info('معالجة الحقل:', ['field' => $field, 'value' => $data[$field]]);
-                if (is_array($data[$field])) {
-                    continue;
-                }
+            if (!empty($data[$field])) {
                 if (is_string($data[$field])) {
-                    $decoded = json_decode($data[$field], true);
-                    if (json_last_error() === JSON_ERROR_NONE) {
-                        $data[$field] = $decoded;
-                        Log::info('تم تحليل JSON بنجاح', ['field' => $field, 'result' => $decoded]);
-                    } else {
-                        Log::error('خطأ في تحليل JSON', ['field' => $field, 'value' => $data[$field]]);
-                        $data[$field] = [];
-                    }
+                    $data[$field] = json_decode($data[$field], true);
                 }
+            } else {
+                $data[$field] = [];
             }
         }
 
+        // تسجيل البيانات قبل التحديث
+        Log::info('Updating proposal with data:', $data);
+
         // تحديث البيانات الأساسية
-        Log::info('بيانات ما قبل التحديث:', $data);
-        $updated = $proposal->update($data);
-        Log::info('نتيجة التحديث:', ['updated' => $updated]);
+        $proposal->update($data);
 
         // معالجة الخبراء
         if ($request->has('experts')) {
-            Log::info('معالجة بيانات الخبراء', ['experts' => $request->input('experts')]);
-            $proposal->experts()->delete(); // حذف الخبراء الحاليين
-            
+            $proposal->experts()->delete();
             foreach ($request->input('experts') as $expert) {
-                $createdExpert = $proposal->experts()->create([
+                $proposal->experts()->create([
                     'name' => $expert['name'],
                     'phone' => $expert['phone'] ?? null,
                     'specialization' => $expert['specialization'] ?? null,
                 ]);
-                Log::info('تم إنشاء خبير جديد', ['expert' => $createdExpert]);
             }
         }
 
         DB::commit();
-        Log::info('تم تحديث المقترح بنجاح', ['proposal_id' => $proposal->proposalId]);
-
-        // إعادة تحميل المقترح مع العلاقات
-        $proposal->refresh();
-        $proposal->load(['experts', 'group.students', 'group.supervisors']);
-
+        
         return response()->json([
             'message' => 'تم تحديث المقترح بنجاح',
-            'data' => $this->formatProposalResponse($proposal)
-        ], 200, [], JSON_UNESCAPED_UNICODE);
+            'data' => $this->formatProposalResponse($proposal->fresh())
+        ], 200);
 
     } catch (\Exception $e) {
         DB::rollBack();
-        Log::error('فشل في تحديث المقترح: ' . $e->getMessage(), [
-            'exception' => $e,
-            'trace' => $e->getTraceAsString()
-        ]);
+        Log::error('Update error: '.$e->getMessage());
         return response()->json([
             'message' => 'حدث خطأ أثناء تحديث المقترح',
             'error' => $e->getMessage()

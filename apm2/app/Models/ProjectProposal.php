@@ -10,6 +10,7 @@ class ProjectProposal extends Model
     use HasFactory;
 
     protected $primaryKey = 'proposalId';
+    public $timestamps = true;
 
     protected $fillable = [
         'group_id',
@@ -69,7 +70,7 @@ class ProjectProposal extends Model
 
     public function experts()
     {
-        return $this->hasMany(ProposalExpert::class, 'proposal_id');
+        return $this->hasMany(ProposalExpert::class, 'proposal_id', 'proposalId');
     }
 
     public function getProjectTypeNameAttribute()

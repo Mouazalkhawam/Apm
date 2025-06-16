@@ -9,15 +9,16 @@ class ProposalExpert extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'expert_id';
     protected $fillable = [
         'proposal_id',
         'name',
-        'specialization',
-        'phone'
+        'phone',
+        'specialization'
     ];
 
     public function proposal()
     {
-        return $this->belongsTo(ProjectProposal::class, 'proposal_id');
+        return $this->belongsTo(ProjectProposal::class, 'proposal_id', 'proposalId');
     }
 }

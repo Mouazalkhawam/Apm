@@ -99,8 +99,6 @@ const ProposalForm = () => {
     } catch (error) {
       console.error('Error fetching proposal data:', error);
       if (error.response && error.response.status === 404) {
-        // No proposal exists yet, this is fine
-        console.log('No existing proposal found, starting fresh');
         setIsEditMode(false);
       } else if (error.response && error.response.status === 401) {
         localStorage.removeItem('access_token');
@@ -140,7 +138,9 @@ const ProposalForm = () => {
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
-    setFormData({ ...formData, [name]: files[0] });
+    if (files && files[0]) {
+      setFormData({ ...formData, [name]: files[0] });
+    }
   };
 
   const addRequirement = (type, value) => {
@@ -164,10 +164,10 @@ const ProposalForm = () => {
       ? 'functional_requirements' 
       : 'non_functional_requirements';
 
-    setFormData({
-      ...formData,
-      [fieldName]: formData[fieldName].filter((_, i) => i !== index)
-    });
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: prev[fieldName].filter((_, i) => i !== index)
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -206,7 +206,6 @@ const ProposalForm = () => {
       formDataToSend.append('functional_requirements', JSON.stringify(formData.functional_requirements));
       formDataToSend.append('non_functional_requirements', JSON.stringify(formData.non_functional_requirements));
       formDataToSend.append('technology_stack', JSON.stringify(formData.technology_stack));
-      formDataToSend.append('groupid', groupid);
 
       // إضافة الخبراء
       formData.experts.forEach((expert, index) => {
@@ -215,32 +214,38 @@ const ProposalForm = () => {
         if (expert.specialization) formDataToSend.append(`experts[${index}][specialization]`, expert.specialization);
       });
 
-      // إضافة ملف الخريطة الذهنية إذا وجد
+      // إضافة ملف الخريطة الذهنية إذا كان ملف جديد
       if (formData.problem_mindmap && formData.problem_mindmap instanceof File) {
         formDataToSend.append('problem_mindmap', formData.problem_mindmap);
       }
 
-      // تحديد إذا كان سيتم إنشاء جديد أو تحديث موجود
-      const method = isEditMode ? 'put' : 'post';
-      const url = isEditMode 
-        ? `http://localhost:8000/api/proposals/${groupid}`
-        : 'http://localhost:8000/api/proposals';
-
-      const response = await axios({
-        method,
-        url,
-        data: formDataToSend,
+      const config = {
         headers: {
           'Content-Type': 'multipart/form-data',
           'Authorization': `Bearer ${token}`
         }
-      });
+      };
 
-      if (response.data.message === 'تم إنشاء المقترح بنجاح' || response.data.message === 'تم تحديث المقترح بنجاح') {
+      let response;
+      if (isEditMode) {
+        response = await axios.put(
+          `http://localhost:8000/api/proposals/${groupid}`,
+          formDataToSend,
+          config
+        );
+      } else {
+        response = await axios.post(
+          'http://localhost:8000/api/proposals',
+          formDataToSend,
+          config
+        );
+      }
+
+      if (response.data.message) {
         alert(response.data.message);
         navigate('/proposal');
       } else {
-        throw new Error(response.data.message || 'فشل في تقديم المقترح');
+        throw new Error('فشل في تقديم المقترح');
       }
     } catch (err) {
       console.error('Error details:', err.response?.data);
@@ -332,7 +337,7 @@ const ProposalForm = () => {
           </div>
         </div>
 
-        <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data" acceptCharset="UTF-8">
+        <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data">
           {isEditMode && (
             <div className="existing-proposal-notice">
               <i className="fas fa-info-circle existing-proposal-notice-i"></i>
@@ -356,7 +361,6 @@ const ProposalForm = () => {
                   required 
                 />
               </div>
-           
             </div>
           </div>
 
