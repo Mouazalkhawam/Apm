@@ -48,12 +48,12 @@
     font-size: 22px;
 }
 
-.nav-links {
+.nav-links-main {
     display: flex;
     align-items: center;
 }
 
-.nav-link {
+.nav-link-main {
     color: rgba(255, 255, 255, 0.9);
     margin: 0 15px;
     padding: 8px 12px;
@@ -62,17 +62,17 @@
     font-weight: 500;
 }
 
-.nav-link:hover, .nav-link.active {
+.nav-link-main:hover, .nav-link-main.active {
     color: white;
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-.nav-link i {
+.nav-link-main i {
     margin-left: 8px;
 }
 
 /* حاوية الإشعارات والدردشة */
-.notifications-wrapper {
+.notifications-wrapper-main {
     position: relative;
     display: flex;
     align-items: center;
@@ -130,7 +130,9 @@
     z-index: 1000;
     display: none;
     max-height: 500px;
-    overflow-y: auto;
+    overflow: scroll;
+    max-height: 300px;
+    color: #444;
 }
 
 
@@ -139,7 +141,7 @@
     animation: fadeInDown 0.3s ease forwards;
 }
 
-.notification-header {
+.notification-header-main {
     padding: 15px;
     border-bottom: 1px solid #eee;
     display: flex;
@@ -159,7 +161,7 @@
     cursor: pointer;
 }
 
-.notification-item {
+.notification-item-main {
     padding: 15px;
     border-bottom: 1px solid #eee;
     cursor: pointer;
@@ -168,15 +170,15 @@
     align-items: flex-start;
 }
 
-.notification-item:hover {
+.notification-item-main:hover {
     background-color: #f9f9f9;
 }
 
-.notification-item.unread {
+.notification-item-main.unread {
     background-color: #f8f5ff;
 }
 
-.notification-icon-small {
+.notification-icon-small-main {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -189,7 +191,7 @@
     flex-shrink: 0;
 }
 
-.notification-content {
+.notification-content-main {
     flex-grow: 1;
 }
 
@@ -365,7 +367,7 @@
         flex-direction: column;
     }
     
-    .nav-links {
+    .nav-links-main {
         margin-top: 15px;
     }
     
