@@ -13,7 +13,16 @@ class NotificationController extends Controller
     {
         $notifications = NotificationService::getUserNotifications(
             $request->user_id ?? Auth::user()->userId
-        );
+        )->map(function($notification) {
+            return [
+                'id' => $notification->id,
+                'type' => $notification->type,
+                'message' => $notification->data['message'] ?? '',
+                'extra_data' => $notification->data['data'] ?? [],
+                'read_at' => $notification->read_at,
+                'created_at' => $notification->created_at
+            ];
+        });
         
         return response()->json([
             'success' => true,
@@ -25,13 +34,16 @@ class NotificationController extends Controller
     {
         $request->validate([
             'message' => 'required|string',
-            'user_id' => 'required|exists:users,userId' // تغيير من id إلى userId
+            'user_id' => 'required|exists:users,userId',
+            'type' => 'nullable|string'
         ]);
 
         $notification = NotificationService::sendRealTime(
             $request->user_id,
             $request->message,
-            $request->except(['message', 'user_id'])
+            array_merge($request->except(['message', 'user_id']), [
+                'type' => $request->type ?? 'SYSTEM_NOTIFICATION'
+            ])
         );
 
         return response()->json([
@@ -62,11 +74,19 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
-        $count = NotificationService::getUnreadCount(Auth::user()->userId); // تغيير من id() إلى userId
+        $count = NotificationService::getUnreadCount(Auth::user()->userId);
         
         return response()->json([
             'success' => true,
             'count' => $count
+        ]);
+    }
+
+    public function getNotificationTypes()
+    {
+        return response()->json([
+            'success' => true,
+            'types' => NotificationService::getNotificationTypes()
         ]);
     }
 }

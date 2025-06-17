@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Broadcast;
+use App\Models\User;
 
 /*
 |--------------------------------------------------------------------------
@@ -13,6 +14,11 @@ use Illuminate\Support\Facades\Broadcast;
 |
 */
 
-Broadcast::channel('App.Models.User.{id}', function ($user, $id) {
-    return (int) $user->id === (int) $id;
+Broadcast::channel('notifications.{userId}', function (User $user, $userId) {
+    return (int) $user->userId === (int) $userId;
+});
+
+// قناة عامة يمكنك إضافتها إذا كنت بحاجة إليها
+Broadcast::channel('global.notifications', function ($user) {
+    return $user !== null; // أي مستخدم مصادق عليه يمكنه الاستماع
 });

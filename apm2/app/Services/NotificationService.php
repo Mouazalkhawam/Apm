@@ -5,45 +5,40 @@ namespace App\Services;
 use App\Models\Notification;
 use App\Models\User;
 use App\Events\RealTimeNotification;
-use Illuminate\Database\Eloquent\Model;
 
 class NotificationService
 {
-    public static function send($type, $notifiable, $data)
+    public static function getNotificationTypes()
     {
-        $notification = new Notification([
-            'type' => $type,
-            'data' => $data
-        ]);
-
-        $notifiable->notifications()->save($notification);
-
-        // إرسال إشعار Real-time إذا كان النوع مناسباً
-        if (in_array($type, ['real_time', 'proposal_submitted', 'new_message'])) {
-            event(new RealTimeNotification(
-                $data['message'] ?? 'You have a new notification',
-                $notifiable->id,
-                $data['proposal_id'] ?? null
-            ));
-        }
-
-        return $notification;
+        return [
+            'MEMBERSHIP_APPROVAL' => 'قبول عضوية',
+            'PROJECT_INVITATION' => 'دعوة مشروع',
+            'SUPERVISOR_INVITATION' => 'دعوة مشرف',
+            'TASK_ASSIGNMENT' => 'مهمة جديدة',
+            'SYSTEM_NOTIFICATION' => 'إشعار نظام'
+        ];
     }
 
     public static function sendRealTime($userId, $message, $data = [])
-    
     {
-            
-        $user = User::findOrFail($userId);
+        // التأكد من أن النوع محدد وإلا استخدم SYSTEM_NOTIFICATION
+        $type = $data['type'];
         
-        $notification = self::send('real_time', $user, array_merge([
-            'message' => $message,
-            'time' => now()->toDateTimeString()
-        ], $data));
-
+        $notificationData = [
+            'type' => $type,
+            'notifiable_id' => $userId,
+            'notifiable_type' => User::class,
+            'data' => [
+                'message' => $message,
+                'data' => $data // هذا يحتوي على جميع البيانات الإضافية بما فيها 'type'
+            ]
+        ];
+    
+        $notification = Notification::create($notificationData);
+        event(new RealTimeNotification($notification));
+        
         return $notification;
     }
-
     public static function markAsRead($notificationId)
     {
         $notification = Notification::find($notificationId);

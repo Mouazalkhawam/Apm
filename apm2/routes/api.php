@@ -95,7 +95,7 @@ Route::middleware('auth:api')->group(function () {
     // مسارات مقترحات المشاريع
     Route::prefix('proposals')->group(function () {
         Route::get('/create', [ProjectProposalController::class, 'create']);
-        Route::post('/', [ProjectProposalController::class, 'store']);
+        Route::post('/groups/{group_id}/proposals', [ProjectProposalController::class, 'store']);
         Route::get('/{id}', [ProjectProposalController::class, 'show']);
         Route::get('/group/{groupid}', [ProjectProposalController::class, 'showByGroup']);
         
@@ -104,6 +104,7 @@ Route::middleware('auth:api')->group(function () {
     
   
     Route::put('/proposals/{groupid}', [ProjectProposalController::class, 'update']);
+    Route::get('/proposals/check/{group_id}', [ProjectProposalController::class, 'checkProposalExists']);
     
     Route::prefix('notifications')->group(function () {
         Route::get('/', [NotificationController::class, 'index']);

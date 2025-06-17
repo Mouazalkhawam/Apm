@@ -11,6 +11,7 @@
     min-height: 12vh;
     min-width: 100vh;
     margin: 0 20px;
+    overflow: visible;
 }
 
 .header::before {
@@ -118,10 +119,10 @@
 }
 
 /* الجزء الخاص بالإشعارات */
-.notification-dropdown {
+.notification-dropdown-main {
     position: absolute;
-    top: 60px;
-    left: -250px;
+    top: 75px;
+    left: -200px;
     width: 350px;
     background-color: white;
     border-radius: 12px;
@@ -132,7 +133,8 @@
     overflow-y: auto;
 }
 
-.notification-dropdown.show {
+
+.notification-dropdown-main.show {
     display: block;
     animation: fadeInDown 0.3s ease forwards;
 }
@@ -367,15 +369,15 @@
         margin-top: 15px;
     }
     
-    .notification-dropdown, .chat-dropdown {
+    .notification-dropdown-main, .chat-dropdown {
         width: 300px;
         left: -200px;
     }
 }
 
 @media (max-width: 576px) {
-    .notification-dropdown, .chat-dropdown {
+    .notification-dropdown-main, .chat-dropdown {
         width: 280px;
-        left: -150px;
+     
     }
 }

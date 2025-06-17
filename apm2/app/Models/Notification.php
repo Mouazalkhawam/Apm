@@ -22,4 +22,15 @@ class Notification extends Model
         'data' => 'array',
         'read_at' => 'datetime'
     ];
+
+    public function getTypeTextAttribute()
+    {
+        $types = NotificationService::getNotificationTypes();
+        return $types[$this->type] ?? $this->type;
+    }
+
+    public function notifiable()
+    {
+        return $this->morphTo();
+    }
 }

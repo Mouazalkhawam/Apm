@@ -140,7 +140,7 @@ class ProjectController extends Controller
         $hasCompletedSemesterProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'semester')
-                      ->where('status', 'completed');
+                    ->where('status', 'completed');
             })
             ->where('group_student.status', 'approved')
             ->exists();
@@ -153,7 +153,7 @@ class ProjectController extends Controller
         $hasActiveGraduationProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'graduation')
-                      ->whereIn('status', ['pending', 'in_progress']);
+                    ->whereIn('status', ['pending', 'in_progress']);
             })
             ->where('group_student.status', 'approved')
             ->exists();
@@ -169,7 +169,7 @@ class ProjectController extends Controller
         $hasActiveSemesterProject = $student->groups()
             ->whereHas('project', function($query) {
                 $query->where('type', 'semester')
-                      ->whereIn('status', ['pending', 'in_progress']);
+                    ->whereIn('status', ['pending', 'in_progress']);
             })
             ->where('group_student.status', 'approved')
             ->exists();
@@ -182,10 +182,6 @@ class ProjectController extends Controller
     private function sendNotifications(Group $group, $students, $supervisors)
     {
         // إشعارات للطلاب
-        $httpClient = new \GuzzleHttp\Client([
-            'verify' => false, // لبيئة التطوير فقط
-            // أو استخدام: 'verify' => 'C:/path/to/cacert.pem'
-        ]);
         $group->students()
             ->whereIn('students.studentId', $students)
             ->with('user')
@@ -195,10 +191,16 @@ class ProjectController extends Controller
                 
                 NotificationService::sendRealTime(
                     $student->user->userId,
-                    $message
+                    $message,
+                    [
+                        'type' => 'PROJECT_INVITATION',
+                        'group_id' => $group->groupid,
+                        'project_id' => $group->projectid,
+                        'is_leader' => $student->pivot->is_leader
+                    ]
                 );
             });
-
+    
         // إشعارات للمشرفين
         $group->supervisors()
             ->whereIn('supervisors.supervisorId', $supervisors)
@@ -206,35 +208,77 @@ class ProjectController extends Controller
             ->each(function ($supervisor) use ($group) {
                 NotificationService::sendRealTime(
                     $supervisor->user->userId,
-                    "تم تعيينك كمشرف على مشروع {$group->name}"
+                    "تم تعيينك كمشرف على مشروع {$group->name}",
+                    [
+                        'type' => 'SUPERVISOR_INVITATION',
+                        'group_id' => $group->groupid,
+                        'project_id' => $group->projectid
+                    ]
                 );
             });
     }
-
     public function approveMembership(Request $request)
     {
         $request->validate([
             'user_id' => 'required|exists:users,userId',
             'group_id' => 'required|exists:groups,groupid',
         ]);
-
+    
         $user = User::findOrFail($request->user_id);
         $group = Group::findOrFail($request->group_id);
-
+    
         DB::transaction(function () use ($user, $group) {
             if ($user->role === 'student') {
                 GroupStudent::where([
                     'groupid' => $group->groupid,
                     'studentId' => $user->student->studentId
                 ])->update(['status' => 'approved']);
+                
+                // إرسال إشعار قبول العضوية للطالب
+                $notificationService->sendRealTime(
+                    $member['user_id'],
+                    "تمت دعوتك للانضمام إلى مجموعة {$group->name}",
+                    [
+                        'type' => 'PROJECT_INVITATION',
+                        'group_id' => $groupId,
+                        'project_id' => $group->projectid
+                    ]
+                );
+                
             } elseif ($user->role === 'supervisor') {
                 GroupSupervisor::where([
                     'groupid' => $group->groupid,
                     'supervisorId' => $user->supervisor->supervisorId
                 ])->update(['status' => 'approved']);
+                
+                // إرسال إشعار قبول العضوية للمشرف
+                $notificationService->sendRealTime(
+                    $member['user_id'],
+                    "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}",
+                    [
+                        'type' => 'SUPERVISOR_INVITATION',
+                        'group_id' => $groupId,
+                        'project_id' => $group->projectid
+                    ]
+                );
+            }
+            
+            // إرسال إشعار للمسؤول/القائد بقبول العضوية
+            $leaderId = $group->project->headid;
+            if ($leaderId != $user->userId) {
+                NotificationService::sendRealTime(
+                    $leaderId,
+                    "تم قبول طلب العضوية من قبل {$user->name} لمجموعة {$group->name}",
+                    [
+                        'type' => 'MEMBERSHIP_APPROVAL_NOTICE',
+                        'group_id' => $group->groupid,
+                        'project_id' => $group->projectid,
+                        'approved_user_id' => $user->userId
+                    ]
+                );
             }
         });
-
+    
         return response()->json(['success' => true]);
     }
 
@@ -384,7 +428,7 @@ protected function extractExperienceText($experience)
             ->whereHas('group', function($query) use ($user) {
                 $query->whereHas('students', function($q) use ($user) {
                     $q->where('students.studentId', $user->student->studentId)
-                      ->where('group_student.status', 'approved');
+                    ->where('group_student.status', 'approved');
                 });
             })
             ->orderBy('created_at', 'desc')
@@ -417,7 +461,7 @@ protected function extractExperienceText($experience)
             ->whereHas('group', function($query) use ($user) {
                 $query->whereHas('students', function($q) use ($user) {
                     $q->where('students.studentId', $user->student->studentId)
-                      ->where('group_student.status', 'approved');
+                    ->where('group_student.status', 'approved');
                 });
             })
             ->first();
@@ -431,7 +475,7 @@ protected function extractExperienceText($experience)
             'data' => $project
         ]);
     }
- 
+
     public function getGroupSupervisors($groupId)
     {
         // 1. التحقق من وجود المجموعة
@@ -803,7 +847,7 @@ protected function extractExperienceText($experience)
         // جلب أسماء المجموعات المعتمدة للمشرف فقط
         $groups = Group::whereHas('supervisors', function($query) use ($user) {
                 $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
-                      ->where('group_supervisor.status', 'approved');
+                    ->where('group_supervisor.status', 'approved');
             })
             ->pluck('name', 'groupId');
 
@@ -858,11 +902,11 @@ public function getSupervisorProjects()
             ])
             ->whereHas('group.supervisors', function($query) use ($user) {
                 $query->where('supervisors.supervisorId', $user->supervisor->supervisorId)
-                      ->where('group_supervisor.status', 'approved');
+                    ->where('group_supervisor.status', 'approved');
             })
             ->with(['group' => function($query) {
                 $query->select(['groupid', 'projectid', 'name'])
-                      ->withCount(['approvedStudents', 'approvedSupervisors']);
+                    ->withCount(['approvedStudents', 'approvedSupervisors']);
             }])
             ->orderBy('projects.created_at', 'desc')
             ->get();

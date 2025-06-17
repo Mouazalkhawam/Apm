@@ -40,6 +40,7 @@ const ProposalForm = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [formKey, setFormKey] = useState(Date.now());
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -52,12 +53,33 @@ const ProposalForm = () => {
       setGroupid(storedGroupid);
       
       if (storedGroupid) {
-        fetchProposalData(storedGroupid);
+        checkProposalExists(storedGroupid);
       } else {
         setIsLoading(false);
       }
     }
   }, [navigate]);
+
+  const checkProposalExists = async (groupid) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get(`http://localhost:8000/api/proposals/check/${groupid}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data.exists) {
+        fetchProposalData(groupid);
+      } else {
+        setIsEditMode(false);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error checking proposal existence:', error);
+      setIsLoading(false);
+    }
+  };
 
   const fetchProposalData = async (groupid) => {
     try {
@@ -92,9 +114,11 @@ const ProposalForm = () => {
           non_functional_requirements: proposalData.non_functional_requirements || [],
           technology_stack: proposalData.technology_stack || [],
           problem_mindmap: proposalData.mindmap_url ? 
-            { name: 'تم تحميل الملف مسبقاً', url: proposalData.mindmap_url } : null,
+            { name: 'Uploaded file', url: proposalData.mindmap_url } : null,
           experts: proposalData.experts || []
         });
+
+        setFormKey(Date.now());
       }
     } catch (error) {
       console.error('Error fetching proposal data:', error);
@@ -125,7 +149,10 @@ const ProposalForm = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   const handleArrayInputChange = (e) => {
@@ -133,14 +160,42 @@ const ProposalForm = () => {
     const arrayValues = value.split(/[,،]\s*/)
       .map(item => item.trim())
       .filter(item => item !== '');
-    setFormData({ ...formData, [name]: arrayValues });
+    setFormData(prev => ({
+      ...prev,
+      [name]: arrayValues
+    }));
   };
 
   const handleFileChange = (e) => {
     const { name, files } = e.target;
     if (files && files[0]) {
-      setFormData({ ...formData, [name]: files[0] });
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0]
+      }));
     }
+  };
+
+  const addExpert = () => {
+    if (!currentExpert.name.trim()) return;
+    
+    setFormData(prev => ({
+      ...prev,
+      experts: [...prev.experts, currentExpert]
+    }));
+    
+    setCurrentExpert({
+      name: '',
+      phone: '',
+      specialization: ''
+    });
+  };
+
+  const removeExpert = (index) => {
+    setFormData(prev => ({
+      ...prev,
+      experts: prev.experts.filter((_, i) => i !== index)
+    }));
   };
 
   const addRequirement = (type, value) => {
@@ -185,6 +240,28 @@ const ProposalForm = () => {
       return;
     }
 
+    // التحقق من الحقول المطلوبة
+    const requiredFields = {
+      title: 'عنوان المشروع',
+      problem_description: 'وصف المشكلة',
+      problem_background: 'خلفية المشكلة',
+      problem_studies: 'الدراسات المرجعية للمشكلة',
+      solution_studies: 'دراسة مرجعية للحلول',
+      proposed_solution: 'الحل المقترح',
+      management_plan: 'خطة إدارة المشروع',
+      team_roles: 'توزيع الأدوار'
+    };
+
+    const missingFields = Object.entries(requiredFields)
+      .filter(([field]) => !formData[field]?.toString().trim())
+      .map(([_, name]) => name);
+
+    if (missingFields.length > 0) {
+      setError(`الرجاء تعبئة الحقول المطلوبة: ${missingFields.join('، ')}`);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
       const formDataToSend = new FormData();
       
@@ -210,8 +287,8 @@ const ProposalForm = () => {
       // إضافة الخبراء
       formData.experts.forEach((expert, index) => {
         formDataToSend.append(`experts[${index}][name]`, expert.name);
-        if (expert.phone) formDataToSend.append(`experts[${index}][phone]`, expert.phone);
-        if (expert.specialization) formDataToSend.append(`experts[${index}][specialization]`, expert.specialization);
+        formDataToSend.append(`experts[${index}][phone]`, expert.phone || '');
+        formDataToSend.append(`experts[${index}][specialization]`, expert.specialization || '');
       });
 
       // إضافة ملف الخريطة الذهنية إذا كان ملف جديد
@@ -228,14 +305,15 @@ const ProposalForm = () => {
 
       let response;
       if (isEditMode) {
-        response = await axios.put(
-          `http://localhost:8000/api/proposals/${groupid}`,
-          formDataToSend,
-          config
-        );
-      } else {
+  formDataToSend.append('_method', 'PUT'); // <== أضف هذه
+  response = await axios.post( // <== غيّر من PUT إلى POST
+    `http://localhost:8000/api/proposals/${groupid}`,
+    formDataToSend,
+    config
+  );
+}else {
         response = await axios.post(
-          'http://localhost:8000/api/proposals',
+          `http://localhost:8000/api/proposals/groups/${groupid}/proposals`,
           formDataToSend,
           config
         );
@@ -255,11 +333,11 @@ const ProposalForm = () => {
           localStorage.removeItem('access_token');
           navigate('/login');
         } else if (err.response.status === 422) {
-          setError('بيانات غير صالحة: ' + 
-            Object.entries(err.response.data.errors)
-              .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
-              .join('; ')
-          );
+          const errors = err.response.data.errors;
+          const errorMessages = Object.entries(errors)
+            .map(([field, messages]) => `${field}: ${messages.join(', ')}`)
+            .join('; ');
+          setError(`بيانات غير صالحة: ${errorMessages}`);
         } else {
           setError(err.response.data?.message || 'حدث خطأ أثناء تقديم المقترح');
         }
@@ -337,7 +415,7 @@ const ProposalForm = () => {
           </div>
         </div>
 
-        <form className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data">
+        <form key={formKey} className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data">
           {isEditMode && (
             <div className="existing-proposal-notice">
               <i className="fas fa-info-circle existing-proposal-notice-i"></i>
@@ -349,7 +427,7 @@ const ProposalForm = () => {
             <h2 className="section-title-proposal">المعلومات الأساسية</h2>
             <div className="form-grid">
               <div className="form-group-proposal">
-                <label htmlFor="title">عنوان المشروع</label>
+                <label htmlFor="title">عنوان المشروع *</label>
                 <input 
                   type="text" 
                   id="title" 
@@ -368,7 +446,7 @@ const ProposalForm = () => {
             <h2 className="section-title-proposal">وصف المشكلة</h2>
             
             <div className="form-group-proposal">
-              <label htmlFor="problem_description">وصف المشكلة</label>
+              <label htmlFor="problem_description">وصف المشكلة *</label>
               <textarea 
                 id="problem_description" 
                 name="problem_description"
@@ -380,7 +458,7 @@ const ProposalForm = () => {
             </div>
             
             <div className="form-group-proposal">
-              <label htmlFor="problem_background">خلفية المشكلة</label>
+              <label htmlFor="problem_background">خلفية المشكلة *</label>
               <textarea 
                 id="problem_background" 
                 name="problem_background"
@@ -392,7 +470,7 @@ const ProposalForm = () => {
             </div>
             
             <div className="form-group-proposal">
-              <label htmlFor="problem_studies">الدراسات المرجعية للمشكلة</label>
+              <label htmlFor="problem_studies">الدراسات المرجعية للمشكلة *</label>
               <textarea 
                 id="problem_studies" 
                 name="problem_studies"
@@ -440,7 +518,7 @@ const ProposalForm = () => {
             <h2 className="section-title-proposal">الحل المقترح</h2>
             
             <div className="form-group-proposal">
-              <label htmlFor="solution_studies">دراسة مرجعية للحلول</label>
+              <label htmlFor="solution_studies">دراسة مرجعية للحلول *</label>
               <textarea 
                 id="solution_studies" 
                 name="solution_studies"
@@ -452,7 +530,7 @@ const ProposalForm = () => {
             </div>
             
             <div className="form-group-proposal">
-              <label htmlFor="proposed_solution">الحل المقترح</label>
+              <label htmlFor="proposed_solution">الحل المقترح *</label>
               <textarea 
                 id="proposed_solution" 
                 name="proposed_solution"
@@ -614,7 +692,7 @@ const ProposalForm = () => {
             <h2 className="section-title-proposal">إدارة المشروع</h2>
             
             <div className="form-group-proposal">
-              <label htmlFor="management_plan">خطة إدارة المشروع</label>
+              <label htmlFor="management_plan">خطة إدارة المشروع *</label>
               <textarea 
                 id="management_plan" 
                 name="management_plan"
@@ -626,7 +704,7 @@ const ProposalForm = () => {
             </div>
             
             <div className="form-group-proposal">
-              <label htmlFor="team_roles">توزيع الأدوار</label>
+              <label htmlFor="team_roles">توزيع الأدوار *</label>
               <textarea 
                 id="team_roles" 
                 name="team_roles"
@@ -635,6 +713,78 @@ const ProposalForm = () => {
                 onChange={handleInputChange}
                 required
               ></textarea>
+            </div>
+          </div>
+
+          <div className="form-section-proposal">
+            <h2 className="section-title-proposal">الخبراء المقترحون</h2>
+            
+            <div className="experts-form">
+              <div className="form-grid form-grid-3">
+                <div className="form-group-proposal">
+                  <label htmlFor="expert-name">اسم الخبير *</label>
+                  <input 
+                    type="text" 
+                    id="expert-name"
+                    value={currentExpert.name}
+                    onChange={(e) => setCurrentExpert({...currentExpert, name: e.target.value})}
+                    placeholder="اسم الخبير"
+                    className='input-proposal'
+                  />
+                </div>
+                
+                <div className="form-group-proposal">
+                  <label htmlFor="expert-phone">رقم الهاتف</label>
+                  <input 
+                    type="text" 
+                    id="expert-phone"
+                    value={currentExpert.phone}
+                    onChange={(e) => setCurrentExpert({...currentExpert, phone: e.target.value})}
+                    placeholder="رقم الهاتف (اختياري)"
+                    className='input-proposal'
+                  />
+                </div>
+                
+                <div className="form-group-proposal">
+                  <label htmlFor="expert-specialization">التخصص</label>
+                  <input 
+                    type="text" 
+                    id="expert-specialization"
+                    value={currentExpert.specialization}
+                    onChange={(e) => setCurrentExpert({...currentExpert, specialization: e.target.value})}
+                    placeholder="التخصص (اختياري)"
+                    className='input-proposal'
+                  />
+                </div>
+              </div>
+              
+              <button 
+                type="button" 
+                className="add-expert-btn"
+                onClick={addExpert}
+                disabled={!currentExpert.name.trim()}
+              >
+                <i className="fas fa-plus"></i> إضافة خبير
+              </button>
+              
+              <div className="experts-list">
+                {formData.experts.map((expert, index) => (
+                  <div key={index} className="expert-item">
+                    <div className="expert-info">
+                      <span className="expert-name">{expert.name}</span>
+                      {expert.phone && <span className="expert-phone">{expert.phone}</span>}
+                      {expert.specialization && <span className="expert-specialization">{expert.specialization}</span>}
+                    </div>
+                    <button 
+                      type="button" 
+                      className="remove-expert-btn"
+                      onClick={() => removeExpert(index)}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
 

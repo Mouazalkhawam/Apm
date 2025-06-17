@@ -29,7 +29,7 @@ const Header = ({
             </div>
             
             {/* قائمة الإشعارات */}
-            <div className={`notification-dropdown ${showNotification ? 'show' : ''}`}>
+            <div className={`notification-dropdown-main ${showNotification ? 'show' : ''}`}>
               <div className="notification-header">
                 <div className="notification-title">الإشعارات</div>
                 <div className="mark-all-read">تعيين الكل كمقروء</div>
