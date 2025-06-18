@@ -7,7 +7,7 @@ use App\Models\User;
 use App\Models\Student;
 use Illuminate\Support\Facades\Hash;
 
-class TeamLeaderSeeder extends Seeder
+class TeamLeader1Seeder extends Seeder
 {
     public function run()
     {

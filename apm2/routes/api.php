@@ -14,6 +14,7 @@ use App\Http\Controllers\API\EvaluationController;
 use App\Http\Controllers\Admin\HonorBoardController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
+use App\Http\Controllers\MessageController;
 use Illuminate\Support\Facades\Route;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;

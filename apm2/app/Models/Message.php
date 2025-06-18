@@ -36,4 +36,8 @@ class Message extends Model
     {
         return $this->belongsTo(User::class, 'receiver_id', 'userId');
     }
+    public function getKeyName()
+{
+    return 'message_id';
+}
 }

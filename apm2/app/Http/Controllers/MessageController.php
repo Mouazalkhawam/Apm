@@ -7,109 +7,129 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use App\Events\NewMessageSent;
+use App\Events\MessageRead;
 
 class MessageController extends Controller
 {
     public function send(Request $request)
-    {
-        $request->validate([
-            'receiver_id' => 'required|exists:users,userId',
-            'content' => 'required|string|max:2000',
+{
+    $request->validate([
+        'receiver_id' => 'required|exists:users,userId',
+        'content' => 'required|string|max:2000',
+    ]);
+
+    try {
+        // 1. إنشاء الرسالة مع جميع الحقول المطلوبة
+        $message = Message::create([
+            'sender_id' => Auth::id(),
+            'receiver_id' => $request->receiver_id,
+            'content' => $request->content,
+            'is_read' => false,
+            'created_at' => now(),
+            'sent_at' => now(), // إذا كان هذا الحقل مطلوباً
         ]);
 
-        try {
-            $message = Message::create([
-                'sender_id' => Auth::id(),
-                'receiver_id' => $request->receiver_id,
-                'content' => $request->content,
-                'created_at' => now(), 
-            ]);
+        // 2. جلب الرسالة باستخدام المفتاح الأساسي الصحيح
+        $messageWithRelations = Message::with(['sender', 'receiver'])
+                                    ->where('message_id', $message->message_id)
+                                    ->firstOrFail();
 
+        // 3. تسجيل تفاصيل الرسالة للتأكد
+        Log::debug('Message details', [
+            'id' => $messageWithRelations->message_id,
+            'sender' => $messageWithRelations->sender_id,
+            'receiver' => $messageWithRelations->receiver_id
+        ]);
+
+        // 4. البث مع التحقق النهائي
+        if ($messageWithRelations->exists) {
+            broadcast(new NewMessageSent($messageWithRelations))->toOthers();
+            
             return response()->json([
                 'success' => true,
                 'message' => 'تم إرسال الرسالة بنجاح',
-                'data' => $message->load(['sender', 'receiver'])
+                'data' => $messageWithRelations
             ], 201);
-
-        } catch (\Exception $e) {
-            Log::error('Failed to send message: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'فشل في إرسال الرسالة',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
-
-    public function conversations()
-{
-    try {
-        $user = Auth::user();
-
-        // جلب الرسائل المتعلقة بالمستخدم
-        $messages = Message::with(['sender', 'receiver'])
-            ->where(function ($query) use ($user) {
-                $query->where('sender_id', $user->userId)
-                    ->orWhere('receiver_id', $user->userId);
-            })
-            ->orderBy('created_at', 'desc')
-            ->get();
-
-        // تجميع الرسائل بحسب المرسل (userId الآخر)
-        $conversations = [];
-
-        foreach ($messages as $message) {
-            // تحديد المستخدم الآخر بناءً على المرسل أو المستقبل
-            $otherUserId = $message->sender_id === $user->userId
-                ? $message->receiver_id
-                : $message->sender_id;
-
-            // التحقق من إذا كان المستخدم الآخر موجود ضمن المحادثات
-            if (!isset($conversations[$otherUserId])) {
-                // استرجاع بيانات المستخدم الآخر
-                $otherUser = $message->sender_id === $user->userId
-                    ? $message->receiver
-                    : $message->sender;
-
-                // إضافة المستخدم إلى المحادثات
-                $conversations[$otherUserId] = [
-                    'conversation_id' => $otherUserId,
-                    'other_user' => $otherUser,
-                    'messages' => [],
-                    'unread_count' => 0
-                ];
-            }
-
-            // إضافة الرسالة إلى محادثة المستخدم الآخر
-            $conversations[$otherUserId]['messages'][] = [
-                'id' => $message->message_id,
-                'sender_id' => $message->sender_id,
-                'receiver_id' => $message->receiver_id,
-                'content' => $message->content,
-                'created_at' => $message->created_at,
-                'is_read' => $message->is_read
-            ];
-
-            // زيادة عداد الرسائل غير المقروءة إذا كانت الرسالة مستلمة للمستخدم
-            if ($message->receiver_id === $user->userId && !$message->is_read) {
-                $conversations[$otherUserId]['unread_count']++;
-            }
         }
 
-        // إرجاع البيانات بشكل منظم
-        return response()->json([
-            'success' => true,
-            'data' => array_values($conversations)
-        ]);
+        throw new \Exception('فشل تحميل الرسالة بعد الإنشاء');
+
     } catch (\Exception $e) {
-        Log::error('Conversations error: ' . $e->getMessage());
+        Log::error('Message sending failed', [
+            'error' => $e->getMessage(),
+            'request' => $request->all(),
+            'user' => Auth::id()
+        ]);
+        
         return response()->json([
             'success' => false,
-            'message' => 'فشل في جلب المحادثات',
+            'message' => 'فشل في إرسال الرسالة',
             'error' => $e->getMessage()
         ], 500);
     }
 }
+
+    public function conversations()
+    {
+        try {
+            $user = Auth::user();
+
+            $messages = Message::with(['sender', 'receiver'])
+                ->where(function ($query) use ($user) {
+                    $query->where('sender_id', $user->userId)
+                        ->orWhere('receiver_id', $user->userId);
+                })
+                ->orderBy('created_at', 'desc')
+                ->get();
+
+            $conversations = [];
+
+            foreach ($messages as $message) {
+                $otherUserId = $message->sender_id === $user->userId
+                    ? $message->receiver_id
+                    : $message->sender_id;
+
+                if (!isset($conversations[$otherUserId])) {
+                    $otherUser = $message->sender_id === $user->userId
+                        ? $message->receiver
+                        : $message->sender;
+
+                    $conversations[$otherUserId] = [
+                        'conversation_id' => $otherUserId,
+                        'other_user' => $otherUser,
+                        'messages' => [],
+                        'unread_count' => 0
+                    ];
+                }
+
+                $conversations[$otherUserId]['messages'][] = [
+                    'id' => $message->message_id,
+                    'sender_id' => $message->sender_id,
+                    'receiver_id' => $message->receiver_id,
+                    'content' => $message->content,
+                    'created_at' => $message->created_at,
+                    'is_read' => $message->is_read
+                ];
+
+                if ($message->receiver_id === $user->userId && !$message->is_read) {
+                    $conversations[$otherUserId]['unread_count']++;
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => array_values($conversations)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Conversations error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في جلب المحادثات',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 
     public function chatMessages($userId, Request $request)
@@ -180,32 +200,35 @@ class MessageController extends Controller
     }
 
     public function markAsRead($messageId)
-    {
-        try {
-            $message = Message::findOrFail($messageId);
+{
+    try {
+        $message = Message::findOrFail($messageId);
 
-            if ($message->receiver_id !== Auth::user()->userId) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'غير مصرح لك بقراءة هذه الرسالة'
-                ], 403);
-            }
-
-            $message->update(['is_read' => true]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تعليم الرسالة كمقروءة'
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Mark as read error: ' . $e->getMessage());
+        if ($message->receiver_id !== Auth::user()->userId) {
             return response()->json([
                 'success' => false,
-                'message' => 'فشل في تحديث حالة الرسالة'
-            ], 500);
+                'message' => 'غير مصرح لك بقراءة هذه الرسالة'
+            ], 403);
         }
+
+        $message->update(['is_read' => true]);
+
+        // بث حدث تحديث حالة الرسالة
+        broadcast(new MessageRead($message));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'تم تعليم الرسالة كمقروءة'
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Mark as read error: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في تحديث حالة الرسالة'
+        ], 500);
     }
+}
     public function markAllAsRead()
 {
     try {
