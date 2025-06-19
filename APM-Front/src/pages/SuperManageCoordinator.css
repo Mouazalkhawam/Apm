@@ -1,0 +1,146 @@
+:root {
+  --primary-color: #eab307;
+  --secondary-color: #791770;
+  --accent-color: #eab307;
+  --light-color: #ecf0f1;
+  --dark-color: #34495e;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+
+.supervisors-section {
+  padding: 3rem 1rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.section-header h2 {
+  font-size: 2.5rem;
+  color: var(--secondary-color);
+  margin-bottom: 1rem;
+  position: relative;
+  display: inline-block;
+}
+
+.section-header h2::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  background-color: var(--accent-color);
+  border-radius: 2px;
+}
+
+.section-header p {
+  font-size: 1.1rem;
+  color: #666;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.supervisors-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+}
+
+.supervisor-card {
+  background-color: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  flex: 1 1 300px;
+  max-width: 350px;
+  opacity: 0;
+  animation: fadeIn 0.5s ease forwards;
+}
+
+.supervisor-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+}
+
+.supervisor-header {
+  background-color: #e7e6ed;
+  color: rgb(20, 20, 20);
+  padding: 1.5rem;
+  position: relative;
+}
+
+.supervisor-header::before {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  right: 30px;
+  width: 20px;
+  height: 20px;
+  background-color: var(--secondary-color);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+
+.supervisor-header h3 {
+  font-size: 1.4rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.students-count {
+  display: inline-block;
+  background-color: #d9c5db;
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+.students-list {
+  list-style: none;
+  padding: 1.5rem;
+  background-color: white;
+  position: relative;
+  z-index: 2;
+}
+
+.students-list li {
+  padding: 0.8rem 0;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.students-list li:last-child {
+  border-bottom: none;
+}
+
+.student-icon {
+  color: var(--primary-color);
+  font-size: 0.9rem;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (max-width: 768px) {
+  .section-header h2 {
+    font-size: 2rem;
+  }
+  
+  .supervisor-card {
+    flex: 1 1 100%;
+    max-width: 100%;
+  }
+}

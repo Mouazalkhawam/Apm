@@ -121,7 +121,7 @@ const AcademicDashboard = () => {
         navItems={[
           { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true },
           { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-          { icon: faUsers, text: "الطلاب" },
+          { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator "},
           { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true },
           { icon: faFileAlt, text: "التقارير" },
           { icon: faComments, text: "المناقشات", badge: 3 }

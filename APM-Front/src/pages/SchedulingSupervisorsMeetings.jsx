@@ -415,7 +415,7 @@ const SchedulingSupervisorsMeetings = () => {
       
         {/* Schedule Form */}
         <div className="card schedule-form">
-          <h3 className="form-title">جدولة اجتماع جديد</h3>
+          <h3 className="form-title-ti">جدولة اجتماع جديد</h3>
           <form id="scheduleForm" onSubmit={handleSubmit}>
             <div className="form-group">
               <label htmlFor="groupSelect">المجموعة</label>
@@ -519,7 +519,7 @@ const SchedulingSupervisorsMeetings = () => {
 
         {/* Scheduled Meetings */}
         <div className="card scheduled-meetings">
-          <h3 className="form-title">الاجتماعات المجدولة</h3>
+          <h3 className="form-title-ti">الاجتماعات المجدولة</h3>
           <div className="table-responsive">
             {loadingMeetings ? (
               <div className="loading-message">جاري تحميل الاجتماعات...</div>
