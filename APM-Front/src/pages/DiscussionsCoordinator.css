@@ -1,0 +1,382 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+body {
+    background-color: #f9fafb;
+    line-height: 1.5;
+    color: #374151;
+    padding: 20px;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 15px;
+}
+
+/* Heading */
+h1 {
+    font-size: 30px;
+    font-weight: 700;
+    text-align: center;
+    color: #1e40af;
+    margin-bottom: 32px;
+}
+
+/* Tabs Navigation */
+.tabs-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 32px;
+}
+
+.tabs-group {
+    display: inline-flex;
+    border-radius: 6px;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+}
+
+.tabb-btn {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border: 1px solid #e5e7eb;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.tabb-btn:first-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+}
+
+.tabb-btn:last-child {
+    border-top-left-radius: 6px;
+    border-bottom-left-radius: 6px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.tabb-btn.active {
+    background-color: #791770;
+    color: white;
+}
+
+.tabb-btn:not(.active) {
+    background-color: white;
+    color: #111827;
+}
+
+.tabb-btn:not(.active):hover {
+    background-color: #f3f4f6;
+}
+
+.tabb-btn i {
+    margin-left: 8px;
+}
+
+/* Sections */
+.section {
+    padding: 24px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    margin-bottom: 32px;
+}
+
+.section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1f2937;
+    margin-bottom: 16px;
+}
+
+/* Date Selection Form */
+.form-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+    margin-bottom: 0;
+}
+
+.form-group {
+    flex: 1;
+    min-width: 200px;
+    margin-bottom: 0;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #4b5563;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="time"],
+textarea,
+select {
+    width: 100%;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: #1f2937;
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+}
+
+input[type="text"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: #791770;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+textarea {
+    min-height: 40px;
+    resize: vertical;
+}
+
+/* Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: none;
+}
+
+.btn i {
+    margin-left: 8px;
+}
+
+.btn-blue {
+    background-color: #eab307;
+    color: white;
+}
+
+.btn-blue:hover {
+    background-color: #791770;
+}
+
+.btn-green {
+    background-color: #791770;
+    color: white;
+}
+
+.btn-green:hover {
+    background-color: #791770;
+}
+
+/* Discussion Tables */
+.discussion-table {
+    background-color: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.discussion-table:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.table-header {
+    padding: 12px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.phase-header {
+    background-color: #f3eaf2;
+}
+
+.phase-header h3 {
+    color: #791770;
+    font-weight: 600;
+}
+
+.graduation-header {
+    background-color: #dcfce7;
+}
+
+.graduation-header h3 {
+    color: #166534;
+    font-weight: 600;
+}
+
+.delete-btn {
+    color: #dc2626;
+    background: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.15s ease;
+}
+
+.delete-btn:hover {
+    color: #b91c1c;
+}
+
+table {
+    width: 100%;
+    font-size: 14px;
+    text-align: right;
+    color: #4b5563;
+    border-collapse: collapse;
+}
+
+th {
+    padding: 12px 24px;
+    font-weight: 500;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    color: #374151;
+    background-color: #f9fafb;
+}
+
+td {
+    padding: 16px 24px;
+    border-bottom: 1px solid #e5e7eb;
+    background-color: white;
+}
+
+tr:hover td {
+    background-color: #f9fafb;
+}
+
+.table-footer {
+    padding: 12px 24px;
+    background-color: #f9fafb;
+    text-align: right;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 32px 0;
+    color: #6b7280;
+}
+
+.empty-state i {
+    font-size: 36px;
+    margin-bottom: 12px;
+    color: #9ca3af;
+}
+
+/* Animations */
+.fade-in {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.hidden-section {
+    display: none;
+}
+
+/* Specific button styles used in dynamic content */
+.btn-add-row {
+    background-color: #eab307;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    margin-right: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.btn-save {
+    background-color: #791770;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+}
+
+/* Input styles inside tables */
+.table-input {
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    width: 100%;
+}
+
+.table-textarea {
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    width: 100%;
+    resize: vertical;
+}
+
+.table-select {
+    background-color: #f9fafb;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    padding: 8px 12px;
+    width: 100%;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .form-row {
+        flex-direction: column;
+    }
+
+    .form-group {
+        width: 100%;
+        min-width: 100%;
+    }
+
+    table {
+        display: block;
+        overflow-x: auto;
+    }
+
+    .tabs-group {
+        width: 100%;
+    }
+
+    .tab-btn {
+        flex: 1;
+        text-align: center;
+    }
+}
