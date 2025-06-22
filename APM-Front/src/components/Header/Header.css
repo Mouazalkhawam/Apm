@@ -383,3 +383,137 @@
      
     }
 }
+
+/* أضف هذه الأنماط لملف Header.css */
+
+.notification-text-main {
+    position: relative;
+    padding-bottom: 25px;
+  }
+  
+  .mark-as-read-btn {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    background-color: #791770;
+    color: white;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  
+  .mark-as-read-btn:hover {
+    background-color: #5d0e56;
+  }
+  
+  .mark-as-read-btn i {
+    margin-left: 5px;
+  }
+  
+  .read-badge {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    color: #4CAF50;
+    font-size: 12px;
+  }
+  
+  .read-badge i {
+    margin-left: 5px;
+  }
+  
+  .notification-item-main.unread .mark-as-read-btn {
+    background-color: #eab308;
+    color: #000;
+  }
+  
+  .notification-item-main.unread .mark-as-read-btn:hover {
+    background-color: #d1a107;
+  }
+
+  /* أنماط المودال */
+.modal-overlay-accept {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000;
+  }
+  
+  .accept-modal {
+    background-color: white;
+    border-radius: 10px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+  }
+  
+  .modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #791770;
+    color: white;
+    border-radius: 10px 10px 0 0;
+  }
+  
+  .modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+  }
+  
+  .close-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+  }
+  
+  .modal-body {
+    padding: 20px;
+  }
+  
+  .modal-body p {
+    margin-bottom: 20px;
+    font-size: 16px;
+  }
+  
+  .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+  
+  .btn {
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .btn-cancel {
+    background-color: #f0f0f0;
+    color: #333;
+    border: 1px solid #ddd;
+  }
+  
+  .btn-confirm {
+    background-color: #791770;
+    color: white;
+    border: none;
+  }
+  
+  .btn-confirm:hover {
+    background-color: #5d0e56;
+  }

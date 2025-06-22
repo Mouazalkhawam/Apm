@@ -34,7 +34,7 @@ class ProjectController extends Controller
         return DB::transaction(function () use ($request) {
             $creator = Student::where('userId', Auth::id())->firstOrFail();
             
-            // التحقق من شروط المشاريع مع التحقق من حالة approved
+            // التحقق من شروط المشاريع
             if ($request->type === 'graduation') {
                 $this->validateGraduationProject($creator);
                 $periods = $this->getGraduationPeriods();
@@ -47,16 +47,12 @@ class ProjectController extends Controller
                 abort(400, 'لا يوجد فصل دراسي فعال حاليًا');
             }
 
-            // حساب تواريخ البدء والانتهاء
-            $startDate = $periods->first()->start_date;
-            $endDate = $periods->last()->end_date;
-
             // إنشاء المشروع
             $project = Project::create([
                 'title' => $request->title,
                 'description' => $request->description,
-                'startdate' => $startDate,
-                'enddate' => $endDate,
+                'startdate' => $periods->first()->start_date,
+                'enddate' => $periods->last()->end_date,
                 'headid' => Auth::id(),
                 'type' => $request->type
             ]);
@@ -70,16 +66,13 @@ class ProjectController extends Controller
                 'name' => $request->title,
             ]);
 
-            // ربط الطلاب - فقط المنشئ يكون approved و leader
+            // إعداد بيانات الطلاب
             $studentsData = [];
-            
-            // إضافة المنشئ كقائد ومعتمد
             $studentsData[$creator->studentId] = [
                 'status' => 'approved',
                 'is_leader' => true
             ];
             
-            // إضافة باقي الطلاب ك pending وغير قادة
             foreach ($request->students as $studentId) {
                 if ($studentId != $creator->studentId) {
                     $studentsData[$studentId] = [
@@ -97,7 +90,7 @@ class ProjectController extends Controller
                 ['status' => 'pending']
             );
 
-            // إرسال الإشعارات
+            // إرسال الإشعارات (لن ترسل للقائد تلقائياً)
             $this->sendNotifications($group, array_keys($studentsData), $request->supervisors);
 
             return response()->json([
@@ -179,24 +172,30 @@ class ProjectController extends Controller
         }
     }
 
-    private function sendNotifications(Group $group, $students, $supervisors)
+    protected function sendNotifications(Group $group, $students, $supervisors)
     {
-        // إشعارات للطلاب
+        // تحميل العلاقة مع المشروع مسبقاً
+        $group->load('project');
+        
+        // الحصول على القائد (المنشئ)
+        $leader = $group->students()
+            ->where('group_student.is_leader', true)
+            ->first();
+    
+        // إشعارات للطلاب (باستثناء القائد)
         $group->students()
             ->whereIn('students.studentId', $students)
+            ->where('students.studentId', '!=', $leader->studentId)
             ->with('user')
             ->each(function ($student) use ($group) {
-                $message = "تمت دعوتك لمشروع {$group->name}";
-                $message .= $student->pivot->is_leader ? ' (أنت القائد)' : '';
-                
                 NotificationService::sendRealTime(
                     $student->user->userId,
-                    $message,
+                    "تمت دعوتك لمشروع {$group->name}",
                     [
                         'type' => 'PROJECT_INVITATION',
-                        'group_id' => $group->groupid,
-                        'project_id' => $group->projectid,
-                        'is_leader' => $student->pivot->is_leader
+                        'group_id' => $group->groupid, // استخدام groupid بدلاً من projectid
+                        'project_id' => $group->project->projectid,
+                        'is_leader' => false
                     ]
                 );
             });
@@ -211,8 +210,8 @@ class ProjectController extends Controller
                     "تم تعيينك كمشرف على مشروع {$group->name}",
                     [
                         'type' => 'SUPERVISOR_INVITATION',
-                        'group_id' => $group->groupid,
-                        'project_id' => $group->projectid
+                        'group_id' => $group->groupid, // استخدام groupid بدلاً من projectid
+                        'project_id' => $group->project->projectid
                     ]
                 );
             });
@@ -227,7 +226,10 @@ class ProjectController extends Controller
         $user = User::findOrFail($request->user_id);
         $group = Group::findOrFail($request->group_id);
     
-        DB::transaction(function () use ($user, $group) {
+        // Initialize the notification service
+        $notificationService = new NotificationService();
+    
+        DB::transaction(function () use ($user, $group, $notificationService) {
             if ($user->role === 'student') {
                 GroupStudent::where([
                     'groupid' => $group->groupid,
@@ -236,15 +238,14 @@ class ProjectController extends Controller
                 
                 // إرسال إشعار قبول العضوية للطالب
                 $notificationService->sendRealTime(
-                    $member['user_id'],
-                    "تمت دعوتك للانضمام إلى مجموعة {$group->name}",
+                    $user->userId,
+                    "تم قبول عضويتك في مجموعة {$group->name}",
                     [
-                        'type' => 'PROJECT_INVITATION',
-                        'group_id' => $groupId,
-                        'project_id' => $group->projectid
+                        'type' => 'MEMBERSHIP_APPROVAL',
+                        'group_id' => $group->groupid,
+                        'project_id' => $group->project->projectid
                     ]
                 );
-                
             } elseif ($user->role === 'supervisor') {
                 GroupSupervisor::where([
                     'groupid' => $group->groupid,
@@ -253,12 +254,12 @@ class ProjectController extends Controller
                 
                 // إرسال إشعار قبول العضوية للمشرف
                 $notificationService->sendRealTime(
-                    $member['user_id'],
-                    "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}",
+                    $user->userId,
+                    "تم قبول عضويتك كمشرف على مجموعة {$group->name}",
                     [
-                        'type' => 'SUPERVISOR_INVITATION',
-                        'group_id' => $groupId,
-                        'project_id' => $group->projectid
+                        'type' => 'SUPERVISOR_APPROVAL',
+                        'group_id' => $group->groupid,
+                        'project_id' => $group->project->projectid
                     ]
                 );
             }
@@ -266,13 +267,13 @@ class ProjectController extends Controller
             // إرسال إشعار للمسؤول/القائد بقبول العضوية
             $leaderId = $group->project->headid;
             if ($leaderId != $user->userId) {
-                NotificationService::sendRealTime(
+                $notificationService->sendRealTime(
                     $leaderId,
                     "تم قبول طلب العضوية من قبل {$user->name} لمجموعة {$group->name}",
                     [
                         'type' => 'MEMBERSHIP_APPROVAL_NOTICE',
                         'group_id' => $group->groupid,
-                        'project_id' => $group->projectid,
+                        'project_id' => $group->project->projectid,
                         'approved_user_id' => $user->userId
                     ]
                 );
@@ -734,12 +735,11 @@ protected function extractExperienceText($experience)
     {
         $request->validate([
             'members' => 'required|array|min:1',
-            'members.*.user_id' => 'required|exists:users,userId', // تغيير إلى userId
+            'members.*.user_id' => 'required|exists:users,userId',
             'members.*.type' => 'required|in:student,supervisor'
         ]);
     
         return DB::transaction(function () use ($request, $groupId) {
-            // التحقق من أن المستخدم الحالي هو قائد المجموعة
             $user = Auth::user();
             $isLeader = GroupStudent::where('groupid', $groupId)
                 ->where('studentId', $user->student->studentId)
@@ -753,74 +753,85 @@ protected function extractExperienceText($experience)
             $group = Group::findOrFail($groupId);
             $addedMembers = [];
             $notificationService = new NotificationService();
+            $now = now(); // الحصول على الوقت الحالي مرة واحدة لاستخدامه في جميع الإدراجات
     
             foreach ($request->members as $member) {
                 if ($member['type'] === 'student') {
-                    // البحث عن الطالب باستخدام userId
                     $student = Student::where('userId', $member['user_id'])->firstOrFail();
                     
-                    // التحقق من أن الطالب ليس بالفعل في المجموعة
                     $existing = GroupStudent::where('groupid', $groupId)
                         ->where('studentId', $student->studentId)
                         ->first();
     
                     if ($existing) {
-                        continue; // تخطي إذا كان الطالب موجود بالفعل
+                        continue;
                     }
     
-                    // إضافة الطالب بحالة pending
-                    DB::table('group_student')->insert([
+                    // استخدام insertGetId للحصول على ID السجل المضاف
+                    $id = DB::table('group_student')->insertGetId([
                         'groupid' => $groupId,
                         'studentId' => $student->studentId,
                         'status' => 'pending',
                         'is_leader' => false,
-                        'created_at' => now(),
-                        'updated_at' => now()
+                        'created_at' => $now,
+                        'updated_at' => $now
                     ]);
     
-                    // إرسال إشعار للطالب
+                    // إرسال الإشعار
                     $notificationService->sendRealTime(
-                        $member['user_id'], // استخدام userId مباشرة
-                        "تمت دعوتك للانضمام إلى مجموعة {$group->name}"
+                        $member['user_id'],
+                        "تمت دعوتك للانضمام إلى مجموعة {$group->name}",
+                        [
+                            'type' => 'PROJECT_INVITATION',
+                            'group_id' => $groupId,
+                            'project_id' => $group->projectid
+                        ]
                     );
     
                     $addedMembers[] = [
+                        'id' => $id,
                         'user_id' => $member['user_id'],
                         'type' => 'student',
-                        'name' => $student->user->name
+                        'name' => $student->user->name,
+                        'created_at' => $now->toDateTimeString()
                     ];
                 } elseif ($member['type'] === 'supervisor') {
-                    // البحث عن المشرف باستخدام userId
                     $supervisor = Supervisor::where('userId', $member['user_id'])->firstOrFail();
                     
-                    // التحقق من أن المشرف ليس بالفعل في المجموعة
                     $existing = GroupSupervisor::where('groupid', $groupId)
                         ->where('supervisorId', $supervisor->supervisorId)
                         ->first();
     
                     if ($existing) {
-                        continue; // تخطي إذا كان المشرف موجود بالفعل
+                        continue;
                     }
     
-                    // إضافة المشرف بحالة pending
-                    DB::table('group_supervisor')->insert([
+                    // استخدام insertGetId للحصول على ID السجل المضاف
+                    $id = DB::table('group_supervisor')->insertGetId([
                         'groupid' => $groupId,
                         'supervisorId' => $supervisor->supervisorId,
                         'status' => 'pending',
-                        'created_at' => now(),
-                        'updated_at' => now()
+                        'created_at' => $now,
+                        'updated_at' => $now
                     ]);
     
-                    // إرسال إشعار للمشرف
+                    // إرسال الإشعار
                     $notificationService->sendRealTime(
-                        $member['user_id'], // استخدام userId مباشرة
-                        "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}"
+                        $member['user_id'],
+                        "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}",
+                        [
+                            'type' => 'SUPERVISOR_INVITATION',
+                            'group_id' => $groupId,
+                            'project_id' => $group->projectid
+                        ]
                     );
     
                     $addedMembers[] = [
+                        'id' => $id,
                         'user_id' => $member['user_id'],
                         'type' => 'supervisor',
-                        'name' => $supervisor->user->name
+                        'name' => $supervisor->user->name,
+                        'created_at' => $now->toDateTimeString()
                     ];
                 }
             }
