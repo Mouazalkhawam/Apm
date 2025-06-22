@@ -23,6 +23,7 @@ import GroupManagementSupervisor from './pages/GroupManagementSupervisor';
 import SupervisorsProject from './pages/SupervisorsProject';
 import SuperManageCoordinator from './pages/SuperManageCoordinator';
 import DiscussionsCoordinator from './pages/DiscussionsCoordinator';
+import AddSupervisor from './pages/AddSupervisor';
 
 function App() {
   return (
@@ -181,6 +182,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <DiscussionsCoordinator />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/add-supervisor" 
+                 element={
+                  <ProtectedRoute>
+                    <AddSupervisor />
                             </ProtectedRoute>
                           } 
                />
