@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './StudentProfile.css';
 import Header from '../components/Header/Header';
 import axios from 'axios';
@@ -29,12 +29,10 @@ const StudentProfile = () => {
         }
       });
       
-      // Clear local storage and redirect to login
       localStorage.clear();
       navigate('/login');
     } catch (err) {
       console.error('Logout error:', err);
-      // Force logout even if API call fails
       localStorage.clear();
       navigate('/login');
     }
@@ -61,7 +59,7 @@ const StudentProfile = () => {
 
     fetchStudentProfile();
 
-    // الكود الأصلي للتحريك
+    // Animation code
     const animateElements = document.querySelectorAll('.animate');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -150,6 +148,8 @@ const StudentProfile = () => {
 };
 
 const ProfileSidebar = ({ studentData }) => {
+  const [showEditModal, setShowEditModal] = useState(false);
+
   const getProfileImageUrl = () => {
     if (!studentData.profile_picture) {
       return null;
@@ -230,6 +230,12 @@ const ProfileSidebar = ({ studentData }) => {
             : 'طالب'
           }
         </p>
+        <button 
+          className="edit-profile-btn"
+          onClick={() => setShowEditModal(true)}
+        >
+          <i className="fas fa-edit"></i> تعديل الملف الشخصي
+        </button>
       </div>
 
       <div className="profile-info-section">
@@ -297,6 +303,302 @@ const ProfileSidebar = ({ studentData }) => {
         ) : (
           <p className="no-experiences">لا توجد خبرات مسجلة</p>
         )}
+      </div>
+
+      {showEditModal && (
+        <EditProfileModal 
+          studentData={studentData}
+          setShowEditModal={setShowEditModal}
+        />
+      )}
+    </div>
+  );
+};
+
+const EditProfileModal = ({ studentData, setShowEditModal }) => {
+  const [formData, setFormData] = useState({
+    name: studentData.name || '',
+    email: studentData.email || '',
+    phone: studentData.phone || '',
+    universityNumber: studentData.student?.university_number || '',
+    major: studentData.student?.major || '',
+    academicYear: studentData.student?.academic_year || '1',
+    password: '',
+    confirmPassword: '',
+    profile_picture: null
+  });
+  const [errors, setErrors] = useState({});
+  const [photoPreview, setPhotoPreview] = useState(studentData.profile_picture || null);
+  const [loading, setLoading] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
+  const handlePhotoUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+      setFormData(prev => ({
+        ...prev,
+        profile_picture: file
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors = {};
+    
+    if (!formData.name) newErrors.name = 'الاسم مطلوب';
+    if (!formData.email) newErrors.email = 'البريد الإلكتروني مطلوب';
+    if (!formData.universityNumber) newErrors.universityNumber = 'الرقم الجامعي مطلوب';
+    if (!formData.major) newErrors.major = 'التخصص مطلوب';
+    
+    if (formData.password && formData.password.length < 6) {
+      newErrors.password = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
+    }
+    
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'كلمات المرور غير متطابقة';
+    }
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!validateForm()) return;
+    
+    setLoading(true);
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const formDataToSend = new FormData();
+      
+      formDataToSend.append('name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', formData.phone);
+      formDataToSend.append('university_number', formData.universityNumber);
+      formDataToSend.append('major', formData.major);
+      formDataToSend.append('academic_year', formData.academicYear);
+      if (formData.password) formDataToSend.append('password', formData.password);
+      if (formData.profile_picture) formDataToSend.append('profile_picture', formData.profile_picture);
+      
+      const response = await axios.post(
+        'http://127.0.0.1:8000/api/student/update-profile',
+        formDataToSend,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      
+      if (response.data.success) {
+        window.location.reload();
+      } else {
+        setErrors({ submit: response.data.message || 'حدث خطأ أثناء التحديث' });
+      }
+    } catch (err) {
+      console.error('Update error:', err);
+      setErrors({ submit: 'حدث خطأ أثناء تحديث الملف الشخصي' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay-profile">
+      <div className="modal-content">
+        <span className="close-modal" onClick={() => setShowEditModal(false)}>
+          <i className="fas fa-times"></i>
+        </span>
+        <h2 className="modal-title">تعديل المعلومات الشخصية</h2>
+        
+        {errors.submit && (
+          <div className="alert alert-danger">
+            <i className="fas fa-exclamation-circle"></i> {errors.submit}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} encType="multipart/form-data">
+          <div className="form-row">
+            <div className="form-group-register half-width">
+              <label htmlFor="name" className="form-label">الاسم الكامل</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                className={`form-input ${errors.name ? 'error' : ''}`}
+                required
+                value={formData.name}
+                onChange={handleInputChange}
+                placeholder="الاسم الثلاثي"
+              />
+              {errors.name && <span className="error-message">{errors.name}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="email" className="form-label">البريد الجامعي</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                className={`form-input ${errors.email ? 'error' : ''}`}
+                required
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="example@university.edu.sy"
+              />
+              {errors.email && <span className="error-message">{errors.email}</span>}
+            </div>
+            
+            <div className="form-group-register half-width">
+              <label htmlFor="phone" className="form-label">رقم الجوال</label>
+              <input
+                type="tel"
+                id="phone"
+                name="phone"
+                className={`form-input ${errors.phone ? 'error' : ''}`}
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="05XXXXXXXX"
+              />
+              {errors.phone && <span className="error-message">{errors.phone}</span>}
+            </div>
+            
+            <div className="form-group-register half-width">
+              <label htmlFor="universityNumber" className="form-label">الرقم الجامعي</label>
+              <input
+                type="text"
+                id="universityNumber"
+                name="universityNumber"
+                className={`form-input ${errors.universityNumber ? 'error' : ''}`}
+                required
+                value={formData.universityNumber}
+                onChange={handleInputChange}
+                placeholder="الرقم الجامعي"
+              />
+              {errors.universityNumber && <span className="error-message">{errors.universityNumber}</span>}
+            </div>
+            
+            <div className="form-group-register half-width">
+              <label htmlFor="major" className="form-label">التخصص</label>
+              <input
+                type="text"
+                id="major"
+                name="major"
+                className={`form-input ${errors.major ? 'error' : ''}`}
+                required
+                value={formData.major}
+                onChange={handleInputChange}
+                placeholder="التخصص الدراسي"
+              />
+              {errors.major && <span className="error-message">{errors.major}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="academicYear" className="form-label">السنة الدراسية</label>
+              <select
+                id="academicYear"
+                name="academicYear"
+                className="form-input"
+                required
+                value={formData.academicYear}
+                onChange={handleInputChange}
+              >
+                <option value="1">الأولى</option>
+                <option value="2">الثانية</option>
+                <option value="3">الثالثة</option>
+                <option value="4">الرابعة</option>
+                <option value="5">الخامسة</option>
+              </select>
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="password" className="form-label">كلمة المرور الجديدة</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                className={`form-input ${errors.password ? 'error' : ''}`}
+                minLength="6"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="اتركه فارغًا إذا كنت لا تريد التغيير"
+              />
+              <small className="form-note">8 أحرف على الأقل</small>
+              {errors.password && <span className="error-message">{errors.password}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="confirmPassword" className="form-label">تأكيد كلمة المرور</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                value={formData.confirmPassword}
+                onChange={handleInputChange}
+                placeholder="تأكيد كلمة المرور الجديدة"
+              />
+              {errors.confirmPassword && <span className="error-message">{errors.confirmPassword}</span>}
+            </div>
+
+            <div className="form-group-register">
+              <label className="form-label">الصورة الشخصية</label>
+              <div className="photo-upload" onClick={triggerFileInput}>
+                {photoPreview ? (
+                  <img src={photoPreview} alt="صورة الطالب" className="photo-preview" />
+                ) : (
+                  <>
+                    <i className="fas fa-user-circle photo-icon"></i>
+                    <p className="photo-text">انقر لرفع الصورة</p>
+                  </>
+                )}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  hidden
+                  onChange={handlePhotoUpload}
+                />
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            className="btn-profile btn-primary-profile" 
+            type="submit"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <i className="fas fa-spinner fa-spin"></i> جاري الحفظ...
+              </>
+            ) : (
+              <>
+                <i className="fas fa-save"></i> حفظ التغييرات
+              </>
+            )}
+          </button>
+        </form>
       </div>
     </div>
   );
