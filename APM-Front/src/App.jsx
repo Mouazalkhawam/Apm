@@ -24,6 +24,8 @@ import SupervisorsProject from './pages/SupervisorsProject';
 import SuperManageCoordinator from './pages/SuperManageCoordinator';
 import DiscussionsCoordinator from './pages/DiscussionsCoordinator';
 import AddSupervisor from './pages/AddSupervisor';
+import TasksPage from './pages/TasksPage';
+import StudentsPage from './pages/StudentsPage';
 
 function App() {
   return (
@@ -190,6 +192,22 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <AddSupervisor />
+                            </ProtectedRoute>
+                          } 
+               />
+               <Route 
+                 path="/task-page" 
+                 element={
+                  <ProtectedRoute>
+                    <TasksPage />
+                            </ProtectedRoute>
+                          } 
+               />
+               <Route 
+                 path="/student-page" 
+                 element={
+                  <ProtectedRoute>
+                    <StudentsPage />
                             </ProtectedRoute>
                           } 
                />

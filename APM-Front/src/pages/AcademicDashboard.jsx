@@ -26,7 +26,6 @@ const AcademicDashboard = () => {
   let progressChart = null;
 
   useEffect(() => {
-    // Initialize chart when component mounts
     if (chartRef.current) {
       const ctx = chartRef.current.getContext('2d');
       progressChart = new Chart(ctx, {
@@ -80,7 +79,6 @@ const AcademicDashboard = () => {
       });
     }
 
-    // Cleanup chart when component unmounts
     return () => {
       if (progressChart) {
         progressChart.destroy();
@@ -108,7 +106,6 @@ const AcademicDashboard = () => {
 
   return (
     <div className="dashboard-container">
-      {/* Sidebar Component */}
       <SidebarWithRef 
         ref={sidebarRef}
         user={{
@@ -119,25 +116,21 @@ const AcademicDashboard = () => {
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true },
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/AcademicDashboard" },
           { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-          { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator "},
-          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true },
+          { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator" },
+          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/TasksPage" },
           { icon: faFileAlt, text: "التقارير" },
           { icon: faComments, text: "المناقشات", badge: 3 }
         ]}
       />
-      {/* Mobile Sidebar Toggle */}
       <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
         <FontAwesomeIcon icon={faBars} />
       </button>
       
-      {/* Overlay */}
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      {/* Main Content */}
       <div className="main-content-cord">
-        {/* Top Navigation */}
         <TopNav 
           user={{
             name: "د.عفاف",
@@ -150,16 +143,13 @@ const AcademicDashboard = () => {
           searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
         />
         
-        {/* Main Content Area */}
         <main className="content-area">
-          <div className="container">
-            {/* Welcome Header */}
+          <div className="containerr">
             <div className="welcome-header">
               <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             
-            {/* Stats Cards */}
             <div className="stats-grid">
               <div className="stat-card blue">
                 <div className="stat-info">
@@ -206,9 +196,7 @@ const AcademicDashboard = () => {
               </div>
             </div>
             
-            {/* Charts and Projects */}
             <div className="main-grid">
-              {/* Progress Chart */}
               <div className="chart-card">
                 <div className="chart-header">
                   <h2 className="chart-title">تقدم المشاريع</h2>
@@ -223,7 +211,6 @@ const AcademicDashboard = () => {
                 </div>
               </div>
               
-              {/* Recent Projects */}
               <div className="projects-card">
                 <div className="projects-header">
                   <h2 className="projects-title">أحدث المشاريع</h2>
@@ -269,173 +256,6 @@ const AcademicDashboard = () => {
                       <p>5 طلاب · 30% مكتمل</p>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Tasks and Students */}
-            <div className="tasks-students-grid">
-              {/* Upcoming Tasks */}
-              <div className="tasks-card">
-                <div className="tasks-header">
-                  <h2 className="tasks-title">المهام القادمة</h2>
-                  <a href="#" className="tasks-link">عرض الكل</a>
-                </div>
-                <div className="tasks-list">
-                  <div className="task-item red">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">مراجعة مشروع الذكاء الاصطناعي</h4>
-                        <p className="task-date">غداً 10:00 ص</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="task-item yellow">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">اجتماع مع فريق البحث</h4>
-                        <p className="task-date">بعد غد 2:00 م</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="task-item green">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">تسليم الدرجات النهائية</h4>
-                        <p className="task-date">الخميس 4:00 م</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="task-item blue">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">تقديم ورشة عمل</h4>
-                        <p className="task-date">السبت 11:00 ص</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              {/* Recent Students */}
-              <div className="students-card">
-                <div className="students-header">
-                  <h2 className="students-title">أحدث الطلاب المسجلين</h2>
-                  <a href="#" className="students-link">عرض الكل</a>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="students-table">
-                    <thead>
-                      <tr>
-                        <th>الطالب</th>
-                        <th>المشروع</th>
-                        <th>التقدم</th>
-                        <th>الحالة</th>
-                        <th>الإجراءات</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>
-                          <div className="student-cell">
-                            <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" className="student-image" />
-                            <div>
-                              <div className="student-name">أحمد محمود</div>
-                              <div className="student-degree">بكالوريوس حاسوب</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>تطبيق حجز مواعيد</td>
-                        <td>
-                          <div className="progress-container">
-                            <div className="progress-bar">
-                              <div className="progress-fill green" style={{width: '65%'}}></div>
-                            </div>
-                            <span className="progress-text">65%</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="status-badge green">نشط</span>
-                        </td>
-                        <td>
-                          <button className="action-button">
-                            <FontAwesomeIcon icon={faEnvelope} />
-                          </button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <div className="student-cell">
-                            <img src="https://randomuser.me/api/portraits/women/63.jpg" alt="" className="student-image" />
-                            <div>
-                              <div className="student-name">نورا عبدالله</div>
-                              <div className="student-degree">ماجستير ذكاء اصطناعي</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>نظام توصية المقررات</td>
-                        <td>
-                          <div className="progress-container">
-                            <div className="progress-bar">
-                              <div className="progress-fill yellow" style={{width: '30%'}}></div>
-                            </div>
-                            <span className="progress-text">30%</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="status-badge yellow">بحاجة لمتابعة</span>
-                        </td>
-                        <td>
-                          <button className="action-button">
-                            <FontAwesomeIcon icon={faEnvelope} />
-                          </button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td>
-                          <div className="student-cell">
-                            <img src="https://randomuser.me/api/portraits/men/45.jpg" alt="" className="student-image" />
-                            <div>
-                              <div className="student-name">محمد خالد</div>
-                              <div className="student-degree">بكالوريوس شبكات</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td>تحليل بيانات الطلاب</td>
-                        <td>
-                          <div className="progress-container">
-                            <div className="progress-bar">
-                              <div className="progress-fill blue" style={{width: '85%'}}></div>
-                            </div>
-                            <span className="progress-text">85%</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="status-badge green">نشط</span>
-                        </td>
-                        <td>
-                          <button className="action-button">
-                            <FontAwesomeIcon icon={faEnvelope} />
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
                 </div>
               </div>
             </div>
