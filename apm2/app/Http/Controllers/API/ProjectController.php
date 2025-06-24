@@ -962,4 +962,55 @@ public function getSupervisorProjects()
         ], 500);
     }
 }
+public function getSupervisorsWithStudentsNames()
+{
+   try {
+        // جلب البيانات باستخدام query builder لتجنب مشاكل العلاقات
+        $supervisorsData = DB::table('supervisors')
+            ->join('users', 'supervisors.userId', '=', 'users.userId')
+            ->leftJoin('group_supervisor', 'supervisors.supervisorId', '=', 'group_supervisor.supervisorId')
+            ->leftJoin('groups', 'group_supervisor.groupid', '=', 'groups.groupid')
+            ->leftJoin('group_student', 'groups.groupid', '=', 'group_student.groupid')
+            ->leftJoin('students', 'group_student.studentId', '=', 'students.studentId')
+            ->leftJoin('users as student_users', 'students.userId', '=', 'student_users.userId')
+            ->where('group_supervisor.status', 'approved')
+            ->where('group_student.status', 'approved')
+            ->select(
+                'users.name as supervisor_name',
+                'student_users.name as student_name',
+                'supervisors.supervisorId'
+            )
+            ->get();
+
+        // تجميع البيانات
+        $result = [];
+        foreach ($supervisorsData as $item) {
+            if (!isset($result[$item->supervisorId])) {
+                $result[$item->supervisorId] = [
+                    'supervisor_name' => $item->supervisor_name,
+                    'students' => []
+                ];
+            }
+
+            if ($item->student_name && !in_array($item->student_name, $result[$item->supervisorId]['students'])) {
+                $result[$item->supervisorId]['students'][] = $item->student_name;
+            }
+        }
+
+        // تحويل المصفوفة المرتبة إلى قائمة
+        $finalResult = array_values($result);
+
+        return response()->json([
+            'success' => true,
+            'data' => $finalResult,
+            'message' => 'تم جلب أسماء المشرفين والطلاب بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب البيانات: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }
