@@ -1,123 +1,103 @@
-:root {
-  --primary-color: #eab307;
-  --secondary-color: #791770;
-  --accent-color: #eab307;
-  --light-color: #ecf0f1;
-  --dark-color: #34495e;
-  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  --transition: all 0.3s ease;
+/* SuperManageCoordinator.css */
+@import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+
+/* Reset and Base Styles */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Tajawal', sans-serif;
 }
 
-.supervisors-section {
-  padding: 3rem 1rem;
-  max-width: 1200px;
-  margin: 0 auto;
+html, body, #root, .dashboard-container {
+  height: 100%;
+  direction: rtl;
 }
 
-.section-header {
-  text-align: center;
-  margin-bottom: 3rem;
-}
-
-.section-header h2 {
-  font-size: 2.5rem;
-  color: var(--secondary-color);
-  margin-bottom: 1rem;
-  position: relative;
-  display: inline-block;
-}
-
-.section-header h2::after {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 80px;
-  height: 4px;
-  background-color: var(--accent-color);
-  border-radius: 2px;
-}
-
-.section-header p {
-  font-size: 1.1rem;
-  color: #666;
-  max-width: 600px;
-  margin: 0 auto;
-}
-
-.supervisors-container {
+/* Dashboard Layout */
+.dashboard-container {
   display: flex;
-  flex-wrap: wrap;
-  gap: 2rem;
-  justify-content: center;
+  background-color: #f8f9fa;
 }
 
+.main-content-cord {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+/* Content Area */
+.supervisors-section {
+  padding: 20px;
+  width: 100%;
+}
+
+.form-title {
+  margin-bottom: 30px;
+}
+
+.form-title h1 {
+  font-size: 24px;
+  color: #2d3748;
+  margin-bottom: 8px;
+}
+
+.form-title p {
+  color: #718096;
+  font-size: 14px;
+}
+
+/* Supervisors Grid */
+.supervisors-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  width: 100%;
+}
+
+/* Supervisor Card */
 .supervisor-card {
-  background-color: white;
-  border-radius: 12px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
   overflow: hidden;
-  box-shadow: var(--shadow);
-  transition: var(--transition);
-  flex: 1 1 300px;
-  max-width: 350px;
+  animation: fadeIn 0.5s forwards;
   opacity: 0;
-  animation: fadeIn 0.5s ease forwards;
-}
-
-.supervisor-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .supervisor-header {
-  background-color: #e7e6ed;
-  color: rgb(20, 20, 20);
-  padding: 1.5rem;
-  position: relative;
-}
-
-.supervisor-header::before {
-  content: '';
-  position: absolute;
-  bottom: -10px;
-  right: 30px;
-  width: 20px;
-  height: 20px;
-  background-color: var(--secondary-color);
-  transform: rotate(45deg);
-  z-index: 1;
+  background: #f7fafc;
+  padding: 16px;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .supervisor-header h3 {
-  font-size: 1.4rem;
-  margin-bottom: 0.5rem;
-  font-weight: 600;
+  font-size: 18px;
+  color: #4a5568;
+  margin-bottom: 8px;
 }
 
 .students-count {
   display: inline-block;
-  background-color: #d9c5db;
-  padding: 0.3rem 0.8rem;
-  border-radius: 20px;
-  font-size: 0.9rem;
-  margin-top: 0.5rem;
+  background: #edf2f7;
+  color: #4a5568;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
 }
 
 .students-list {
+  padding: 16px;
   list-style: none;
-  padding: 1.5rem;
-  background-color: white;
-  position: relative;
-  z-index: 2;
 }
 
 .students-list li {
-  padding: 0.8rem 0;
+  padding: 12px 0;
   border-bottom: 1px solid #eee;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 10px;
 }
 
 .students-list li:last-child {
@@ -125,22 +105,28 @@
 }
 
 .student-icon {
-  color: var(--primary-color);
-  font-size: 0.9rem;
+  color: #805ad5;
 }
 
+/* Animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
 }
 
+/* Responsive Adjustments */
 @media (max-width: 768px) {
-  .section-header h2 {
-    font-size: 2rem;
+  .supervisors-container {
+    grid-template-columns: 1fr;
   }
   
   .supervisor-card {
-    flex: 1 1 100%;
-    max-width: 100%;
+    width: 100%;
   }
 }

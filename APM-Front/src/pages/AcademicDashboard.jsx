@@ -116,7 +116,7 @@ const AcademicDashboard = () => {
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
         navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/AcademicDashboard" },
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
           { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
           { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator" },
           { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/TasksPage" },
