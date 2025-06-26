@@ -9,18 +9,64 @@ const Header = ({
   toggleChat,
   handleLogout 
 }) => {
+  // حالات الإشعارات
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showAcceptModal, setShowAcceptModal] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState(null);
 
+  // حالات الدردشة
+  const [activeChatTab, setActiveChatTab] = useState('conversations');
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [message, setMessage] = useState('');
+  const [conversations, setConversations] = useState([
+    {
+      id: 1,
+      name: 'أحمد محمد',
+      lastMessage: 'مرحباً، كيف حالك؟',
+      time: '10:30 ص',
+      unread: true,
+      avatar: 'https://via.placeholder.com/40',
+      messages: [
+        { id: 1, text: 'مرحباً أحمد،', time: '10:30 ص', sent: false },
+        { id: 2, text: 'السلام عليكم', time: '10:35 ص', sent: true },
+        { id: 3, text: 'كيف يمكنني مساعدتك اليوم؟', time: '10:36 ص', sent: false },
+      ]
+    },
+    {
+      id: 2,
+      name: 'فريق المشروع الأكاديمي',
+      lastMessage: 'تم تحديث الجدول الزمني',
+      time: 'أمس',
+      unread: false,
+      avatar: 'https://via.placeholder.com/40/791770/ffffff',
+      messages: [
+        { id: 1, text: 'تم تحديث الجدول الزمني للمشروع', time: 'أمس', sent: false },
+        { id: 2, text: 'شكراً للإعلام', time: 'أمس', sent: true },
+      ]
+    },
+    {
+      id: 3,
+      name: 'د. سامي علي',
+      lastMessage: 'هل انتهيت من المهمة؟',
+      time: '25/05',
+      unread: false,
+      avatar: 'https://via.placeholder.com/40',
+      messages: [
+        { id: 1, text: 'هل انتهيت من المهمة؟', time: '25/05', sent: false },
+        { id: 2, text: 'نعم، سأرسلها اليوم', time: '25/05', sent: true },
+      ]
+    }
+  ]);
+
+  // دالة تسجيل الخروج
   const handleLogoutClick = (e) => {
     e.preventDefault();
     handleLogout();
   };
 
-  // دالة لجلب الإشعارات من الخادم
+  // جلب الإشعارات من الخادم
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -45,7 +91,7 @@ const Header = ({
     }
   };
 
-  // دالة لتحديد الإشعار كمقروء
+  // تحديد الإشعار كمقروء
   const markAsRead = async (notificationId, e) => {
     if (e) e.stopPropagation();
     
@@ -67,7 +113,7 @@ const Header = ({
     }
   };
 
-  // دالة لقبول العضوية
+  // قبول العضوية
   const handleAcceptMembership = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -83,11 +129,8 @@ const Header = ({
       });
 
       if (response.data.success) {
-        // تحديث حالة الإشعار
         markAsRead(selectedNotification.id);
-        // إخفاء المودال
         setShowAcceptModal(false);
-        // إعادة تحميل الإشعارات
         fetchNotifications();
       }
     } catch (err) {
@@ -95,7 +138,7 @@ const Header = ({
     }
   };
 
-  // دالة لتحديد جميع الإشعارات كمقروءة
+  // تحديد جميع الإشعارات كمقروءة
   const markAllAsRead = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -116,7 +159,7 @@ const Header = ({
     }
   };
 
-  // دالة لتنسيق الوقت المنقضي
+  // تنسيق الوقت المنقضي
   const formatTimeAgo = (dateString) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -130,7 +173,7 @@ const Header = ({
     return `منذ ${Math.floor(diffInSeconds / 31536000)} سنوات`;
   };
 
-  // دالة للحصول على أيقونة حسب نوع الإشعار
+  // أيقونة حسب نوع الإشعار
   const getNotificationIcon = (type) => {
     switch (type) {
       case 'PROJECT_INVITATION':
@@ -144,7 +187,7 @@ const Header = ({
     }
   };
 
-  // دالة للتعامل مع النقر على الإشعار
+  // التعامل مع النقر على الإشعار
   const handleNotificationClick = (notification) => {
     if (notification.type === 'PROJECT_INVITATION' && notification.extra_data?.group_id) {
       setSelectedNotification(notification);
@@ -154,7 +197,56 @@ const Header = ({
     }
   };
 
-  // جلب الإشعارات عند فتح القائمة أو عند التحميل الأولي
+  // اختيار محادثة
+  const handleSelectConversation = (conversation) => {
+    setSelectedConversation(conversation);
+    setActiveChatTab('chat');
+    
+    // تعيين المحادثة كمقروءة
+    setConversations(conversations.map(conv => 
+      conv.id === conversation.id ? { ...conv, unread: false } : conv
+    ));
+  };
+
+  // إرسال رسالة
+  const handleSendMessage = () => {
+    if (!message.trim() || !selectedConversation) return;
+
+    const newMessage = {
+      id: Date.now(),
+      text: message,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      sent: true
+    };
+
+    // تحديث المحادثة المحددة
+    const updatedConversations = conversations.map(conv => {
+      if (conv.id === selectedConversation.id) {
+        return {
+          ...conv,
+          messages: [...conv.messages, newMessage],
+          lastMessage: message,
+          time: 'الآن'
+        };
+      }
+      return conv;
+    });
+
+    setConversations(updatedConversations);
+    setSelectedConversation({
+      ...selectedConversation,
+      messages: [...selectedConversation.messages, newMessage]
+    });
+    setMessage('');
+  };
+
+  // العودة إلى قائمة المحادثات
+  const handleBackToConversations = () => {
+    setActiveChatTab('conversations');
+    setSelectedConversation(null);
+  };
+
+  // جلب الإشعارات عند فتح القائمة
   useEffect(() => {
     if (showNotification) {
       fetchNotifications();
@@ -245,37 +337,88 @@ const Header = ({
             {/* زر الدردشة */}
             <div className="message-icon" onClick={toggleChat}>
               <i className="fas fa-comment-dots"></i>
-              <div className="notification-badge">1</div>
+              {conversations.filter(c => c.unread).length > 0 && (
+                <div className="notification-badge">
+                  {conversations.filter(c => c.unread).length}
+                </div>
+              )}
             </div>
             
-            {/* قائمة الدردشة */}
+            {/* قائمة الدردشة المعدلة */}
             <div className={`chat-dropdown ${showChat ? 'show' : ''}`}>
-              <div className="chat-header">
-                <div className="chat-title">الدردشة الأكاديمية</div>
-                <div className="chat-close" onClick={toggleChat}>
-                  <i className="fas fa-times"></i>
-                </div>
-              </div>
-              <div className="chat-body">
-                <div className="message-item received">
-                  <div className="message-content">
-                    مرحباً أحمد،
+              {activeChatTab === 'conversations' ? (
+                <>
+                  <div className="chat-header">
+                    <div className="chat-title">المحادثات</div>
+                    <div className="chat-close" onClick={toggleChat}>
+                      <i className="fas fa-times"></i>
+                    </div>
                   </div>
-                  <div className="message-time">10:30 ص</div>
-                </div>
-                <div className="message-item sent">
-                  <div className="message-content">
-                   السلام عليكم 
+                  
+                  <div className="conversations-list">
+                    {conversations.map(conversation => (
+                      <div 
+                        key={conversation.id} 
+                        className={`conversation-item ${conversation.unread ? 'unread' : ''}`}
+                        onClick={() => handleSelectConversation(conversation)}
+                      >
+                        <div className="conversation-avatar">
+                          <img src={conversation.avatar} alt={conversation.name} />
+                        </div>
+                        <div className="conversation-details">
+                          <div className="conversation-name">{conversation.name}</div>
+                          <div className="conversation-last-message">{conversation.lastMessage}</div>
+                        </div>
+                        <div className="conversation-time">
+                          {conversation.time}
+                          {conversation.unread && <div className="unread-badge"></div>}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="message-time">10:35 ص</div>
-                </div>
-              </div>
-              <div className="chat-input">
-                <input type="text" placeholder="اكتب رسالتك هنا..." />
-                <button className="chat-send-btn">
-                  <i className="fas fa-paper-plane"></i>
-                </button>
-              </div>
+                </>
+              ) : (
+                <>
+                  <div className="chat-header">
+                    <button className="back-button" onClick={handleBackToConversations}>
+                      <i className="fas fa-arrow-right"></i>
+                    </button>
+                    <div className="chat-title">{selectedConversation?.name}</div>
+                    <div className="chat-close" onClick={toggleChat}>
+                      <i className="fas fa-times"></i>
+                    </div>
+                  </div>
+                  
+                  <div className="chat-body">
+                    {selectedConversation?.messages.map(message => (
+                      <div 
+                        key={message.id} 
+                        className={`message-item ${message.sent ? 'sent' : 'received'}`}
+                      >
+                        <div className="message-content">
+                          {message.text}
+                        </div>
+                        <div className="message-time">
+                          {message.time}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div className="chat-input">
+                    <input 
+                      type="text" 
+                      placeholder="اكتب رسالتك هنا..." 
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                    />
+                    <button className="chat-send-btn" onClick={handleSendMessage}>
+                      <i className="fas fa-paper-plane"></i>
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
           

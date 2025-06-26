@@ -22,6 +22,6 @@ Broadcast::channel('notifications.{userId}', function (User $user, $userId) {
 Broadcast::channel('global.notifications', function ($user) {
     return $user !== null; // أي مستخدم مصادق عليه يمكنه الاستماع
 });
-Broadcast::channel('chat.{userId}', function ($user, $userId) {
-    return (int) $user->userId === (int) $userId;
-});
+Broadcast::channel('private-chat.{userId}', function ($user, $userId) {
+    return (int)$user->id === (int)$userId;
+}, ['guards' => ['api']]); // أضف هذا الخيار
