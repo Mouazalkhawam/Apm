@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import './Header.css';
+import Echo from 'laravel-echo';
+import Pusher from 'pusher-js';
+
+// تكوين Pusher للاستخدام العام
+window.Pusher = Pusher;
 
 const Header = ({ 
   showNotification, 
@@ -20,57 +25,176 @@ const Header = ({
   const [activeChatTab, setActiveChatTab] = useState('conversations');
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [message, setMessage] = useState('');
-  const [conversations, setConversations] = useState([
-    {
-      id: 1,
-      name: 'أحمد محمد',
-      lastMessage: 'مرحباً، كيف حالك؟',
-      time: '10:30 ص',
-      unread: true,
-      avatar: 'https://via.placeholder.com/40',
-      messages: [
-        { id: 1, text: 'مرحباً أحمد،', time: '10:30 ص', sent: false },
-        { id: 2, text: 'السلام عليكم', time: '10:35 ص', sent: true },
-        { id: 3, text: 'كيف يمكنني مساعدتك اليوم؟', time: '10:36 ص', sent: false },
-      ]
-    },
-    {
-      id: 2,
-      name: 'فريق المشروع الأكاديمي',
-      lastMessage: 'تم تحديث الجدول الزمني',
-      time: 'أمس',
-      unread: false,
-      avatar: 'https://via.placeholder.com/40/791770/ffffff',
-      messages: [
-        { id: 1, text: 'تم تحديث الجدول الزمني للمشروع', time: 'أمس', sent: false },
-        { id: 2, text: 'شكراً للإعلام', time: 'أمس', sent: true },
-      ]
-    },
-    {
-      id: 3,
-      name: 'د. سامي علي',
-      lastMessage: 'هل انتهيت من المهمة؟',
-      time: '25/05',
-      unread: false,
-      avatar: 'https://via.placeholder.com/40',
-      messages: [
-        { id: 1, text: 'هل انتهيت من المهمة؟', time: '25/05', sent: false },
-        { id: 2, text: 'نعم، سأرسلها اليوم', time: '25/05', sent: true },
-      ]
-    }
-  ]);
+  const [conversations, setConversations] = useState([]);
+  const [loadingConversations, setLoadingConversations] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // حالات مودال إنشاء محادثة جديدة
   const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [newChatUsers, setNewChatUsers] = useState([
-    { id: 1, name: 'أحمد محمد', selected: false },
-    { id: 2, name: 'محمد علي', selected: false },
-    { id: 3, name: 'د. سامي علي', selected: false },
-    { id: 4, name: 'فريق المشروع', selected: false },
-    { id: 5, name: 'نورا أحمد', selected: false },
-  ]);
+  const [newChatUsers, setNewChatUsers] = useState([]);
   const [newChatName, setNewChatName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+
+  // تهيئة Echo/Pusher
+  const [echo, setEcho] = useState(null);
+
+  useEffect(() => {
+    // تهيئة Pusher فقط عند توفر المفاتيح
+    if (import.meta.env.VITE_PUSHER_APP_KEY) {
+      const echoInstance = new Echo({
+        broadcaster: 'pusher',
+        key: import.meta.env.VITE_PUSHER_APP_KEY,
+        cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+        forceTLS: true,
+        encrypted: true,
+        authEndpoint: `${import.meta.env.VITE_API_URL}/broadcasting/auth`,
+        auth: {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+          },
+        },
+      });
+
+      setEcho(echoInstance);
+
+      return () => {
+        echoInstance.disconnect();
+      };
+    }
+  }, []);
+
+  // جلب المحادثات من الخادم
+  const fetchConversations = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/messages/conversations`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const formattedConversations = response.data.data.map(conv => ({
+          id: conv.conversation_id,
+          name: conv.other_user.name,
+          lastMessage: conv.messages[0]?.content || 'بداية المحادثة',
+          time: formatTimeAgo(conv.messages[0]?.created_at) || 'الآن',
+          unread: conv.unread_count > 0,
+          avatar: `https://ui-avatars.com/api/?name=${conv.other_user.name}&background=791770&color=fff`,
+          messages: conv.messages.map(msg => ({
+            id: msg.id,
+            text: msg.content,
+            time: formatTime(msg.created_at),
+            sent: msg.sender_id === parseInt(localStorage.getItem('user_id')),
+            is_read: msg.is_read
+          })).reverse()
+        }));
+
+        setConversations(formattedConversations);
+      }
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+    } finally {
+      setLoadingConversations(false);
+    }
+  };
+
+  // جلب عدد الرسائل غير المقروءة
+  const fetchUnreadCount = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/messages/unread-count`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        setUnreadCount(response.data.unread_count);
+      }
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+  };
+
+  // جلب رسائل محادثة محددة
+  const fetchChatMessages = async (userId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/messages/conversation/${userId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const messages = response.data.messages.map(msg => ({
+          id: msg.message_id,
+          text: msg.content,
+          time: formatTime(msg.created_at),
+          sent: msg.sender_id === parseInt(localStorage.getItem('user_id')),
+          is_read: msg.is_read
+        }));
+
+        return messages;
+      }
+    } catch (err) {
+      console.error('Error fetching chat messages:', err);
+      return [];
+    }
+  };
+
+  // جلب قائمة المستخدمين لإنشاء محادثة جديدة
+  const fetchUsersForNewChat = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
+
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/users`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        setNewChatUsers(response.data.data.map(user => ({
+          id: user.userId,
+          name: user.name,
+          selected: false
+        })));
+      }
+    } catch (err) {
+      console.error('Error fetching users:', err);
+    }
+  };
+
+  // تنسيق التاريخ والوقت
+  const formatTime = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // تنسيق الوقت المنقضي
+  const formatTimeAgo = (dateString) => {
+    if (!dateString) return 'الآن';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now - date) / 1000);
+
+    if (diffInSeconds < 60) return 'الآن';
+    if (diffInSeconds < 3600) return `منذ ${Math.floor(diffInSeconds / 60)} دقائق`;
+    if (diffInSeconds < 86400) return `منذ ${Math.floor(diffInSeconds / 3600)} ساعات`;
+    if (diffInSeconds < 2592000) return `منذ ${Math.floor(diffInSeconds / 86400)} أيام`;
+    if (diffInSeconds < 31536000) return `منذ ${Math.floor(diffInSeconds / 2592000)} أشهر`;
+    return `منذ ${Math.floor(diffInSeconds / 31536000)} سنوات`;
+  };
 
   // دالة تسجيل الخروج
   const handleLogoutClick = (e) => {
@@ -86,7 +210,7 @@ const Header = ({
         throw new Error('No access token found');
       }
 
-      const response = await axios.get('http://127.0.0.1:8000/api/notifications', {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -111,7 +235,7 @@ const Header = ({
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      await axios.put(`http://127.0.0.1:8000/api/notifications/${notificationId}/read`, {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/notifications/${notificationId}/read`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -131,7 +255,7 @@ const Header = ({
       const token = localStorage.getItem('access_token');
       if (!token || !selectedNotification) return;
 
-      const response = await axios.post('http://127.0.0.1:8000/api/projects/approve', {
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/projects/approve`, {
         user_id: localStorage.getItem('user_id'),
         group_id: selectedNotification.extra_data.group_id
       }, {
@@ -156,7 +280,7 @@ const Header = ({
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      await axios.put('http://127.0.0.1:8000/api/notifications/read-all', {}, {
+      await axios.put(`${import.meta.env.VITE_API_URL}/notifications/read-all`, {}, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -169,20 +293,6 @@ const Header = ({
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
     }
-  };
-
-  // تنسيق الوقت المنقضي
-  const formatTimeAgo = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInSeconds = Math.floor((now - date) / 1000);
-
-    if (diffInSeconds < 60) return 'الآن';
-    if (diffInSeconds < 3600) return `منذ ${Math.floor(diffInSeconds / 60)} دقائق`;
-    if (diffInSeconds < 86400) return `منذ ${Math.floor(diffInSeconds / 3600)} ساعات`;
-    if (diffInSeconds < 2592000) return `منذ ${Math.floor(diffInSeconds / 86400)} أيام`;
-    if (diffInSeconds < 31536000) return `منذ ${Math.floor(diffInSeconds / 2592000)} أشهر`;
-    return `منذ ${Math.floor(diffInSeconds / 31536000)} سنوات`;
   };
 
   // أيقونة حسب نوع الإشعار
@@ -210,46 +320,92 @@ const Header = ({
   };
 
   // اختيار محادثة
-  const handleSelectConversation = (conversation) => {
-    setSelectedConversation(conversation);
-    setActiveChatTab('chat');
-    
-    // تعيين المحادثة كمقروءة
-    setConversations(conversations.map(conv => 
-      conv.id === conversation.id ? { ...conv, unread: false } : conv
-    ));
+  const handleSelectConversation = async (conversation) => {
+    try {
+      const messages = await fetchChatMessages(conversation.id);
+      
+      const updatedConversation = {
+        ...conversation,
+        messages: messages,
+        unread: false
+      };
+
+      setSelectedConversation(updatedConversation);
+      setActiveChatTab('chat');
+      
+      // تحديث حالة المحادثة كمقروءة
+      const updatedConversations = conversations.map(conv => 
+        conv.id === conversation.id ? { ...conv, unread: false } : conv
+      );
+      
+      setConversations(updatedConversations);
+      setUnreadCount(prev => prev - (conversation.unread ? 1 : 0));
+      
+      // تحديث الرسائل كمقروءة في الخادم
+      await axios.patch(`${import.meta.env.VITE_API_URL}/messages/mark-all-read`, {
+        conversation_id: conversation.id
+      }, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('access_token')}`
+        }
+      });
+      
+    } catch (err) {
+      console.error('Error selecting conversation:', err);
+    }
   };
 
   // إرسال رسالة
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim() || !selectedConversation) return;
 
-    const newMessage = {
-      id: Date.now(),
-      text: message,
-      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      sent: true
-    };
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
 
-    // تحديث المحادثة المحددة
-    const updatedConversations = conversations.map(conv => {
-      if (conv.id === selectedConversation.id) {
-        return {
-          ...conv,
-          messages: [...conv.messages, newMessage],
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/messages`, {
+        receiver_id: selectedConversation.id,
+        content: message
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const newMessage = {
+          id: response.data.data.message_id,
+          text: message,
+          time: 'الآن',
+          sent: true,
+          is_read: false
+        };
+
+        // تحديث المحادثة المحددة
+        const updatedConversation = {
+          ...selectedConversation,
+          messages: [...selectedConversation.messages, newMessage],
           lastMessage: message,
           time: 'الآن'
         };
-      }
-      return conv;
-    });
 
-    setConversations(updatedConversations);
-    setSelectedConversation({
-      ...selectedConversation,
-      messages: [...selectedConversation.messages, newMessage]
-    });
-    setMessage('');
+        setSelectedConversation(updatedConversation);
+        
+        // تحديث قائمة المحادثات
+        const updatedConversations = conversations.map(conv => 
+          conv.id === selectedConversation.id ? {
+            ...conv,
+            lastMessage: message,
+            time: 'الآن'
+          } : conv
+        );
+        
+        setConversations(updatedConversations);
+        setMessage('');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+    }
   };
 
   // العودة إلى قائمة المحادثات
@@ -259,7 +415,8 @@ const Header = ({
   };
 
   // فتح مودال إنشاء محادثة جديدة
-  const handleNewChatClick = () => {
+  const handleNewChatClick = async () => {
+    await fetchUsersForNewChat();
     setShowNewChatModal(true);
   };
 
@@ -279,28 +436,46 @@ const Header = ({
   };
 
   // إنشاء محادثة جديدة
-  const handleCreateNewChat = () => {
+  const handleCreateNewChat = async () => {
     const selectedUsers = newChatUsers.filter(user => user.selected);
     if (selectedUsers.length === 0) return;
 
-    const chatName = newChatName || selectedUsers.map(user => user.name).join('، ');
-    
-    const newConversation = {
-      id: Date.now(),
-      name: chatName,
-      lastMessage: 'بدأت المحادثة',
-      time: 'الآن',
-      unread: false,
-      avatar: 'https://via.placeholder.com/40',
-      messages: [
-        { id: 1, text: 'بدأت المحادثة', time: 'الآن', sent: false }
-      ]
-    };
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) return;
 
-    setConversations([newConversation, ...conversations]);
-    setSelectedConversation(newConversation);
-    setActiveChatTab('chat');
-    handleCloseNewChatModal();
+      const response = await axios.post(`${import.meta.env.VITE_API_URL}/messages`, {
+        receiver_id: selectedUsers[0].id,
+        content: 'بدأت المحادثة'
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        const chatName = newChatName || selectedUsers.map(user => user.name).join('، ');
+        
+        const newConversation = {
+          id: selectedUsers[0].id,
+          name: chatName,
+          lastMessage: 'بدأت المحادثة',
+          time: 'الآن',
+          unread: false,
+          avatar: `https://ui-avatars.com/api/?name=${chatName}&background=791770&color=fff`,
+          messages: [
+            { id: response.data.data.message_id, text: 'بدأت المحادثة', time: 'الآن', sent: true }
+          ]
+        };
+
+        setConversations([newConversation, ...conversations]);
+        setSelectedConversation(newConversation);
+        setActiveChatTab('chat');
+        handleCloseNewChatModal();
+      }
+    } catch (err) {
+      console.error('Error creating new chat:', err);
+    }
   };
 
   // البحث عن مستخدمين
@@ -308,12 +483,50 @@ const Header = ({
     user.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // جلب الإشعارات عند فتح القائمة
+  // جلب البيانات الأولية
   useEffect(() => {
-    if (showNotification) {
-      fetchNotifications();
-    }
-  }, [showNotification]);
+    fetchConversations();
+    fetchUnreadCount();
+    fetchNotifications();
+  }, []);
+
+  // الاشتراك في قنوات Pusher للرسائل الجديدة
+  useEffect(() => {
+    if (!echo) return;
+
+    const userId = localStorage.getItem('user_id');
+    if (!userId) return;
+
+    echo.private(`chat.${userId}`)
+      .listen('.new.message', (data) => {
+        fetchConversations();
+        fetchUnreadCount();
+        
+        if (selectedConversation && selectedConversation.id === data.message.sender_id) {
+          const newMessage = {
+            id: data.message.message_id,
+            text: data.message.content,
+            time: 'الآن',
+            sent: false,
+            is_read: false
+          };
+          
+          setSelectedConversation(prev => ({
+            ...prev,
+            messages: [...prev.messages, newMessage],
+            lastMessage: data.message.content,
+            time: 'الآن'
+          }));
+        }
+      })
+      .listen('.message.read', () => {
+        fetchConversations();
+      });
+
+    return () => {
+      echo.leave(`chat.${userId}`);
+    };
+  }, [echo, selectedConversation]);
 
   return (
     <header className="header">
@@ -399,14 +612,14 @@ const Header = ({
             {/* زر الدردشة */}
             <div className="message-icon" onClick={toggleChat}>
               <i className="fas fa-comment-dots"></i>
-              {conversations.filter(c => c.unread).length > 0 && (
+              {unreadCount > 0 && (
                 <div className="notification-badge">
-                  {conversations.filter(c => c.unread).length}
+                  {unreadCount}
                 </div>
               )}
             </div>
             
-            {/* قائمة الدردشة المعدلة */}
+            {/* قائمة الدردشة */}
             <div className={`chat-dropdown ${showChat ? 'show' : ''}`}>
               {activeChatTab === 'conversations' ? (
                 <>
@@ -422,27 +635,37 @@ const Header = ({
                     </div>
                   </div>
                   
-                  <div className="conversations-list">
-                    {conversations.map(conversation => (
-                      <div 
-                        key={conversation.id} 
-                        className={`conversation-item ${conversation.unread ? 'unread' : ''}`}
-                        onClick={() => handleSelectConversation(conversation)}
-                      >
-                        <div className="conversation-avatar">
-                          <img src={conversation.avatar} alt={conversation.name} />
+                  {loadingConversations ? (
+                    <div className="chat-loading">
+                      <i className="fas fa-spinner fa-spin"></i> جاري تحميل المحادثات...
+                    </div>
+                  ) : conversations.length === 0 ? (
+                    <div className="chat-empty">
+                      <i className="fas fa-comment-slash"></i> لا توجد محادثات
+                    </div>
+                  ) : (
+                    <div className="conversations-list">
+                      {conversations.map(conversation => (
+                        <div 
+                          key={conversation.id} 
+                          className={`conversation-item ${conversation.unread ? 'unread' : ''}`}
+                          onClick={() => handleSelectConversation(conversation)}
+                        >
+                          <div className="conversation-avatar">
+                            <img src={conversation.avatar} alt={conversation.name} />
+                          </div>
+                          <div className="conversation-details">
+                            <div className="conversation-name">{conversation.name}</div>
+                            <div className="conversation-last-message">{conversation.lastMessage}</div>
+                          </div>
+                          <div className="conversation-time">
+                            {conversation.time}
+                            {conversation.unread && <div className="unread-badge"></div>}
+                          </div>
                         </div>
-                        <div className="conversation-details">
-                          <div className="conversation-name">{conversation.name}</div>
-                          <div className="conversation-last-message">{conversation.lastMessage}</div>
-                        </div>
-                        <div className="conversation-time">
-                          {conversation.time}
-                          {conversation.unread && <div className="unread-badge"></div>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               ) : (
                 <>
@@ -467,6 +690,15 @@ const Header = ({
                         </div>
                         <div className="message-time">
                           {message.time}
+                          {message.sent && (
+                            <span className="read-status">
+                              {message.is_read ? (
+                                <i className="fas fa-check-double read"></i>
+                              ) : (
+                                <i className="fas fa-check"></i>
+                              )}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -561,7 +793,7 @@ const Header = ({
                       onClick={() => toggleUserSelection(user.id)}
                     >
                       <div className="user-avatar">
-                        <img src={`https://via.placeholder.com/40?text=${user.name.charAt(0)}`} alt={user.name} />
+                        <img src={`https://ui-avatars.com/api/?name=${user.name}&background=791770&color=fff`} alt={user.name} />
                       </div>
                       <div className="user-name">{user.name}</div>
                       <div className="user-check">
