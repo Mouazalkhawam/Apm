@@ -60,6 +60,18 @@ const Header = ({
     }
   ]);
 
+  // حالات مودال إنشاء محادثة جديدة
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatUsers, setNewChatUsers] = useState([
+    { id: 1, name: 'أحمد محمد', selected: false },
+    { id: 2, name: 'محمد علي', selected: false },
+    { id: 3, name: 'د. سامي علي', selected: false },
+    { id: 4, name: 'فريق المشروع', selected: false },
+    { id: 5, name: 'نورا أحمد', selected: false },
+  ]);
+  const [newChatName, setNewChatName] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
+
   // دالة تسجيل الخروج
   const handleLogoutClick = (e) => {
     e.preventDefault();
@@ -246,6 +258,56 @@ const Header = ({
     setSelectedConversation(null);
   };
 
+  // فتح مودال إنشاء محادثة جديدة
+  const handleNewChatClick = () => {
+    setShowNewChatModal(true);
+  };
+
+  // إغلاق مودال إنشاء محادثة جديدة
+  const handleCloseNewChatModal = () => {
+    setShowNewChatModal(false);
+    setNewChatName('');
+    setSearchTerm('');
+    setNewChatUsers(newChatUsers.map(user => ({ ...user, selected: false })));
+  };
+
+  // اختيار/إلغاء اختيار مستخدم في مودال إنشاء محادثة
+  const toggleUserSelection = (userId) => {
+    setNewChatUsers(newChatUsers.map(user => 
+      user.id === userId ? { ...user, selected: !user.selected } : user
+    ));
+  };
+
+  // إنشاء محادثة جديدة
+  const handleCreateNewChat = () => {
+    const selectedUsers = newChatUsers.filter(user => user.selected);
+    if (selectedUsers.length === 0) return;
+
+    const chatName = newChatName || selectedUsers.map(user => user.name).join('، ');
+    
+    const newConversation = {
+      id: Date.now(),
+      name: chatName,
+      lastMessage: 'بدأت المحادثة',
+      time: 'الآن',
+      unread: false,
+      avatar: 'https://via.placeholder.com/40',
+      messages: [
+        { id: 1, text: 'بدأت المحادثة', time: 'الآن', sent: false }
+      ]
+    };
+
+    setConversations([newConversation, ...conversations]);
+    setSelectedConversation(newConversation);
+    setActiveChatTab('chat');
+    handleCloseNewChatModal();
+  };
+
+  // البحث عن مستخدمين
+  const filteredUsers = newChatUsers.filter(user =>
+    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   // جلب الإشعارات عند فتح القائمة
   useEffect(() => {
     if (showNotification) {
@@ -350,8 +412,13 @@ const Header = ({
                 <>
                   <div className="chat-header">
                     <div className="chat-title">المحادثات</div>
-                    <div className="chat-close" onClick={toggleChat}>
-                      <i className="fas fa-times"></i>
+                    <div className="chat-actions">
+                      <button className="new-chat-btn" onClick={handleNewChatClick}>
+                        <i className="fas fa-plus"></i> جديد
+                      </button>
+                      <div className="chat-close" onClick={toggleChat}>
+                        <i className="fas fa-times"></i>
+                      </div>
                     </div>
                   </div>
                   
@@ -447,6 +514,74 @@ const Header = ({
                 </button>
                 <button className="btn btn-confirm" onClick={handleAcceptMembership}>
                   قبول العضوية
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* مودال إنشاء محادثة جديدة */}
+      {showNewChatModal && (
+        <div className="modal-overlay-accept">
+          <div className="accept-modal">
+            <div className="modal-header">
+              <h3>إنشاء محادثة جديدة</h3>
+              <button className="close-btn" onClick={handleCloseNewChatModal}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="new-chat-form">
+                <div className="form-group">
+                  <label>اسم المحادثة (اختياري)</label>
+                  <input
+                    type="text"
+                    value={newChatName}
+                    onChange={(e) => setNewChatName(e.target.value)}
+                    placeholder="أدخل اسم للمحادثة"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>بحث عن أعضاء</label>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="ابحث عن أعضاء"
+                  />
+                </div>
+                
+                <div className="users-list">
+                  {filteredUsers.map(user => (
+                    <div 
+                      key={user.id} 
+                      className={`user-item ${user.selected ? 'selected' : ''}`}
+                      onClick={() => toggleUserSelection(user.id)}
+                    >
+                      <div className="user-avatar">
+                        <img src={`https://via.placeholder.com/40?text=${user.name.charAt(0)}`} alt={user.name} />
+                      </div>
+                      <div className="user-name">{user.name}</div>
+                      <div className="user-check">
+                        {user.selected && <i className="fas fa-check"></i>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="modal-actions">
+                <button className="btn btn-cancel" onClick={handleCloseNewChatModal}>
+                  إلغاء
+                </button>
+                <button 
+                  className="btn btn-confirm" 
+                  onClick={handleCreateNewChat}
+                  disabled={newChatUsers.filter(u => u.selected).length === 0}
+                >
+                  إنشاء المحادثة
                 </button>
               </div>
             </div>
