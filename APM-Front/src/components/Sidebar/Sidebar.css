@@ -7,8 +7,7 @@
     display: flex;
     flex-direction: column;
     transition: all 0.3s ease;
-    height: 100vh;
-    position: sticky;
+    position: fixed;
     top: 0;
 }
 
@@ -21,7 +20,7 @@
 }
 
 /* Logo Section */
-.sidebar-logo {
+.sidebar-logo-dash {
     padding: 1rem;
     border-bottom: 1px solid #5c1157;
     display: flex;
@@ -84,13 +83,14 @@
 }
 
 /* Navigation */
-.sidebar-nav {
+.sidebar-nav-dash {
     flex: 1;
     overflow-y: auto;
     padding: 0.5rem;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
+    min-height: 80vh;
 }
 
 .nav-link {
@@ -121,7 +121,7 @@
     margin-right: 0.75rem;
 }
 
-.nav-badge {
+.nav-badge-dash {
     font-size: 0.75rem;
     background-color: #eab307;
     color: white;
@@ -130,7 +130,7 @@
     margin-right: auto;
 }
 
-.nav-badge.alert {
+.nav-badge-dash.alert {
     background-color: #eab307;
 }
 
@@ -143,12 +143,12 @@
 
 /* Responsive */
 @media (max-width: 767px) {
-    .sidebar {
+    .sidebar-dash-super {
         position: fixed;
         top: 0;
         right: 0;
         bottom: 0;
-        z-index: 30;
+        z-index: 2000;
         width: 250px;
         transform: translateX(100%);
         transition: transform 0.3s ease;
@@ -166,12 +166,13 @@
   
   .sidebar-collapsed {
     width: 60px !important; /* عرض ضيق عند الطي */
+    min-height: 100vh
   }
   
   .sidebar-collapsed .sidebar-text,
   .sidebar-collapsed .profile-image,
   .sidebar-collapsed .profile-info,
-  .sidebar-collapsed .nav-badge {
+  .sidebar-collapsed .nav-badge-dash {
     display: none;
   }
   
@@ -180,7 +181,7 @@
     padding: 12px 0;
   }
   
-  .sidebar-collapsed .sidebar-logo {
+  .sidebar-collapsed .sidebar-logo-dash {
     justify-content: center;
   }
   
@@ -190,4 +191,137 @@
     align-items: center;
     justify-content: center;
     /* ... الأسلوب الحالي ... */
+  }
+
+  /* تحسينات عامة للداشبورد */
+.dashboard-container-dash {
+    display: flex;
+    min-height: 100vh;
+    position: relative;
+    direction: rtl;
+  }
+  
+  /* تحسينات للسايدبار */
+
+  
+  .sidebar-collapsed {
+    width: 80px;
+  }
+  
+  /* تحسينات للمحتوى الرئيسي */
+  .main-content-cord-dash {
+    margin-right: 250px;
+    width: calc(100% - 250px);
+    transition: all 0.3s ease;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .sidebar-collapsed + .main-content-cord-dash {
+    margin-right: 80px;
+    width: calc(100% - 80px);
+  }
+  
+  /* تحسينات للشريط العلوي */
+  .top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 90;
+    width: 100%;
+  }
+  
+  /* تحسينات للبطاقات */
+  .stats-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  }
+  
+  /* تحسينات للشبكات الرئيسية */
+  .main-grid, .tasks-students-grid {
+    display: grid;
+    gap: 1.5rem;
+  }
+  
+  /* تحسينات للجداول */
+  .students-table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+  }
+  
+  /* تحسينات للرسوم البيانية */
+  .chart-container {
+    position: relative;
+    height: 300px;
+    min-height: 300px;
+  }
+  
+  /* وسائط الاستعلام للشاشات الصغيرة */
+  @media (max-width: 1024px) {
+   /* .sidebar-dash-super {
+      transform: translateX(100%);
+    }*/
+    
+    .sidebar-open {
+      transform: translateX(0);
+    }
+    
+    .main-content-cord-dash {
+      margin-right: 0;
+      width: 100%;
+    }
+    
+    .mobile-sidebar-toggle {
+      display: block;
+    }
+    
+    .overlay {
+      display: none;
+    }
+    
+    .sidebar-open + .overlay {
+      display: block;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .stats-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .main-grid, .tasks-students-grid {
+      grid-template-columns: 1fr;
+    }
+    
+    .top-nav-container {
+      flex-wrap: wrap;
+    }
+    
+    .search-container {
+      order: 1;
+      width: 100%;
+      margin-top: 0.5rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .content-area {
+      padding: 0.5rem;
+      margin: 0.5rem;
+    }
+    
+    .welcome-title {
+      font-size: 1.25rem;
+    }
+    
+    .stat-card {
+      flex-direction: column;
+      text-align: center;
+    }
+    
+    .stat-icon-container {
+      margin-top: 0.5rem;
+    }
   }

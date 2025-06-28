@@ -14,6 +14,10 @@
     max-width: 1200px;
     margin: 0 auto;
     padding: 0 20px;
+    overflow: auto;
+  }
+  .nav-svg svg{
+    width: 30px;
   }
   
   .search-container-dash-super {
@@ -61,17 +65,18 @@
   
   .notification-badge {
     position: absolute;
-    top: -5px;
-    right: -5px;
-    background-color: #ef4444;
+    top: 0px;
+    right: -0.25rem;
+    background-color: #eab307;
     color: white;
-    border-radius: 50%;
-    width: 18px;
-    height: 18px;
-    display: flex;
+    font-size: 11px;
+    border-radius: 9999px;
+    width: 15px;
+    height: 15px;
+    display: flex
+;
     align-items: center;
     justify-content: center;
-    font-size: 0.7rem;
   }
   
   .notification-badge.blue {

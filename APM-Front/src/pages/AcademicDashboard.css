@@ -13,10 +13,13 @@
         }*/
         
         /* Layout */
-        .dashboard-container {
+        .dashboard-container-dash {
             display: flex;
             height: 100vh;
             overflow: hidden;
+            position: fixed;
+            top: 0;
+            max-width: 100vw;
         }
         
         /* Sidebar */
@@ -102,7 +105,7 @@
         }
         
         /* Navigation */
-        .sidebar-nav {
+        .sidebar-nav-dash {
             flex: 1;
             overflow-y: auto;
             padding: 0.5rem;
@@ -159,7 +162,7 @@
         /* Mobile Sidebar Toggle */
         .mobile-sidebar-toggle {
             display: none;
-            position: fixed;
+            position: sticky;
             top: 1rem;
             left: 1rem;
             z-index: 30;
@@ -188,11 +191,13 @@
         }
         
         /* Main Content */
-        .main-content-cord {
+        .main-content-cord-dash {
             flex: 1;
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            max-width: 95%;
+            margin-right: 15rem;
         }
         
         /* Top Navigation - تم تعديله لجعله شفافاً */
@@ -278,11 +283,11 @@
             font-size: 1.25rem;
         }
         
-        .notification-badge {
+      /*  .notification-badge {
             position: absolute;
             top: -0.25rem;
             right: -0.25rem;
-            background-color: #eab307; /* Changed to gold */
+           
             color: white;
             font-size: 0.75rem;
             border-radius: 9999px;
@@ -291,7 +296,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-        }
+        }*/
         
         .notification-badge.blue {
             background-color: #791770; /* Changed to purple */
@@ -331,6 +336,7 @@
             overflow: auto;
             padding: 1rem;
             background-color: #f9fafb;
+            margin: 1rem;
         }
         
         /*.container {
@@ -451,6 +457,7 @@
             border-radius: 0.5rem;
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
             padding: 1rem;
+            max-width: 75vw;
         }
         
         .chart-header {
@@ -809,6 +816,7 @@
             .tasks-students-grid {
                 grid-template-columns: 1fr 2fr;
             }
+          
         }
         
         @media (min-width: 1024px) {
@@ -824,8 +832,16 @@
         @media (max-width: 767px) {
             .mobile-sidebar-toggle {
                 display: block;
+                z-index: 200;
+                margin-top: 10px;
             }
-            
+            .nav-top-dash{
+                min-width: 100vw;
+                background-color: #791770;
+            }
+            .top-nav-dash-super{
+                max-width: 90vw;
+            }
             .sidebar {
                 position: fixed;
                 top: 0;
@@ -840,4 +856,9 @@
             .sidebar-open {
                 transform: translateX(0);
             }
+            .main-content-cord-dash{
+                margin-right: 0;
+            }
         }
+
+        

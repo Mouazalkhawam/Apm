@@ -36,7 +36,7 @@ const Sidebar = React.forwardRef(({
   return (
     <div className={`sidebar-dash-super ${collapsed ? 'sidebar-collapsed' : ''}`} ref={ref}>
       {/* Logo - Show only arrow when collapsed */}
-      <div className="sidebar-logo">
+      <div className="sidebar-logo-dash">
         {!collapsed && (
           <div className="logo-container">
             <FontAwesomeIcon icon={faGraduationCap} className="sidebar-logo-icon" />
@@ -60,7 +60,7 @@ const Sidebar = React.forwardRef(({
       )}
       
       {/* Navigation - Hide text and badges when collapsed */}
-      <nav className="sidebar-nav">
+      <nav className="sidebar-nav-dash">
         <div>
           {navItems.map((item, index) => (
             <div 
@@ -73,7 +73,7 @@ const Sidebar = React.forwardRef(({
                 <>
                   <span className="sidebar-text nav-text">{item.text}</span>
                   {item.badge && (
-                    <span className={`nav-badge sidebar-text ${item.alert ? 'alert' : ''}`}>
+                    <span className={`nav-badge-dash sidebar-text ${item.alert ? 'alert-dash' : ''}`}>
                       {item.badge}
                     </span>
                   )}

@@ -27,13 +27,13 @@ const TopNav = ({
         
         {/* Notification & User */}
         <div className="notification-area">
-          <button className="notification-button">
+          <button className="notification-button nav-svg">
             <FontAwesomeIcon icon={faBell} className="notification-icon" />
             {notifications.bell > 0 && (
               <span className="notification-badge">{notifications.bell}</span>
             )}
           </button>
-          <button className="notification-button">
+          <button className="notification-button nav-svg">
             <FontAwesomeIcon icon={faEnvelope} className="notification-icon" />
             {notifications.envelope > 0 && (
               <span className="notification-badge blue">{notifications.envelope}</span>
@@ -45,6 +45,7 @@ const TopNav = ({
             <span className="user-name">{user.name}</span>
             <FontAwesomeIcon icon={faChevronDown} className="user-dropdown" />
           </div>
+          
         </div>
       </div>
     </header>

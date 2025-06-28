@@ -105,7 +105,7 @@ const AcademicDashboard = () => {
   };
 
   return (
-    <div className="dashboard-container">
+    <div className="dashboard-container-dash">
       <SidebarWithRef 
         ref={sidebarRef}
         user={{
@@ -124,13 +124,13 @@ const AcademicDashboard = () => {
           { icon: faComments, text: "المناقشات", badge: 3 }
         ]}
       />
-      <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
-        <FontAwesomeIcon icon={faBars} />
-      </button>
       
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      <div className="main-content-cord">
+      <div className="main-content-cord-dash">
+     
+      <div className='nav-top-dash'>
+
         <TopNav 
           user={{
             name: "د.عفاف",
@@ -142,9 +142,12 @@ const AcademicDashboard = () => {
           }}
           searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
         />
-        
+              <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+        <FontAwesomeIcon icon={faBars} />
+      </button>
+        </div>
         <main className="content-area">
-          <div className="containerr">
+          <div className="container-dash">
             <div className="welcome-header">
               <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
