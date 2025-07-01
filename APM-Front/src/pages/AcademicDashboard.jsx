@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Sidebar from '../components/Sidebar/Sidebar';
-import TopNav from '../components/TopNav/TopNav'
+import TopNav from '../components/TopNav/TopNav';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faBars, faSearch, faBell, faEnvelope, 
@@ -19,12 +19,21 @@ const SidebarWithRef = React.forwardRef((props, ref) => (
 ));
 
 const AcademicDashboard = () => {
+  // Refs
   const sidebarRef = useRef(null);
   const overlayRef = useRef(null);
   const chartRef = useRef(null);
+  const mainContentRef = useRef(null);
+  
+  // States
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [contentEffectClass, setContentEffectClass] = useState('');
+  const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
+  
+  // Chart instance
   let progressChart = null;
 
+  // Initialize chart
   useEffect(() => {
     if (chartRef.current) {
       const ctx = chartRef.current.getContext('2d');
@@ -72,7 +81,11 @@ const AcademicDashboard = () => {
           plugins: {
             legend: {
               position: 'top',
-              rtl: true
+              rtl: true,
+              labels: {
+                usePointStyle: true,
+                padding: 20
+              }
             }
           }
         }
@@ -86,26 +99,36 @@ const AcademicDashboard = () => {
     };
   }, []);
 
+  // Toggle sidebar collapse
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  // Toggle content effect
+  const toggleContentEffect = () => {
+    setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
+  };
+
+  // Mobile sidebar handlers
   const toggleMobileSidebar = () => {
-    if (sidebarRef.current && overlayRef.current) {
-      sidebarRef.current.classList.add('sidebar-open');
-      overlayRef.current.classList.add('overlay-open');
-    }
+    sidebarRef.current?.classList.add('sidebar-open');
+    overlayRef.current?.classList.add('overlay-open');
   };
   
   const closeMobileSidebar = () => {
-    if (sidebarRef.current && overlayRef.current) {
-      sidebarRef.current.classList.remove('sidebar-open');
-      overlayRef.current.classList.remove('overlay-open');
-    }
+    sidebarRef.current?.classList.remove('sidebar-open');
+    overlayRef.current?.classList.remove('overlay-open');
+  };
+
+  // Handle time range change
+  const handleTimeRangeChange = (e) => {
+    setActiveTimeRange(e.target.value);
+    // Here you would typically update chart data based on selected range
   };
 
   return (
     <div className="dashboard-container-dash">
+      {/* Sidebar Component */}
       <SidebarWithRef 
         ref={sidebarRef}
         user={{
@@ -115,50 +138,58 @@ const AcademicDashboard = () => {
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
+        onToggleEffect={toggleContentEffect}
         navItems={[
           { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-          { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator" },
-          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/TasksPage" },
-          { icon: faFileAlt, text: "التقارير" },
-          { icon: faComments, text: "المناقشات", badge: 3 }
+          { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/projects" },
+          { icon: faUsers, text: "الطلاب", path:"/students" },
+          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/tasks" },
+          { icon: faFileAlt, text: "التقارير", path: "/reports" },
+          { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
         ]}
       />
       
+      {/* Overlay for mobile sidebar */}
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      <div className="main-content-cord-dash">
-     
-      <div className='nav-top-dash'>
-
-        <TopNav 
-          user={{
-            name: "د.عفاف",
-            image: "https://randomuser.me/api/portraits/women/44.jpg"
-          }}
-          notifications={{
-            bell: 3,
-            envelope: 7
-          }}
-          searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
-        />
-              <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
-        <FontAwesomeIcon icon={faBars} />
-      </button>
+      {/* Main Content Area */}
+      <div className={`main-content-cord-dash ${contentEffectClass}`} ref={mainContentRef}>
+        {/* Top Navigation */}
+        <div className='nav-top-dash'>
+          <TopNav 
+            user={{
+              name: "د.عفاف",
+              image: "https://randomuser.me/api/portraits/women/44.jpg"
+            }}
+            notifications={{
+              bell: 3,
+              envelope: 7
+            }}
+            searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
+          />
+          <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+            <FontAwesomeIcon icon={faBars} />
+          </button>
         </div>
+        
+        {/* Dashboard Content */}
         <main className="content-area">
           <div className="container-dash">
+            {/* Welcome Header */}
             <div className="welcome-header">
               <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             
+            {/* Stats Cards Grid */}
             <div className="stats-grid">
               <div className="stat-card blue">
                 <div className="stat-info">
                   <p className="stat-desc">إجمالي المشاريع</p>
                   <h3 className="stat-value">24</h3>
-                  <p className="stat-trend green"><FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الفصل</p>
+                  <p className="stat-trend green">
+                    <FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الفصل
+                  </p>
                 </div>
                 <div className="stat-icon-container">
                   <FontAwesomeIcon icon={faProjectDiagram} />
@@ -169,7 +200,9 @@ const AcademicDashboard = () => {
                 <div className="stat-info">
                   <p className="stat-desc">الطلاب المسجلين</p>
                   <h3 className="stat-value">143</h3>
-                  <p className="stat-trend green"><FontAwesomeIcon icon={faArrowUp} /> 12 طالب جديد هذا الشهر</p>
+                  <p className="stat-trend green">
+                    <FontAwesomeIcon icon={faArrowUp} /> 12 طالب جديد هذا الشهر
+                  </p>
                 </div>
                 <div className="stat-icon-container">
                   <FontAwesomeIcon icon={faUsers} />
@@ -180,7 +213,9 @@ const AcademicDashboard = () => {
                 <div className="stat-info">
                   <p className="stat-desc">المهام المعلقة</p>
                   <h3 className="stat-value">8</h3>
-                  <p className="stat-trend red"><FontAwesomeIcon icon={faExclamationCircle} /> 3 مهام تأخرت</p>
+                  <p className="stat-trend red">
+                    <FontAwesomeIcon icon={faExclamationCircle} /> 3 مهام تأخرت
+                  </p>
                 </div>
                 <div className="stat-icon-container">
                   <FontAwesomeIcon icon={faTasks} />
@@ -191,7 +226,9 @@ const AcademicDashboard = () => {
                 <div className="stat-info">
                   <p className="stat-desc">المناقشات الجديدة</p>
                   <h3 className="stat-value">7</h3>
-                  <p className="stat-trend blue"><FontAwesomeIcon icon={faCommentAlt} /> 2 تحتاج إجابتك</p>
+                  <p className="stat-trend blue">
+                    <FontAwesomeIcon icon={faCommentAlt} /> 2 تحتاج إجابتك
+                  </p>
                 </div>
                 <div className="stat-icon-container">
                   <FontAwesomeIcon icon={faComments} />
@@ -199,11 +236,17 @@ const AcademicDashboard = () => {
               </div>
             </div>
             
+            {/* Main Content Grid */}
             <div className="main-grid">
+              {/* Progress Chart Card */}
               <div className="chart-card">
                 <div className="chart-header">
                   <h2 className="chart-title">تقدم المشاريع</h2>
-                  <select className="chart-select">
+                  <select 
+                    className="chart-select" 
+                    value={activeTimeRange}
+                    onChange={handleTimeRangeChange}
+                  >
                     <option>هذا الأسبوع</option>
                     <option>هذا الشهر</option>
                     <option>هذا الفصل</option>
@@ -214,10 +257,11 @@ const AcademicDashboard = () => {
                 </div>
               </div>
               
+              {/* Projects List Card */}
               <div className="projects-card">
                 <div className="projects-header">
                   <h2 className="projects-title">أحدث المشاريع</h2>
-                  <a href="#" className="projects-link">عرض الكل</a>
+                  <a href="/projects" className="projects-link">عرض الكل</a>
                 </div>
                 <div className="projects-list">
                   <div className="project-item">

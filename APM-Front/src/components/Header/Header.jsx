@@ -39,7 +39,7 @@ const Header = ({
   const [echo, setEcho] = useState(null);
 
   useEffect(() => {
-    // تهيئة Pusher فقط عند توفر المفاتيح
+    // تهيئة Pusher مع التعديلات المطلوبة
     if (import.meta.env.VITE_PUSHER_APP_KEY) {
       const echoInstance = new Echo({
         broadcaster: 'pusher',
@@ -47,15 +47,43 @@ const Header = ({
         cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
         forceTLS: true,
         encrypted: true,
-        authEndpoint: `${import.meta.env.VITE_API_URL}/broadcasting/auth`,
+        authEndpoint: `${import.meta.env.VITE_API_URL}/pusher/auth`,
         auth: {
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('access_token')}`,
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
           },
+          params: {
+            socket_id: (channel) => channel.socket_id,
+            channel_name: (channel) => channel.name
+          }
         },
+        authorizer: (channel, options) => ({
+          authorize: (socketId, callback) => {
+            axios.post(`${import.meta.env.VITE_API_URL}/pusher/auth`, {
+              socket_id: socketId,
+              channel_name: channel.name
+            }, {
+              headers: {
+                'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+              }
+            })
+            .then(response => {
+              callback(false, response.data);
+            })
+            .catch(error => {
+              callback(true, error);
+            });
+          }
+        })
       });
 
       setEcho(echoInstance);
+
 
       return () => {
         echoInstance.disconnect();
@@ -156,7 +184,7 @@ const Header = ({
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/users`, {
+      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -493,41 +521,50 @@ const Header = ({
   // الاشتراك في قنوات Pusher للرسائل الجديدة
   useEffect(() => {
     if (!echo) return;
-
+  
     const userId = localStorage.getItem('user_id');
     if (!userId) return;
-
-    echo.private(`chat.${userId}`)
-      .listen('.new.message', (data) => {
-        fetchConversations();
-        fetchUnreadCount();
+  
+    const channel = echo.private(`App.Models.User.${userId}`);
+  
+    channel.listen('.App\\Events\\NewMessageSent', (data) => {
+      console.log('Received new message data:', data);
+      
+      // البيانات تأتي مباشرة ككائن الرسالة وليس ضمن خاصية message
+      const messageData = data;
+      
+      if (!messageData.sender || !messageData.sender.userId) {
+        console.error('Invalid message structure:', messageData);
+        return;
+      }
+      
+      // تحديث قائمة المحادثات وعدد الرسائل غير المقروءة
+      fetchConversations();
+      fetchUnreadCount();
+      
+      // إذا كانت المحادثة المفتوحة هي مع المرسل
+      if (selectedConversation?.id === messageData.sender.userId) {
+        const newMessage = {
+          id: messageData.message_id,
+          text: messageData.content,
+          time: 'الآن',
+          sent: false,
+          is_read: false
+        };
         
-        if (selectedConversation && selectedConversation.id === data.message.sender_id) {
-          const newMessage = {
-            id: data.message.message_id,
-            text: data.message.content,
-            time: 'الآن',
-            sent: false,
-            is_read: false
-          };
-          
-          setSelectedConversation(prev => ({
-            ...prev,
-            messages: [...prev.messages, newMessage],
-            lastMessage: data.message.content,
-            time: 'الآن'
-          }));
-        }
-      })
-      .listen('.message.read', () => {
-        fetchConversations();
-      });
-
+        setSelectedConversation(prev => ({
+          ...prev,
+          messages: [...prev.messages, newMessage],
+          lastMessage: messageData.content,
+          time: 'الآن'
+        }));
+      }
+    });
+  
     return () => {
-      echo.leave(`chat.${userId}`);
+      channel.stopListening('.App\\Events\\NewMessageSent');
     };
   }, [echo, selectedConversation]);
-
   return (
     <header className="header">
       <div className="header-content-main">

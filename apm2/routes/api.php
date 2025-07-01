@@ -16,12 +16,14 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiscussionScheduleController;
 use App\Http\Controllers\MessageController;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;
 // مسارات عامة بدون حماية
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::get('/all-skills', [StudentProfileController::class, 'getAllSkills']);
+
 
 
 // مسارات محمية تحتاج إلى Access Token
@@ -59,6 +61,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/messages/conversations', [MessageController::class, 'conversations']);
     Route::patch('/messages/{message}/read', [MessageController::class, 'markAsRead']);
     Route::patch('/messages/mark-all-read', [MessageController::class, 'markAllAsRead']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
     Route::post('/projects/approve', [ProjectController::class, 'approveMembership']);
     Route::post('/tasks', [TaskController::class, 'store']);
     Route::get('/stages/{stage}/tasks', [TaskController::class, 'getStageTasks']);
@@ -181,4 +184,6 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/supervisor/projects', [ProjectController::class, 'getSupervisorProjects']);
     Route::get('/supervisors/students-names', [ProjectController::class, 'getSupervisorsWithStudentsNames']);
+
+    Route::post('/pusher/auth', [\App\Http\Controllers\API\PusherAuthController::class, 'authenticate']);
 });

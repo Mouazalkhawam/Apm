@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faGraduationCap, faChevronRight, faChevronLeft, 
@@ -24,32 +24,75 @@ const Sidebar = React.forwardRef(({
     ],
     collapsed = false,
     onToggleCollapse = () => {},
+    onToggleEffect = () => {},
     logoText = "أكاديمية المشاريع"
   }, ref) => {
   
   const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+
+  // Effect to handle window resize
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 769;
+      setIsMobile(mobile);
+      
+      // Auto-expand sidebar when switching to mobile view
+      if (mobile && collapsed) {
+        onToggleCollapse();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Initial check on component mount
+    handleResize();
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [collapsed, onToggleCollapse]);
 
   const handleNavigation = (path) => {
     navigate(path);
+    // Close sidebar on mobile after navigation
+    if (isMobile) {
+      ref.current?.classList.remove('sidebar-open');
+      document.getElementById('overlay')?.classList.remove('overlay-open');
+    }
   };
 
+  const handleToggleClick = () => {
+    if (!isMobile) {
+      onToggleCollapse();
+      onToggleEffect();
+    }
+  };
+
+  // Determine if we should show collapsed content
+  const shouldShowContent = !collapsed || isMobile;
+
   return (
-    <div className={`sidebar-dash-super ${collapsed ? 'sidebar-collapsed' : ''}`} ref={ref}>
-      {/* Logo - Show only arrow when collapsed */}
+    <div 
+      className={`sidebar-dash-super ${!isMobile && collapsed ? 'sidebar-collapsed' : ''}`} 
+      ref={ref}
+      style={isMobile ? { width: '250px' } : {}}
+    >
       <div className="sidebar-logo-dash">
-        {!collapsed && (
+        {shouldShowContent && (
           <div className="logo-container">
             <FontAwesomeIcon icon={faGraduationCap} className="sidebar-logo-icon" />
             <span className="sidebar-text sidebar-logo-text">{logoText}</span>
           </div>
         )}
-        <button className="sidebar-toggle" onClick={onToggleCollapse}>
-          <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft} />
-        </button>
+        {!isMobile && (
+          <button className="sidebar-toggle" onClick={handleToggleClick}>
+            <FontAwesomeIcon icon={collapsed ? faChevronRight : faChevronLeft} />
+          </button>
+        )}
       </div>
       
-      {/* User Profile - Hide when collapsed */}
-      {!collapsed && (
+      {shouldShowContent && (
         <div className="sidebar-profile-dash">
           <img src={user.image} alt="User" className="profile-image" />
           <div className="profile-info">
@@ -59,7 +102,6 @@ const Sidebar = React.forwardRef(({
         </div>
       )}
       
-      {/* Navigation - Hide text and badges when collapsed */}
       <nav className="sidebar-nav-dash">
         <div>
           {navItems.map((item, index) => (
@@ -69,7 +111,7 @@ const Sidebar = React.forwardRef(({
               onClick={() => handleNavigation(item.path)}
             >
               <FontAwesomeIcon icon={item.icon} className="nav-icon" />
-              {!collapsed && (
+              {shouldShowContent && (
                 <>
                   <span className="sidebar-text nav-text">{item.text}</span>
                   {item.badge && (
@@ -83,8 +125,7 @@ const Sidebar = React.forwardRef(({
           ))}
         </div>
         
-        {/* Settings - Hide text when collapsed */}
-        {!collapsed && (
+        {shouldShowContent && (
           <div className="sidebar-settings">
             <div 
               className="nav-link"

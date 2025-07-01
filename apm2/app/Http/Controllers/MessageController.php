@@ -13,63 +13,57 @@ use App\Events\MessageRead;
 class MessageController extends Controller
 {
     public function send(Request $request)
-{
-    $request->validate([
-        'receiver_id' => 'required|exists:users,userId',
-        'content' => 'required|string|max:2000',
-    ]);
-
-    try {
-        // 1. إنشاء الرسالة مع جميع الحقول المطلوبة
-        $message = Message::create([
-            'sender_id' => Auth::id(),
-            'receiver_id' => $request->receiver_id,
-            'content' => $request->content,
-            'is_read' => false,
-            'created_at' => now(),
-            'sent_at' => now(), // إذا كان هذا الحقل مطلوباً
+    {
+        $request->validate([
+            'receiver_id' => 'required|exists:users,userId',
+            'content' => 'required|string|max:2000',
         ]);
-
-        // 2. جلب الرسالة باستخدام المفتاح الأساسي الصحيح
-        $messageWithRelations = Message::with(['sender', 'receiver'])
-                                    ->where('message_id', $message->message_id)
-                                    ->firstOrFail();
-
-        // 3. تسجيل تفاصيل الرسالة للتأكد
-        Log::debug('Message details', [
-            'id' => $messageWithRelations->message_id,
-            'sender' => $messageWithRelations->sender_id,
-            'receiver' => $messageWithRelations->receiver_id
-        ]);
-
-        // 4. البث مع التحقق النهائي
-        if ($messageWithRelations->exists) {
-            broadcast(new NewMessageSent($messageWithRelations))->toOthers();
-            
+    
+        try {
+            // إنشاء الرسالة مع جميع الحقول المطلوبة
+            $message = Message::create([
+                'sender_id' => Auth::id(),
+                'receiver_id' => $request->receiver_id,
+                'content' => $request->content,
+                'is_read' => false,
+                'created_at' => now(),
+                'sent_at' => now(),
+            ]);
+    
+            // جلب الرسالة مع العلاقات
+            $messageWithRelations = Message::with(['sender', 'receiver'])
+                                        ->where('message_id', $message->message_id)
+                                        ->firstOrFail();
+    
+            Log::debug('Message details', [
+                'id' => $messageWithRelations->message_id,
+                'sender' => $messageWithRelations->sender_id,
+                'receiver' => $messageWithRelations->receiver_id
+            ]);
+    
+            // بث الرسالة بدون تأخير
+            broadcast(new NewMessageSent($messageWithRelations));
+    
             return response()->json([
                 'success' => true,
                 'message' => 'تم إرسال الرسالة بنجاح',
                 'data' => $messageWithRelations
             ], 201);
+    
+        } catch (\Exception $e) {
+            Log::error('Message sending failed', [
+                'error' => $e->getMessage(),
+                'request' => $request->all(),
+                'user' => Auth::id()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في إرسال الرسالة',
+                'error' => $e->getMessage()
+            ], 500);
         }
-
-        throw new \Exception('فشل تحميل الرسالة بعد الإنشاء');
-
-    } catch (\Exception $e) {
-        Log::error('Message sending failed', [
-            'error' => $e->getMessage(),
-            'request' => $request->all(),
-            'user' => Auth::id()
-        ]);
-        
-        return response()->json([
-            'success' => false,
-            'message' => 'فشل في إرسال الرسالة',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
-
     public function conversations()
     {
         try {
@@ -130,7 +124,6 @@ class MessageController extends Controller
             ], 500);
         }
     }
-
 
     public function chatMessages($userId, Request $request)
     {
@@ -200,59 +193,59 @@ class MessageController extends Controller
     }
 
     public function markAsRead($messageId)
-{
-    try {
-        $message = Message::findOrFail($messageId);
+    {
+        try {
+            $message = Message::findOrFail($messageId);
 
-        if ($message->receiver_id !== Auth::user()->userId) {
+            if ($message->receiver_id !== Auth::user()->userId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بقراءة هذه الرسالة'
+                ], 403);
+            }
+
+            $message->update(['is_read' => true]);
+
+            // بث حدث تحديث حالة الرسالة
+            broadcast(new MessageRead($message));
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تعليم الرسالة كمقروءة'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Mark as read error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'غير مصرح لك بقراءة هذه الرسالة'
-            ], 403);
+                'message' => 'فشل في تحديث حالة الرسالة'
+            ], 500);
         }
-
-        $message->update(['is_read' => true]);
-
-        // بث حدث تحديث حالة الرسالة
-        broadcast(new MessageRead($message));
-
-        return response()->json([
-            'success' => true,
-            'message' => 'تم تعليم الرسالة كمقروءة'
-        ]);
-
-    } catch (\Exception $e) {
-        Log::error('Mark as read error: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'فشل في تحديث حالة الرسالة'
-        ], 500);
     }
-}
+
     public function markAllAsRead()
-{
-    try {
-        $userId = Auth::user()->userId;
+    {
+        try {
+            $userId = Auth::user()->userId;
 
-        // تحديث جميع الرسائل التي لم تُقرأ للمستخدم
-        Message::where('receiver_id', $userId)
-            ->where('is_read', false)
-            ->update(['is_read' => true]);
+            // تحديث جميع الرسائل التي لم تُقرأ للمستخدم
+            Message::where('receiver_id', $userId)
+                ->where('is_read', false)
+                ->update(['is_read' => true]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'تم تحديد جميع الرسائل كمقروءة'
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديد جميع الرسائل كمقروءة'
+            ]);
 
-    } catch (\Exception $e) {
-        Log::error('Mark all as read error: ' . $e->getMessage());
-        return response()->json([
-            'success' => false,
-            'message' => 'فشل في تحديث جميع الرسائل كمقروءة'
-        ], 500);
+        } catch (\Exception $e) {
+            Log::error('Mark all as read error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في تحديث جميع الرسائل كمقروءة'
+            ], 500);
+        }
     }
-}
-
 
     public function destroy($messageId)
     {
@@ -283,4 +276,3 @@ class MessageController extends Controller
         }
     }
 }
- 
