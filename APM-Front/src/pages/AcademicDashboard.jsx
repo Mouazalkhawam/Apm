@@ -29,6 +29,7 @@ const AcademicDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   
   // Chart instance
   let progressChart = null;
@@ -99,14 +100,32 @@ const AcademicDashboard = () => {
     };
   }, []);
 
+  // Handle window resize and remove content-effect when mobile
+  useEffect(() => {
+    const handleResize = () => {
+      const mobile = window.innerWidth < 769;
+      setIsMobile(mobile);
+      
+      // Remove content-effect class when switching to mobile
+      if (mobile && contentEffectClass === 'content-effect') {
+        setContentEffectClass('');
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [contentEffectClass]);
+
   // Toggle sidebar collapse
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  // Toggle content effect
+  // Toggle content effect - only if not mobile
   const toggleContentEffect = () => {
-    setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
+    if (!isMobile) {
+      setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
+    }
   };
 
   // Mobile sidebar handlers
@@ -153,7 +172,7 @@ const AcademicDashboard = () => {
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
       {/* Main Content Area */}
-      <div className={`main-content-cord-dash ${contentEffectClass}`} ref={mainContentRef}>
+      <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`} ref={mainContentRef}>
         {/* Top Navigation */}
         <div className='nav-top-dash'>
           <TopNav 

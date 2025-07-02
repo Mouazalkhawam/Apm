@@ -20,13 +20,13 @@ body {
 }
 
 /* Heading */
-h1 {
+/*h1 {
     font-size: 30px;
     font-weight: 700;
     text-align: center;
     color: #1e40af;
     margin-bottom: 32px;
-}
+}*
 
 /* Tabs Navigation */
 .tabs-container {
@@ -121,7 +121,7 @@ label {
     color: #4b5563;
 }
 
-input[type="text"],
+/*input[type="text"],
 input[type="date"],
 input[type="time"],
 textarea,
@@ -134,7 +134,7 @@ select {
     border: 1px solid #d1d5db;
     border-radius: 6px;
     transition: all 0.15s ease;
-}
+}*/
 
 input[type="text"]:focus,
 input[type="date"]:focus,
