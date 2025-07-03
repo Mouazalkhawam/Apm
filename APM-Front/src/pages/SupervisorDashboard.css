@@ -11,7 +11,7 @@
     margin: 0;
     padding: 0;
 }
-.dashboard-container-dash {
+.dashboard-container-dash-sup {
   display: flex;
   flex-direction: row;
   min-height: 100vh;

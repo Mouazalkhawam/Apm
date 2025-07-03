@@ -1,23 +1,54 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faChevronLeft } from '@fortawesome/free-solid-svg-icons';
 import './SupervisorDashboard.css';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
+import { 
+  faBars, faSearch, faBell, faEnvelope, 
+  faEllipsisV, faLaptopCode, faMobileAlt,
+  faChartLine, faRobot, faArrowUp, 
+  faExclamationCircle, faCommentAlt,
+  faTasks, faChevronDown, faTachometerAlt,
+  faProjectDiagram, faUsers, faCalendarCheck,
+  faFileAlt, faComments
+} from '@fortawesome/free-solid-svg-icons';
 
+
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
 const SupervisorDashboard = () => {
+const sidebarRef = useRef(null);
   return (
-     <div className="dashboard-container-dash">
+     <div className="dashboard-container-dash-sup">
         
        
-         <Sidebar />
+       {/* Sidebar Component */}
+             <SidebarWithRef 
+               ref={sidebarRef}
+               user={{
+                 name: "د.عفاف",
+                 role: "منسق المشاريع",
+                 image: "https://randomuser.me/api/portraits/women/44.jpg"
+               }}
+               
+               navItems={[
+                 { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
+                 { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/projects" },
+                 { icon: faUsers, text: "الطلاب", path:"/students" },
+                 { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/tasks" },
+                 { icon: faFileAlt, text: "التقارير", path: "/reports" },
+                 { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
+               ]}
+             />
          <div className="main-container">
             
     <div className="supervisor-dashboard">
-        <TopNav />
+    <TopNav />
       <main className="main-content-supervisor">
       
-        
+     
         <h1 className="page-title">نظرة عامة</h1>
         
         <div className="stats-container-dash-super">
