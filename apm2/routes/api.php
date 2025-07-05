@@ -188,6 +188,8 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/pusher/auth', [\App\Http\Controllers\API\PusherAuthController::class, 'authenticate']);
 
 
+    Route::get('/projects/current-semester', [ProjectController::class, 'getCurrentSemesterProjects']);
+    Route::get('/projects/current-graduation', [ProjectController::class, 'getCurrentGraduationProjects']);
 
     
 });
