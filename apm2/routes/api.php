@@ -184,11 +184,10 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/supervisor/projects', [ProjectController::class, 'getSupervisorProjects']);
     Route::get('/supervisors/students-names', [ProjectController::class, 'getSupervisorsWithStudentsNames']);
-<<<<<<< Updated upstream
 
     Route::post('/pusher/auth', [\App\Http\Controllers\API\PusherAuthController::class, 'authenticate']);
-=======
-    Route::get('/projects/current-semester', [ProjectController::class, 'getCurrentSemesterProjects']);
-    Route::get('/projects/current-graduation', [ProjectController::class, 'getCurrentGraduationProjects']);
->>>>>>> Stashed changes
+
+
+
+    
 });
