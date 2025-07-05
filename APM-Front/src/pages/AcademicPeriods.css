@@ -1,0 +1,372 @@
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+    background-color: #f9fafb;
+    color: #4b5563;
+    direction: rtl;
+    line-height: 1.6;
+}
+
+.container {
+    width: 95%;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* Header Styles */
+header {
+    text-align: center;
+    margin-bottom: 48px;
+}
+
+header h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 8px;
+}
+
+header p {
+    color: #6b7280;
+    font-size: 16px;
+}
+
+header img {
+    width: 80px;
+    height: 80px;
+    margin: 16px auto 0;
+    display: block;
+}
+
+/* Form Container */
+.form-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.form-header {
+    background-color: #1d4ed8;
+    padding: 16px;
+    color: white;
+}
+
+.form-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.form-content {
+    padding: 24px;
+}
+
+/* Form Elements */
+.form-group {
+    margin-bottom: 32px;
+}
+
+label {
+    display: block;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+select, input {
+    width: 100%;
+    padding: 10px 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 14px;
+    transition: all 0.3s;
+}
+
+select:focus, input:focus {
+    outline: none;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+/* Term Sections */
+.term-section {
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 24px;
+    border-right: 4px solid transparent;
+    transition: all 0.3s ease;
+}
+
+.term-section:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.term-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.term-title {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.term-badge {
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+/* Specific Term Styles */
+.first-term {
+    background-color: #eff6ff;
+    border-right-color: #3b82f6;
+}
+
+.first-term .term-title {
+    color: #1e40af;
+}
+
+.first-term .term-badge {
+    background-color: #dbeafe;
+    color: #1e40af;
+}
+
+.second-term {
+    background-color: #ecfdf5;
+    border-right-color: #10b981;
+}
+
+.second-term .term-title {
+    color: #047857;
+}
+
+.second-term .term-badge {
+    background-color: #d1fae5;
+    color: #047857;
+}
+
+.summer-term {
+    background-color: #fef3c7;
+    border-right-color: #f59e0b;
+}
+
+.summer-term .term-title {
+    color: #92400e;
+}
+
+.summer-term .term-badge {
+    background-color: #fef08a;
+    color: #92400e;
+}
+
+/* Grid Layout */
+.grid {
+    display: grid;
+    gap: 16px;
+}
+
+.grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* Checkbox */
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.checkbox-container input[type="checkbox"] {
+    width: auto;
+    margin-left: 8px;
+}
+
+/* Buttons */
+.btn-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+}
+
+.btn {
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-reset {
+    background-color: #e5e7eb;
+    color: #4b5563;
+    border: none;
+}
+
+.btn-reset:hover {
+    background-color: #d1d5db;
+}
+
+.btn-submit {
+    background-color: #2563eb;
+    color: white;
+    border: none;
+}
+
+.btn-submit:hover {
+    background-color: #1d4ed8;
+}
+
+/* Message */
+.message {
+    padding: 12px 16px;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    margin-bottom: 16px;
+    position: relative;
+}
+
+.success-message {
+    background-color: #d1fae5;
+    border-color: #a7f3d0;
+    color: #065f46;
+    animation: fadeOut 3s forwards;
+}
+
+/* Animation */
+@keyframes fadeOut {
+    0% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Hidden */
+.hidden {
+    display: none;
+}
+
+/* Preview Section */
+.preview-container {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    max-width: 700px;
+    margin: 48px auto 0;
+}
+
+.preview-header {
+    background-color: #1d4ed8;
+    padding: 16px;
+    color: white;
+}
+
+.preview-header h2 {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.preview-content {
+    padding: 24px;
+}
+
+.preview-title {
+    text-align: center;
+    font-size: 24px;
+    font-weight: 700;
+    color: #1e40af;
+    margin-bottom: 24px;
+}
+
+/* Table */
+.table-container {
+    overflow-x: auto;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 12px 24px;
+    text-align: right;
+    font-size: 14px;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+th {
+    background-color: #f9fafb;
+    font-weight: 500;
+    color: #6b7280;
+    text-transform: uppercase;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+}
+
+td {
+    color: #4b5563;
+}
+
+.btn-back {
+    margin-top: 24px;
+    background-color: #2563eb;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-back:hover {
+    background-color: #1d4ed8;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
+    
+    header h1 {
+        font-size: 24px;
+    }
+    
+    header p {
+        font-size: 14px;
+    }
+    
+    .btn-container {
+        flex-direction: column-reverse;
+        gap: 12px;
+    }
+    
+    .btn {
+        width: 100%;
+    }
+    
+    th, td {
+        padding: 8px 12px;
+    }
+}

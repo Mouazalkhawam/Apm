@@ -1013,4 +1013,155 @@ public function getSupervisorsWithStudentsNames()
         ], 500);
     }
 }
+
+public function getCurrentSemesterProjects()
+{
+    try {
+        // 1. الحصول على الفصل الحالي
+        $currentPeriod = AcademicPeriod::where('is_current', true)->first();
+        
+        if (!$currentPeriod) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد فصل دراسي فعال حالياً'
+            ], 400);
+        }
+
+        // 2. جلب المشاريع المرتبطة بهذا الفصل
+        $projects = Project::with([
+                'group.approvedStudents.user',
+                'group.approvedSupervisors.user',
+                'academicPeriods'
+            ])
+            ->whereHas('academicPeriods', function($query) use ($currentPeriod) {
+                $query->where('academic_periods.id', $currentPeriod->id);
+            })
+            ->where('type', 'semester') // فقط المشاريع الفصلية
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 3. تنسيق البيانات للإرجاع
+        $formattedProjects = $projects->map(function ($project) {
+            return [
+                'project_id' => $project->projectid,
+                'title' => $project->title,
+                'description' => $project->description,
+                'start_date' => $project->startdate,
+                'end_date' => $project->enddate,
+                'status' => $project->status,
+                'group' => [
+                    'id' => $project->group->groupid,
+                    'name' => $project->group->name,
+                    'students' => $project->group->approvedStudents->map(function($student) {
+                        return [
+                            'name' => $student->user->name,
+                            'university_number' => $student->university_number,
+                            'is_leader' => $student->pivot->is_leader
+                        ];
+                    }),
+                    'supervisors' => $project->group->approvedSupervisors->map(function($supervisor) {
+                        return [
+                            'name' => $supervisor->user->name,
+                            'email' => $supervisor->user->email
+                        ];
+                    })
+                ],
+                'periods' => $project->academicPeriods->map(function($period) {
+                    return [
+                        'name' => $period->name,
+                        'start_date' => $period->start_date,
+                        'end_date' => $period->end_date
+                    ];
+                })
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedProjects,
+            'message' => 'تم جلب مشاريع الفصل الحالي بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب المشاريع: ' . $e->getMessage()
+        ], 500);
+    }
+}
+public function getCurrentGraduationProjects()
+{
+    try {
+        // 1. الحصول على الفصل الحالي
+        $currentPeriod = AcademicPeriod::where('is_current', true)->first();
+        
+        if (!$currentPeriod) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد فصل دراسي فعال حالياً'
+            ], 400);
+        }
+
+        // 2. جلب مشاريع التخرج المرتبطة بهذا الفصل
+        $projects = Project::with([
+                'group.approvedStudents.user',
+                'group.approvedSupervisors.user',
+                'academicPeriods'
+            ])
+            ->whereHas('academicPeriods', function($query) use ($currentPeriod) {
+                $query->where('academic_periods.id', $currentPeriod->id);
+            })
+            ->where('type', 'graduation') // فقط مشاريع التخرج
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 3. تنسيق البيانات للإرجاع
+        $formattedProjects = $projects->map(function ($project) {
+            return [
+                'project_id' => $project->projectid,
+                'title' => $project->title,
+                'description' => $project->description,
+                'start_date' => $project->startdate,
+                'end_date' => $project->enddate,
+                'status' => $project->status,
+                'group' => [
+                    'id' => $project->group->groupid,
+                    'name' => $project->group->name,
+                    'students' => $project->group->approvedStudents->map(function($student) {
+                        return [
+                            'name' => $student->user->name,
+                            'university_number' => $student->university_number,
+                            'is_leader' => $student->pivot->is_leader
+                        ];
+                    }),
+                    'supervisors' => $project->group->approvedSupervisors->map(function($supervisor) {
+                        return [
+                            'name' => $supervisor->user->name,
+                            'email' => $supervisor->user->email
+                        ];
+                    })
+                ],
+                'periods' => $project->academicPeriods->map(function($period) {
+                    return [
+                        'name' => $period->name,
+                        'start_date' => $period->start_date,
+                        'end_date' => $period->end_date
+                    ];
+                })
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedProjects,
+            'message' => 'تم جلب مشاريع التخرج للفصل الحالي بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب مشاريع التخرج: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

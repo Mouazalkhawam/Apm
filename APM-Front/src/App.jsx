@@ -26,6 +26,7 @@ import DiscussionsCoordinator from './pages/DiscussionsCoordinator';
 import AddSupervisor from './pages/AddSupervisor';
 import TasksPage from './pages/TasksPage';
 import StudentsPage from './pages/StudentsPage';
+import AcademicPeriods from './pages/AcademicPeriods';
 
 function App() {
   return (
@@ -208,6 +209,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <StudentsPage />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/academic-periods" 
+                 element={
+                  <ProtectedRoute>
+                    <AcademicPeriods />
                             </ProtectedRoute>
                           } 
                />
