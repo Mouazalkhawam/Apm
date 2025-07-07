@@ -27,6 +27,7 @@ import AddSupervisor from './pages/AddSupervisor';
 import TasksPage from './pages/TasksPage';
 import StudentsPage from './pages/StudentsPage';
 import AcademicPeriods from './pages/AcademicPeriods';
+import HonorboardCoordinator from './pages/HonorboardCoordinator';
 
 function App() {
   return (
@@ -217,6 +218,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <AcademicPeriods />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/honorboard-coordinator" 
+                 element={
+                  <ProtectedRoute>
+                    <HonorboardCoordinator />
                             </ProtectedRoute>
                           } 
                />
