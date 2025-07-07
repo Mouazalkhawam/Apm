@@ -16,8 +16,13 @@ const StudentProfile = () => {
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showAddSkillModal, setShowAddSkillModal] = useState(false);
+  const [newSkill, setNewSkill] = useState(null);
+  const [availableSkills, setAvailableSkills] = useState([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
   const navigate = useNavigate();
 
+  // دالة تسجيل الخروج
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -38,6 +43,7 @@ const StudentProfile = () => {
     }
   };
 
+  // جلب بيانات الطالب
   const fetchStudentProfile = async () => {
     try {
       const token = localStorage.getItem('access_token');
@@ -56,9 +62,136 @@ const StudentProfile = () => {
     }
   };
 
+  // جلب مهارات الطالب
+  const fetchStudentSkills = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://127.0.0.1:8000/api/student/profile/skills', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      return response.data.data;
+    } catch (err) {
+      console.error('Error fetching student skills:', err);
+      return [];
+    }
+  };
+
+  // جلب المهارات المتاحة
+  const fetchAvailableSkills = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://127.0.0.1:8000/api/all-skills', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      return response.data.data;
+    } catch (err) {
+      console.error('Error fetching available skills:', err);
+      return [];
+    }
+  };
+
+  // إضافة مهارة جديدة
+  const addNewSkill = async (skillId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.post('http://127.0.0.1:8000/api/student/profile/skills/add', {
+        skill_id: skillId
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      // تحديث المهارات بعد الإضافة
+      const updatedSkills = await fetchStudentSkills();
+      setStudentData(prev => ({
+        ...prev,
+        student: {
+          ...prev.student,
+          skills: updatedSkills
+        }
+      }));
+      
+      return true;
+    } catch (err) {
+      console.error('Error adding skill:', err);
+      return false;
+    }
+  };
+
+  // إزالة مهارة
+  const removeSkill = async (skillId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      await axios.delete(`http://127.0.0.1:8000/api/student/profile/skills/remove/${skillId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      // تحديث المهارات بعد الإزالة
+      const updatedSkills = await fetchStudentSkills();
+      setStudentData(prev => ({
+        ...prev,
+        student: {
+          ...prev.student,
+          skills: updatedSkills
+        }
+      }));
+      
+      return true;
+    } catch (err) {
+      console.error('Error removing skill:', err);
+      return false;
+    }
+  };
+
+  // تحميل المهارات المتاحة
+  const loadAvailableSkills = async () => {
+    setSkillsLoading(true);
+    try {
+      const skills = await fetchAvailableSkills();
+      setAvailableSkills(skills.map(skill => ({
+        value: skill.id,
+        label: skill.name
+      })));
+    } catch (err) {
+      console.error('Failed to load skills:', err);
+    } finally {
+      setSkillsLoading(false);
+    }
+  };
+
+  // إضافة مهارة
+  const handleAddSkill = async () => {
+    if (!newSkill) return;
+    
+    const success = await addNewSkill(newSkill.value);
+    if (success) {
+      setShowAddSkillModal(false);
+      setNewSkill(null);
+    }
+  };
+
+  // إزالة مهارة
+  const handleRemoveSkill = async (skillId) => {
+    const confirmed = window.confirm('هل أنت متأكد من إزالة هذه المهارة؟');
+    if (confirmed) {
+      await removeSkill(skillId);
+    }
+  };
+
   useEffect(() => {
     fetchStudentProfile();
 
+    // تأثيرات الرسوم المتحركة
     const animateElements = document.querySelectorAll('.animate');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -117,6 +250,11 @@ const StudentProfile = () => {
           <ProfileSidebar 
             studentData={studentData}
             onProfileUpdate={fetchStudentProfile}
+            onAddSkillClick={() => {
+              loadAvailableSkills();
+              setShowAddSkillModal(true);
+            }}
+            onRemoveSkill={handleRemoveSkill}
           />
 
           <div className="profile-content">
@@ -136,11 +274,53 @@ const StudentProfile = () => {
       </div>
 
       {showProjectModal && <ProjectModal setShowProjectModal={setShowProjectModal} />}
+
+      {showAddSkillModal && (
+        <div className="modal-overlay-profile">
+          <div className="modal-content small-modal">
+            <span className="close-modal" onClick={() => setShowAddSkillModal(false)}>
+              <i className="fas fa-times"></i>
+            </span>
+            <h2 className="modal-title">إضافة مهارة جديدة</h2>
+            
+            <div className="form-group">
+              <label>اختر المهارة</label>
+              <Select
+                id="new-skill"
+                name="new-skill"
+                options={availableSkills}
+                value={newSkill}
+                onChange={setNewSkill}
+                placeholder="ابحث عن المهارة..."
+                noOptionsMessage={() => "لا توجد مهارات متاحة"}
+                className="react-select-container"
+                classNamePrefix="react-select"
+                isRtl={true}
+                isLoading={skillsLoading}
+              />
+            </div>
+            
+            <button 
+              className="btn-profile btn-primary-profile" 
+              onClick={handleAddSkill}
+              disabled={!newSkill}
+            >
+              <i className="fas fa-plus"></i> إضافة المهارة
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-const ProfileSidebar = ({ studentData, onProfileUpdate }) => {
+// مكون الشريط الجانبي للملف الشخصي
+const ProfileSidebar = ({ 
+  studentData, 
+  onProfileUpdate, 
+  onAddSkillClick,
+  onRemoveSkill
+}) => {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const getProfileImageUrl = () => {
@@ -277,12 +457,24 @@ const ProfileSidebar = ({ studentData, onProfileUpdate }) => {
       </div>
 
       <div className="profile-info-section">
-        <h3 className="info-title"><i className="fas fa-lightbulb"></i> المهارات</h3>
+        <div className="skills-header">
+          <h3 className="info-title"><i className="fas fa-lightbulb"></i> المهارات</h3>
+          <button 
+            className="add-skill-btn"
+            onClick={onAddSkillClick}
+          >
+            <i className="fas fa-plus"></i> إضافة مهارة
+          </button>
+        </div>
         <div className="skills-container">
           {studentData.student?.skills?.length > 0 ? (
             studentData.student.skills.map((skill, index) => (
               <div key={index} className="skill-tag">
-                {skill.name} <i className="fas fa-check" style={{marginRight:'5px'}}></i>
+                {skill.name}
+                <i 
+                  className="fas fa-times remove-skill" 
+                  onClick={() => onRemoveSkill(skill.id)}
+                ></i>
               </div>
             ))
           ) : (
@@ -319,6 +511,7 @@ const ProfileSidebar = ({ studentData, onProfileUpdate }) => {
   );
 };
 
+// مكون تعديل الملف الشخصي
 const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) => {
   const [formData, setFormData] = useState({
     name: studentData.name || '',
@@ -331,8 +524,7 @@ const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) =>
     experience: studentData.student?.experience || '',
     password: '',
     confirmPassword: '',
-    profile_picture: null,
-    skills: studentData.student?.skills?.map(skill => skill.id) || []
+    profile_picture: null
   });
   const [errors, setErrors] = useState({});
   const [photoPreview, setPhotoPreview] = useState(
@@ -343,58 +535,13 @@ const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) =>
       : null
   );
   const [loading, setLoading] = useState(false);
-  const [skillsOptions, setSkillsOptions] = useState([]);
-  const [availableSkills, setAvailableSkills] = useState([]);
   const fileInputRef = useRef(null);
-
-  useEffect(() => {
-    const fetchSkills = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        
-        // جلب المهارات المتاحة من API
-        const skillsResponse = await axios.get('http://127.0.0.1:8000/api/all-skills', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        // جلب مهارات الطالب الحالية
-        const studentSkillsResponse = await axios.get('http://127.0.0.1:8000/api/student/profile/skills', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        setAvailableSkills(skillsResponse.data.data.map(skill => ({
-          value: skill.id,
-          label: skill.name
-        })));
-
-        setSkillsOptions(studentSkillsResponse.data.data.map(skill => ({
-          value: skill.id,
-          label: skill.name
-        })));
-      } catch (err) {
-        console.error('Error fetching skills:', err);
-      }
-    };
-
-    fetchSkills();
-  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
-    }));
-  };
-
-  const handleSkillsChange = (selectedOptions) => {
-    setFormData(prev => ({
-      ...prev,
-      skills: selectedOptions ? selectedOptions.map(option => option.value) : []
     }));
   };
 
@@ -480,7 +627,6 @@ const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) =>
         academic_year: formData.academicYear,
         gpa: formData.gpa,
         experience: formData.experience,
-        skills: formData.skills,
         _method: 'PUT' 
       };
       
@@ -657,24 +803,6 @@ const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) =>
             </div>
 
             <div className="form-group-register half-width">
-              <label htmlFor="skills" className="form-label">المهارات</label>
-              <Select
-                id="skills"
-                name="skills"
-                isMulti
-                options={availableSkills}
-                value={availableSkills.filter(option => formData.skills.includes(option.value))}
-                onChange={handleSkillsChange}
-                placeholder="اختر المهارات..."
-                noOptionsMessage={() => "لا توجد مهارات متاحة"}
-                className="react-select-container"
-                classNamePrefix="react-select"
-                isRtl={true}
-              />
-              {errors.skills && <span className="error-message">{errors.skills}</span>}
-            </div>
-
-            <div className="form-group-register half-width">
               <label htmlFor="password" className="form-label">كلمة المرور الجديدة</label>
               <input
                 type="password"
@@ -746,6 +874,8 @@ const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) =>
     </div>
   );
 };
+
+// مكون إحصائيات الطالب
 const StatsCard = () => {
   const [stats, setStats] = useState({
     totalTasks: 0,
@@ -835,6 +965,7 @@ const StatsCard = () => {
   );
 };
 
+// مكون مشاريع الطالب
 const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -990,6 +1121,7 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
   );
 };
 
+// مكون صفحة المهام
 const TasksPage = ({ setShowTasksPage, projectId }) => {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1137,6 +1269,7 @@ const TasksPage = ({ setShowTasksPage, projectId }) => {
   );
 };
 
+// مكون الإنجازات الأكاديمية
 const AchievementsCard = () => {
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -1231,6 +1364,7 @@ const AchievementsCard = () => {
   );
 };
 
+// مكون إنشاء مشروع جديد
 const ProjectModal = ({ setShowProjectModal }) => {
   const [formData, setFormData] = useState({
     title: '',
