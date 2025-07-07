@@ -52,10 +52,13 @@ class Project extends Model
     {
         return $this->belongsToMany(AcademicPeriod::class, 'academic_period_project', 'project_projectid', 'academic_period_id');
     }
-
-    // في App\Models\Project.php
     public function stages()
     {
         return $this->hasMany(ProjectStage::class, 'project_id', 'projectid');
     }
+    public function honorBoard()
+{
+    return $this->hasOne(HonorBoardProject::class, 'project_id', 'projectid');
+}
+
 }
