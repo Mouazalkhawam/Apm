@@ -11,15 +11,20 @@ class Student extends Model
 
     protected $primaryKey = 'studentId';
     
-    protected $fillable = ['userId','experience', 
-    'gpa', 
-    'university_number', // أضف هذا
-    'major', // أضف هذا
-    'academic_year', 'experience_media_type' ];
-
-    protected $casts = [
-        'experience' => 'array', // تحويل JSON إلى array تلقائياً
+    protected $fillable = [
+        'userId',
+        'experience', // Now just text
+        'gpa', 
+        'university_number',
+        'major',
+        'academic_year'
+        // Removed 'experience_media_type' as it's no longer needed
     ];
+
+    // Removed the $casts for experience as it's now just text
+    // protected $casts = [
+    //     'experience' => 'array', // No longer needed
+    // ];
 
     public function user()
     {
@@ -61,7 +66,7 @@ class Student extends Model
             'group_student',
             'studentId',
             'groupid'
-        )->withPivot('status', 'is_leader', 'created_at', 'updated_at'); // التعديل هنا
+        )->withPivot('status', 'is_leader', 'created_at', 'updated_at');
     }
 
     // استبدال دالة isTeamLeader
@@ -76,48 +81,11 @@ class Student extends Model
         return $query->wherePivot('is_leader', true)->exists();
     }
 
+    // Simplified setter for experience (just stores text directly)
     public function setExperienceAttribute($value)
     {
-        if (is_null($value)) {
-            $this->attributes['experience'] = null;
-            $this->attributes['experience_media_type'] = null;
-            return;
-        }
-
-        if (is_string($value)) {
-            try {
-                $decoded = json_decode($value, true);
-                $this->attributes['experience'] = is_array($decoded) ? $value : json_encode([[
-                    'type' => 'text',
-                    'content' => $value
-                ]]);
-            } catch (\Exception $e) {
-                $this->attributes['experience'] = json_encode([[
-                    'type' => 'text',
-                    'content' => $value
-                ]]);
-            }
-        } elseif (is_array($value)) {
-            $this->attributes['experience'] = json_encode($value);
-        }
-
-        // تحديد نوع الوسائط
-        $this->determineMediaType();
+        $this->attributes['experience'] = $value ? (string)$value : null;
     }
 
-    private function determineMediaType()
-    {
-        if (empty($this->attributes['experience'])) {
-            $this->attributes['experience_media_type'] = null;
-            return;
-        }
-
-        $experience = json_decode($this->attributes['experience'], true);
-        $types = array_column($experience, 'type');
-        $uniqueTypes = array_unique($types);
-
-        $this->attributes['experience_media_type'] = count($uniqueTypes) > 1 
-            ? 'mixed' 
-            : ($uniqueTypes[0] ?? 'text');
-    }
+    // Removed determineMediaType() as it's no longer needed
 }

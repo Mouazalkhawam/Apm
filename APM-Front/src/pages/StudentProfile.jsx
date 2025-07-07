@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './StudentProfile.css';
-import Header from '../components/Header/Header';
 import axios from 'axios';
 import Select from 'react-select';
 import makeAnimated from 'react-select/animated';
 import { useNavigate } from 'react-router-dom';
+import Header from '../components/Header/Header';
 
 const animatedComponents = makeAnimated();
 
@@ -38,28 +38,27 @@ const StudentProfile = () => {
     }
   };
 
-  useEffect(() => {
-    const fetchStudentProfile = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        const response = await axios.get('http://127.0.0.1:8000/api/user', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        setStudentData(response.data);
-      } catch (err) {
-        setError('فشل في تحميل بيانات الطالب');
-        console.error('Error fetching student profile:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const fetchStudentProfile = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://127.0.0.1:8000/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setStudentData(response.data);
+    } catch (err) {
+      setError('فشل في تحميل بيانات الطالب');
+      console.error('Error fetching student profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchStudentProfile();
 
-    // Animation code
     const animateElements = document.querySelectorAll('.animate');
     const observer = new IntersectionObserver((entries) => {
       entries.forEach(entry => {
@@ -76,13 +75,6 @@ const StudentProfile = () => {
       const width = bar.style.width;
       bar.style.width = '0';
       setTimeout(() => bar.style.width = width, 300);
-    });
-
-    document.querySelectorAll('.task-checkbox').forEach(checkbox => {
-      checkbox.addEventListener('change', function() {
-        const taskItem = this.closest('.task-item');
-        taskItem.style.opacity = this.checked ? '0.7' : '1';
-      });
     });
 
     return () => animateElements.forEach(el => observer.unobserve(el));
@@ -124,6 +116,7 @@ const StudentProfile = () => {
         <div className="profile-container">
           <ProfileSidebar 
             studentData={studentData}
+            onProfileUpdate={fetchStudentProfile}
           />
 
           <div className="profile-content">
@@ -147,23 +140,17 @@ const StudentProfile = () => {
   );
 };
 
-const ProfileSidebar = ({ studentData }) => {
+const ProfileSidebar = ({ studentData, onProfileUpdate }) => {
   const [showEditModal, setShowEditModal] = useState(false);
 
   const getProfileImageUrl = () => {
-    if (!studentData.profile_picture) {
-      return null;
-    }
+    if (!studentData.profile_picture) return null;
     
-    if (studentData.profile_picture.startsWith('http')) {
-      return studentData.profile_picture;
-    }
+    if (studentData.profile_picture.startsWith('http')) return studentData.profile_picture;
     
-    if (studentData.profile_picture.includes('images/users/')) {
-      return `http://127.0.0.1:8000/${studentData.profile_picture}`;
-    }
-    
-    return studentData.profile_picture;
+    return studentData.profile_picture.includes('images/users/') 
+      ? `http://127.0.0.1:8000/${studentData.profile_picture}`
+      : studentData.profile_picture;
   };
 
   const profileImageUrl = getProfileImageUrl();
@@ -171,38 +158,54 @@ const ProfileSidebar = ({ studentData }) => {
   const parseExperiences = () => {
     if (!studentData.student?.experience) return [];
     
-    return studentData.student.experience.map(exp => {
-      if (exp.type === 'text') {
-        if (typeof exp.content === 'string' && !exp.content.startsWith('{')) {
-          return {
-            title: 'خبرة أكاديمية',
-            date: 'بدون تاريخ',
-            description: exp.content
-          };
+    if (typeof studentData.student.experience === 'string') {
+      return [{
+        title: 'الخبرة الأكاديمية',
+        date: 'بدون تاريخ',
+        description: studentData.student.experience
+      }];
+    }
+    
+    if (Array.isArray(studentData.student.experience)) {
+      return studentData.student.experience.map(exp => {
+        if (exp.type === 'text') {
+          if (typeof exp.content === 'string' && !exp.content.startsWith('{')) {
+            return {
+              title: 'خبرة أكاديمية',
+              date: 'بدون تاريخ',
+              description: exp.content
+            };
+          }
+          
+          try {
+            const content = typeof exp.content === 'string' ? JSON.parse(exp.content) : exp.content;
+            return {
+              title: content.title || 'خبرة أكاديمية',
+              date: content.date || 'بدون تاريخ',
+              description: content.description || exp.content
+            };
+          } catch (e) {
+            return {
+              title: 'خبرة أكاديمية',
+              date: 'بدون تاريخ',
+              description: exp.content
+            };
+          }
         }
         
-        try {
-          const content = typeof exp.content === 'string' ? JSON.parse(exp.content) : exp.content;
-          return {
-            title: content.title || 'خبرة أكاديمية',
-            date: content.date || 'بدون تاريخ',
-            description: content.description || exp.content
-          };
-        } catch (e) {
-          return {
-            title: 'خبرة أكاديمية',
-            date: 'بدون تاريخ',
-            description: exp.content
-          };
-        }
-      }
-      
-      return {
-        title: exp.type === 'image' ? 'صورة خبرة' : 'فيديو خبرة',
-        date: 'بدون تاريخ',
-        description: exp.type === 'image' ? 'صورة مرفوعة' : 'فيديو مرفوع'
-      };
-    });
+        return {
+          title: exp.type === 'image' ? 'صورة خبرة' : 'فيديو خبرة',
+          date: 'بدون تاريخ',
+          description: exp.type === 'image' ? 'صورة مرفوعة' : 'فيديو مرفوع'
+        };
+      });
+    }
+    
+    return [{
+      title: 'الخبرة الأكاديمية',
+      date: 'بدون تاريخ',
+      description: 'لا توجد معلومات متاحة'
+    }];
   };
 
   return (
@@ -309,13 +312,14 @@ const ProfileSidebar = ({ studentData }) => {
         <EditProfileModal 
           studentData={studentData}
           setShowEditModal={setShowEditModal}
+          onProfileUpdate={onProfileUpdate}
         />
       )}
     </div>
   );
 };
 
-const EditProfileModal = ({ studentData, setShowEditModal }) => {
+const EditProfileModal = ({ studentData, setShowEditModal, onProfileUpdate }) => {
   const [formData, setFormData] = useState({
     name: studentData.name || '',
     email: studentData.email || '',
@@ -323,20 +327,74 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
     universityNumber: studentData.student?.university_number || '',
     major: studentData.student?.major || '',
     academicYear: studentData.student?.academic_year || '1',
+    gpa: studentData.student?.gpa || '0.00',
+    experience: studentData.student?.experience || '',
     password: '',
     confirmPassword: '',
-    profile_picture: null
+    profile_picture: null,
+    skills: studentData.student?.skills?.map(skill => skill.id) || []
   });
   const [errors, setErrors] = useState({});
-  const [photoPreview, setPhotoPreview] = useState(studentData.profile_picture || null);
+  const [photoPreview, setPhotoPreview] = useState(
+    studentData.profile_picture 
+      ? studentData.profile_picture.startsWith('http') 
+        ? studentData.profile_picture 
+        : `http://127.0.0.1:8000/${studentData.profile_picture}`
+      : null
+  );
   const [loading, setLoading] = useState(false);
+  const [skillsOptions, setSkillsOptions] = useState([]);
+  const [availableSkills, setAvailableSkills] = useState([]);
   const fileInputRef = useRef(null);
+
+  useEffect(() => {
+    const fetchSkills = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        
+        // جلب المهارات المتاحة من API
+        const skillsResponse = await axios.get('http://127.0.0.1:8000/api/all-skills', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        // جلب مهارات الطالب الحالية
+        const studentSkillsResponse = await axios.get('http://127.0.0.1:8000/api/student/profile/skills', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        setAvailableSkills(skillsResponse.data.data.map(skill => ({
+          value: skill.id,
+          label: skill.name
+        })));
+
+        setSkillsOptions(studentSkillsResponse.data.data.map(skill => ({
+          value: skill.id,
+          label: skill.name
+        })));
+      } catch (err) {
+        console.error('Error fetching skills:', err);
+      }
+    };
+
+    fetchSkills();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
+    }));
+  };
+
+  const handleSkillsChange = (selectedOptions) => {
+    setFormData(prev => ({
+      ...prev,
+      skills: selectedOptions ? selectedOptions.map(option => option.value) : []
     }));
   };
 
@@ -367,11 +425,15 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
     if (!formData.universityNumber) newErrors.universityNumber = 'الرقم الجامعي مطلوب';
     if (!formData.major) newErrors.major = 'التخصص مطلوب';
     
+    if (formData.gpa && (isNaN(formData.gpa) || formData.gpa < 0 || formData.gpa > 4)) {
+      newErrors.gpa = 'المعدل يجب أن يكون بين 0 و 4';
+    }
+    
     if (formData.password && formData.password.length < 6) {
       newErrors.password = 'كلمة المرور يجب أن تكون 6 أحرف على الأقل';
     }
     
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password && formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = 'كلمات المرور غير متطابقة';
     }
     
@@ -388,19 +450,21 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
     
     try {
       const token = localStorage.getItem('access_token');
+      
       const formDataToSend = new FormData();
       
       formDataToSend.append('name', formData.name);
       formDataToSend.append('email', formData.email);
       formDataToSend.append('phone', formData.phone);
-      formDataToSend.append('university_number', formData.universityNumber);
-      formDataToSend.append('major', formData.major);
-      formDataToSend.append('academic_year', formData.academicYear);
-      if (formData.password) formDataToSend.append('password', formData.password);
+      if (formData.password) {
+        formDataToSend.append('password', formData.password);
+        formDataToSend.append('password_confirmation', formData.confirmPassword);
+      }
       if (formData.profile_picture) formDataToSend.append('profile_picture', formData.profile_picture);
+      formDataToSend.append('_method', 'PUT');
       
-      const response = await axios.post(
-        'http://127.0.0.1:8000/api/student/update-profile',
+      const userResponse = await axios.post(
+        'http://127.0.0.1:8000/api/profile/update',
         formDataToSend,
         {
           headers: {
@@ -410,14 +474,44 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
         }
       );
       
-      if (response.data.success) {
-        window.location.reload();
-      } else {
-        setErrors({ submit: response.data.message || 'حدث خطأ أثناء التحديث' });
-      }
+      const studentDataToSend = {
+        university_number: formData.universityNumber,
+        major: formData.major,
+        academic_year: formData.academicYear,
+        gpa: formData.gpa,
+        experience: formData.experience,
+        skills: formData.skills,
+        _method: 'PUT' 
+      };
+      
+      await axios.post(
+        'http://127.0.0.1:8000/api/student/profile/update',
+        studentDataToSend,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      setShowEditModal(false);
+      onProfileUpdate();
     } catch (err) {
       console.error('Update error:', err);
-      setErrors({ submit: 'حدث خطأ أثناء تحديث الملف الشخصي' });
+      if (err.response?.data?.errors) {
+        const laravelErrors = err.response.data.errors;
+        const formattedErrors = {};
+        
+        Object.keys(laravelErrors).forEach(key => {
+          formattedErrors[key] = laravelErrors[key][0];
+        });
+        
+        setErrors(formattedErrors);
+      } else {
+        setErrors({ submit: 'حدث خطأ أثناء تحديث الملف الشخصي' });
+      }
     } finally {
       setLoading(false);
     }
@@ -445,7 +539,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="text"
                 id="name"
                 name="name"
-                className={`form-input ${errors.name ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.name ? 'error' : ''}`}
                 required
                 value={formData.name}
                 onChange={handleInputChange}
@@ -460,7 +554,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="email"
                 id="email"
                 name="email"
-                className={`form-input ${errors.email ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.email ? 'error' : ''}`}
                 required
                 value={formData.email}
                 onChange={handleInputChange}
@@ -475,7 +569,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="tel"
                 id="phone"
                 name="phone"
-                className={`form-input ${errors.phone ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.phone ? 'error' : ''}`}
                 value={formData.phone}
                 onChange={handleInputChange}
                 placeholder="05XXXXXXXX"
@@ -489,7 +583,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="text"
                 id="universityNumber"
                 name="universityNumber"
-                className={`form-input ${errors.universityNumber ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.universityNumber ? 'error' : ''}`}
                 required
                 value={formData.universityNumber}
                 onChange={handleInputChange}
@@ -504,7 +598,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="text"
                 id="major"
                 name="major"
-                className={`form-input ${errors.major ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.major ? 'error' : ''}`}
                 required
                 value={formData.major}
                 onChange={handleInputChange}
@@ -518,7 +612,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
               <select
                 id="academicYear"
                 name="academicYear"
-                className="form-input"
+                className="form-input-profile-edit"
                 required
                 value={formData.academicYear}
                 onChange={handleInputChange}
@@ -532,18 +626,67 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
             </div>
 
             <div className="form-group-register half-width">
+              <label htmlFor="gpa" className="form-label">المعدل التراكمي</label>
+              <input
+                type="number"
+                id="gpa"
+                name="gpa"
+                step="0.01"
+                min="0"
+                max="4"
+                className={`form-input-profile-edit ${errors.gpa ? 'error' : ''}`}
+                value={formData.gpa}
+                onChange={handleInputChange}
+                placeholder="0.00 - 4.00"
+              />
+              {errors.gpa && <span className="error-message">{errors.gpa}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="experience" className="form-label">الخبرة الأكاديمية</label>
+              <textarea
+                id="experience"
+                name="experience"
+                className={`form-input-profile-edit ${errors.experience ? 'error' : ''}`}
+                value={formData.experience}
+                onChange={handleInputChange}
+                placeholder="أدخل خبراتك الأكاديمية"
+                rows="3"
+              ></textarea>
+              {errors.experience && <span className="error-message">{errors.experience}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
+              <label htmlFor="skills" className="form-label">المهارات</label>
+              <Select
+                id="skills"
+                name="skills"
+                isMulti
+                options={availableSkills}
+                value={availableSkills.filter(option => formData.skills.includes(option.value))}
+                onChange={handleSkillsChange}
+                placeholder="اختر المهارات..."
+                noOptionsMessage={() => "لا توجد مهارات متاحة"}
+                className="react-select-container"
+                classNamePrefix="react-select"
+                isRtl={true}
+              />
+              {errors.skills && <span className="error-message">{errors.skills}</span>}
+            </div>
+
+            <div className="form-group-register half-width">
               <label htmlFor="password" className="form-label">كلمة المرور الجديدة</label>
               <input
                 type="password"
                 id="password"
                 name="password"
-                className={`form-input ${errors.password ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.password ? 'error' : ''}`}
                 minLength="6"
                 value={formData.password}
                 onChange={handleInputChange}
                 placeholder="اتركه فارغًا إذا كنت لا تريد التغيير"
               />
-              <small className="form-note">8 أحرف على الأقل</small>
+              <small className="form-note">6 أحرف على الأقل</small>
               {errors.password && <span className="error-message">{errors.password}</span>}
             </div>
 
@@ -553,7 +696,7 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
                 type="password"
                 id="confirmPassword"
                 name="confirmPassword"
-                className={`form-input ${errors.confirmPassword ? 'error' : ''}`}
+                className={`form-input-profile-edit ${errors.confirmPassword ? 'error' : ''}`}
                 value={formData.confirmPassword}
                 onChange={handleInputChange}
                 placeholder="تأكيد كلمة المرور الجديدة"
@@ -603,7 +746,6 @@ const EditProfileModal = ({ studentData, setShowEditModal }) => {
     </div>
   );
 };
-
 const StatsCard = () => {
   const [stats, setStats] = useState({
     totalTasks: 0,

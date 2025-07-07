@@ -432,6 +432,9 @@
             .profile-container {
                 grid-template-columns: 1fr;
             }
+            .form-input-profile-edit{
+                width: 100% !important;
+              }
         }
         
         /* الجانب الأيمن */
@@ -1214,6 +1217,7 @@
     color: #718096;
   }
         
+
         /* وسائط متجاوبة */
         @media (max-width: 768px) {
             .header-content {
@@ -1310,6 +1314,15 @@
         
         .form-input-profile, .form-textarea {
             width: 100%;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+            background-color: #f9f9f9;
+        }
+        .form-input-profile-edit{
+            width: 200px;
             padding: 12px 15px;
             border: 1px solid #ddd;
             border-radius: 8px;

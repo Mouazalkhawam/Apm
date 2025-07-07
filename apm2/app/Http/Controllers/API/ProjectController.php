@@ -383,39 +383,8 @@ class ProjectController extends Controller
  */
 protected function extractExperienceText($experience)
 {
-    if (empty($experience)) {
-        return '';
-    }
-
-    // إذا كانت الخبرة نصًا عاديًا
-    if (is_string($experience)) {
-        return $experience;
-    } 
-    
-    // إذا كانت الخبرة مصفوفة
-    if (is_array($experience)) {
-        $textParts = [];
-        
-        foreach ($experience as $item) {
-            if (is_array($item) && isset($item['type'], $item['content'])) {
-                if ($item['type'] === 'text') {
-                    $textParts[] = $item['content'];
-                }
-            } elseif (is_string($item)) {
-                $textParts[] = $item;
-            }
-        }
-        
-        return implode(' ', $textParts);
-    }
-    
-    // إذا كانت الخبرة JSON
-    if (is_string($experience) && json_decode($experience)) {
-        $decoded = json_decode($experience, true);
-        return $this->extractExperienceText($decoded);
-    }
-
-    return '';
+    // أصبحت أبسط بكثير بعد التغيير
+    return is_string($experience) ? $experience : '';
 }
     public function getStudentProjects()
     {

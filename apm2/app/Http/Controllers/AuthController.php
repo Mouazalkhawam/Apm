@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use App\Models\User;
 use App\Models\Student;
 use Illuminate\Support\Facades\Hash;
@@ -87,38 +88,51 @@ class AuthController extends Controller
 
     // ✅ تعديل الحساب
     public function updateProfile(Request $request)
-    {
-        $user = Auth::user();
-        $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->userId,
-            'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->userId,
-            'password' => 'sometimes|string|min:6|confirmed',
-            'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-        ]);
+{
+    $user = Auth::user();
+    
+    $request->validate([
+        'name' => 'sometimes|string|max:255',
+        'email' => 'sometimes|string|email|max:255|unique:users,email,' . $user->userId . ',userId',
+        'phone' => 'nullable|string|max:20|unique:users,phone,' . $user->userId . ',userId',
+        'password' => 'sometimes|string|min:6|confirmed',
+        'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
 
-        $data = [
-            'name' => $request->name ?? $user->name,
-            'email' => $request->email ?? $user->email,
-            'phone' => $request->phone ?? $user->phone,
-            'password' => $request->password ? Hash::make($request->password) : $user->password,
-        ];
+    $data = [
+        'name' => $request->name ?? $user->name,
+        'email' => $request->email ?? $user->email,
+        'phone' => $request->phone ?? $user->phone,
+    ];
 
-        if ($request->hasFile('profile_picture')) {
-            if ($user->profile_picture) {
-                Storage::disk('public')->delete($user->profile_picture);
-            }
-            $data['profile_picture'] = $request->file('profile_picture')->store('profile_pictures', 'public');
-        }
-
-        $user->update($data);
-
-        return response()->json([
-            'message' => 'تم تحديث الحساب بنجاح!',
-            'user' => $user
-        ], 200);
+    // تحديث كلمة المرور إذا تم توفيرها
+    if ($request->password) {
+        $data['password'] = Hash::make($request->password);
     }
 
+    // معالجة رفع الصورة
+    if ($request->hasFile('profile_picture')) {
+        // حذف الصورة القديمة إذا كانت موجودة
+        if ($user->profile_picture && file_exists(public_path($user->profile_picture))) {
+            unlink(public_path($user->profile_picture));
+        }
+        
+        // حفظ الصورة الجديدة بنفس مكان الإنشاء (public/images/users)
+        $image = $request->file('profile_picture');
+        $imageName = time().'.'.$image->extension();
+        $image->move(public_path('images/users'), $imageName);
+        $data['profile_picture'] = 'images/users/'.$imageName;
+    }
+
+    // تحديث بيانات المستخدم
+    $user->update($data);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'تم تحديث الحساب بنجاح!',
+        'user' => $user->fresh()
+    ], 200);
+}
 
     // ✅ حذف الحساب (مؤقت أو نهائي)
     public function deleteAccount(Request $request)

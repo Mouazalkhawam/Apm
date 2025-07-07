@@ -7,11 +7,10 @@ use App\Models\Skill;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Storage;
 
 class StudentProfileController extends Controller
 {
-    // تحديث الملف الشخصي مع دعم الوسائط المتعددة
+    // تحديث الملف الشخصي (نص فقط للخبرة)
     public function updateProfile(Request $request)
     {
         $user = Auth::user();
@@ -21,9 +20,7 @@ class StudentProfileController extends Controller
             'university_number' => 'nullable|string|max:20|unique:students,university_number,' . $student->studentId . ',studentId',
             'major' => 'nullable|string|max:100',
             'academic_year' => 'nullable|integer|min:1|max:5',
-            'experience' => 'nullable|array',
-            'experience.*.type' => 'required_with:experience|in:text,image,video',
-            'experience.*.content' => 'required_with:experience',
+            'experience' => 'nullable|string', // تغيير من array إلى string
             'gpa' => 'nullable|numeric|min:0|max:4.00',
         ]);
     
@@ -34,101 +31,19 @@ class StudentProfileController extends Controller
             ], 422);
         }
 
-        $data = $request->only([
+        $student->update($request->only([
             'university_number',
             'major',
             'academic_year',
+            'experience',
             'gpa'
-        ]);
-
-        // معالجة الخبرات إذا كانت موجودة
-        if ($request->has('experience')) {
-            $processedExperience = $this->processExperience($request->experience);
-            $data['experience'] = $processedExperience;
-        }
-    
-        $student->update($data);
+        ]));
     
         return response()->json([
             'success' => true,
-            'message' => 'تم تحديث الملف الشخصي!',
+            'message' => 'تم تحديث الملف الشخصي بنجاح!',
             'data' => $student->fresh()
         ]);
-    }
-
-    // معالجة بيانات الخبرة (رفع الصور، تحقق من الفيديوهات، إلخ)
-    private function processExperience(array $experienceItems)
-    {
-        $processed = [];
-        
-        foreach ($experienceItems as $item) {
-            try {
-                $processedItem = [
-                    'type' => $item['type'],
-                    'created_at' => now()->toDateTimeString()
-                ];
-
-                // معالجة الصور
-                if ($item['type'] === 'image') {
-                    if (str_starts_with($item['content'], 'data:image')) {
-                        $imagePath = $this->storeBase64Image($item['content']);
-                        if ($imagePath) {
-                            $processedItem['content'] = $imagePath;
-                        } else {
-                            continue; // تخطي إذا فشل تحميل الصورة
-                        }
-                    } else {
-                        $processedItem['content'] = $item['content']; // روابط صور موجودة
-                    }
-                }
-                // معالجة الفيديو
-                elseif ($item['type'] === 'video') {
-                    $processedItem['content'] = $this->validateVideoUrl($item['content']);
-                }
-                // معالجة النص
-                else {
-                    $processedItem['content'] = $item['content'];
-                }
-
-                $processed[] = $processedItem;
-            } catch (\Exception $e) {
-                \Log::error('Error processing experience item: ' . $e->getMessage());
-                continue;
-            }
-        }
-
-        return $processed;
-    }
-    // تخزين الصور بصيغة Base64
-    private function storeBase64Image($base64Image)
-    {
-        try {
-            $imageData = explode(',', $base64Image);
-            $imageInfo = explode(';', explode(':', $imageData[0])[1]);
-            $imageType = explode('/', $imageInfo[0])[1]; // هنا نأخذ العنصر الأول فقط
-            
-            $imageName = 'experience/' . uniqid() . '.' . $imageType;
-            
-            Storage::disk('public')->put($imageName, base64_decode($imageData[1]));
-            
-            return Storage::url($imageName);
-        } catch (\Exception $e) {
-            \Log::error('Failed to store base64 image: ' . $e->getMessage());
-            return null;
-        }
-    }
-    // تحقق من روابط الفيديو
-    private function validateVideoUrl($url)
-    {
-        $parsedUrl = parse_url($url);
-        
-        // مثال للتحقق من روابط يوتيوب
-        if (isset($parsedUrl['host']) && str_contains($parsedUrl['host'], 'youtube.com')) {
-            parse_str($parsedUrl['query'] ?? '', $query);
-            return 'https://www.youtube.com/embed/' . ($query['v'] ?? '');
-        }
-        
-        return $url;
     }
 
     // إضافة مهارة للطالب
@@ -154,7 +69,7 @@ class StudentProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تمت إضافة المهارة!'
+            'message' => 'تمت إضافة المهارة بنجاح!'
         ]);
     }
 
@@ -168,7 +83,7 @@ class StudentProfileController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => 'تمت إزالة المهارة!'
+            'message' => 'تمت إزالة المهارة بنجاح!'
         ]);
     }
 
