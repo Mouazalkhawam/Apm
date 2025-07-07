@@ -75,8 +75,7 @@ const DiscussionsCoordinator = () => {
         name: '',
         time: phaseTime || '08:00',
         hall: phaseHall || 'القاعة الرئيسية',
-        notes: '',
-        type: 'normal'
+        notes: ''
       }]
     };
 
@@ -87,7 +86,7 @@ const DiscussionsCoordinator = () => {
   };
 
   const handleAddGraduationDiscussion = () => {
-    if (!graduationDate || !graduationTime || !graduationHall) {
+    if (!graduationDate ) {
       alert('الرجاء إدخال جميع البيانات المطلوبة');
       return;
     }
@@ -101,8 +100,7 @@ const DiscussionsCoordinator = () => {
         name: '',
         time: graduationTime,
         hall: graduationHall,
-        notes: '',
-        type: 'normal'
+        notes: ''
       }]
     };
 
@@ -129,8 +127,7 @@ const DiscussionsCoordinator = () => {
         name: '',
         time: discussion.time,
         hall: discussion.hall,
-        notes: '',
-        type: 'normal'
+        notes: ''
       };
       
       const updatedDiscussions = phaseDiscussions.map(disc => {
@@ -154,8 +151,7 @@ const DiscussionsCoordinator = () => {
         name: '',
         time: discussion.time,
         hall: discussion.hall,
-        notes: '',
-        type: 'normal'
+        notes: ''
       };
       
       const updatedDiscussions = graduationDiscussions.map(disc => {
@@ -219,25 +215,7 @@ const DiscussionsCoordinator = () => {
   return (
     <div className="discussions-coordinator-container">
       {/* Sidebar Component */}
-      <Sidebar 
-        ref={sidebarRef}
-        user={{
-          name: "د.عفاف",
-          role: "منسق المشاريع",
-          image: "https://randomuser.me/api/portraits/women/44.jpg"
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-        navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true },
-          { icon: faProjectDiagram, text: "المشاريع", badge: 12 },
-          { icon: faUsers, text: "الطلاب", path:"/Supervisor-Management-Coordinator" },
-          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true },
-          { icon: faFileAlt, text: "التقارير" },
-          { icon: faComments, text: "المناقشات", badge: 3 }
-        ]}
-        mobileOpen={mobileSidebarOpen}
-      />
+    
       
       {/* Mobile Sidebar Toggle */}
       <button className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
@@ -250,16 +228,7 @@ const DiscussionsCoordinator = () => {
       {/* Main Content */}
       <div className={`main-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
         {/* Top Navigation */}
-        <TopNav 
-          user={{
-            name: "د.عفاف",
-            image: "https://randomuser.me/api/portraits/women/44.jpg"
-          }}
-          notifications={{
-            count: 3,
-          }}
-          searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
-        />
+        
         
         {/* Page Content */}
         <div className="page-content">
@@ -299,25 +268,7 @@ const DiscussionsCoordinator = () => {
                       onChange={(e) => setPhaseDate(e.target.value)}
                     />
                   </div>
-                  <div className="form-group">
-                    <label htmlFor="phaseTime">الوقت (اختياري)</label>
-                    <input
-                      type="time"
-                      id="phaseTime"
-                      value={phaseTime}
-                      onChange={(e) => setPhaseTime(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="phaseHall">القاعة (اختياري)</label>
-                    <input
-                      type="text"
-                      id="phaseHall"
-                      placeholder="أدخل اسم القاعة"
-                      value={phaseHall}
-                      onChange={(e) => setPhaseHall(e.target.value)}
-                    />
-                  </div>
+              
                   <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
                     <button className="btn btn-blue" onClick={handleAddPhaseDiscussion}>
                       <i className="fas fa-plus"></i> إضافة مناقشة
@@ -355,7 +306,6 @@ const DiscussionsCoordinator = () => {
                                 <th>وقت المناقشة</th>
                                 <th>القاعة</th>
                                 <th>ملاحظات</th>
-                                <th>النوع</th>
                               </tr>
                             </thead>
                             <tbody>
@@ -403,18 +353,7 @@ const DiscussionsCoordinator = () => {
                                       }
                                     ></textarea>
                                   </td>
-                                  <td>
-                                    <select
-                                      className="table-select"
-                                      value={group.type}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'type', e.target.value)
-                                      }
-                                    >
-                                      <option value="normal">عادية</option>
-                                      <option value="urgent">عاجلة</option>
-                                    </select>
-                                  </td>
+                                 
                                 </tr>
                               ))}
                             </tbody>
@@ -456,25 +395,6 @@ const DiscussionsCoordinator = () => {
                       id="graduationDate"
                       value={graduationDate}
                       onChange={(e) => setGraduationDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="graduationTime">الوقت</label>
-                    <input
-                      type="time"
-                      id="graduationTime"
-                      value={graduationTime}
-                      onChange={(e) => setGraduationTime(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label htmlFor="graduationHall">القاعة</label>
-                    <input
-                      type="text"
-                      id="graduationHall"
-                      placeholder="أدخل اسم القاعة"
-                      value={graduationHall}
-                      onChange={(e) => setGraduationHall(e.target.value)}
                     />
                   </div>
                   <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>

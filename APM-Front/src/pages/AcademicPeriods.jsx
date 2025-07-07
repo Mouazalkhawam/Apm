@@ -72,7 +72,7 @@ const AcademicPeriods = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem('access_token');
     const api = axios.create({
       baseURL: 'http://localhost:8000/api',
       headers: {
