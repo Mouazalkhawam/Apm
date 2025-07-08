@@ -11,7 +11,6 @@ import {
   faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 
-// إنشاء مثيل مخصص لـ axios مع إعدادات افتراضية
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
   timeout: 10000,
@@ -21,7 +20,6 @@ const apiClient = axios.create({
   }
 });
 
-// Interceptor لإضافة التوكن تلقائياً إلى كل طلب
 apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -32,7 +30,6 @@ apiClient.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-// Interceptor للتعامل مع الأخطاء العامة
 apiClient.interceptors.response.use(
   response => response,
   error => {
@@ -48,18 +45,15 @@ const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
 ));
 
-const  CoordinatorsProject = () => {
-    // Refs
+const CoordinatorsProject = () => {
     const sidebarRef = useRef(null);
     const overlayRef = useRef(null);
     const mainContentRef = useRef(null);
     
-    // States للسايدبار والمحتوى
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [contentEffectClass, setContentEffectClass] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
     
-    // States للبيانات
     const [activeProjectsCount, setActiveProjectsCount] = useState(0);
     const [pendingTasksCount, setPendingTasksCount] = useState(0);
     const [activeStudentsCount, setActiveStudentsCount] = useState(0);
@@ -73,13 +67,12 @@ const  CoordinatorsProject = () => {
         semester: '',
         progress: ''
     });
-    const [supervisorInfo, setSupervisorInfo] = useState({
+    const [userInfo, setUserInfo] = useState({
         name: '',
         image: ''
     });
     const navigate = useNavigate();
 
-    // Handle window resize and remove content-effect when mobile
     useEffect(() => {
       const handleResize = () => {
         const mobile = window.innerWidth < 769;
@@ -94,19 +87,16 @@ const  CoordinatorsProject = () => {
       return () => window.removeEventListener('resize', handleResize);
     }, [contentEffectClass]);
 
-    // Toggle sidebar collapse
     const toggleSidebar = () => {
       setSidebarCollapsed(!sidebarCollapsed);
     };
 
-    // Toggle content effect - only if not mobile
     const toggleContentEffect = () => {
       if (!isMobile) {
         setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
       }
     };
 
-    // Mobile sidebar handlers
     const toggleMobileSidebar = () => {
       sidebarRef.current?.classList.add('sidebar-open');
       overlayRef.current?.classList.add('overlay-open');
@@ -126,67 +116,54 @@ const  CoordinatorsProject = () => {
                 const token = localStorage.getItem('access_token');
                 
                 if (!token) {
-                    throw new Error('لم يتم العثور على token في localStorage');
+                    navigate('/login');
+                    return;
                 }
 
-                const checkResponse = await apiClient.get('/api/check-supervisor');
-                
-                if (!checkResponse.data.is_supervisor) {
-                    throw new Error('المستخدم الحالي ليس مشرفًا');
-                }
-
-                setSupervisorInfo({
-                    name: checkResponse.data.name,
-                    image: checkResponse.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+                // جلب معلومات المستخدم الأساسية
+                const userResponse = await apiClient.get('/api/user');
+                setUserInfo({
+                    name: userResponse.data.name,
+                    image: userResponse.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
                 });
 
-                const supervisorId = checkResponse.data.supervisor_id;
-
-                const projectsResponse = await apiClient.get(
-                    `/api/supervisors/${supervisorId}/active-projects-count`
-                );
-                setActiveProjectsCount(projectsResponse.data.active_projects_count);
-
-                setPendingTasksCount(14);
-                setActiveStudentsCount(23);
-                setAverageGrade(88);
-
-            } catch (err) {
-                console.error('حدث خطأ أثناء جلب البيانات:', err);
-                setError(err.message || 'حدث خطأ أثناء جلب البيانات');
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    useEffect(() => {
-        const fetchProjects = async () => {
-            try {
-                const response = await apiClient.get('/api/supervisor/projects');
-                if (response.data.success) {
-                    const mappedProjects = response.data.data.map(project => ({
+                // جلب المشاريع مباشرة بدون التحقق من صلاحيات المشرف
+                const projectsResponse = await apiClient.get('/api/coordinator/current-projects');
+                if (projectsResponse.data.success) {
+                    const mappedProjects = projectsResponse.data.data.map(project => ({
                         id: project.project_id,
                         name: project.title,
                         description: project.description,
                         type: project.type,
                         semester: `${project.start_date} إلى ${project.end_date}`,
                         progress: Math.floor(Math.random() * 101),
-                        students: `${project.group.students_count} طلاب`,
-                        groupId: project.group.id
+                        students: `${project.group?.students_count || 0} طلاب`,
+                        groupId: project.group?.id || null
                     }));
                     setProjects(mappedProjects);
                     setFilteredProjects(mappedProjects);
                 }
-            } catch (error) {
-                console.error('خطأ في جلب المشاريع:', error);
-                setError('حدث خطأ أثناء جلب بيانات المشاريع');
+
+                // إحصائيات افتراضية
+                setActiveProjectsCount(projectsResponse.data.count || 0);
+                setPendingTasksCount(14);
+                setActiveStudentsCount(23);
+                setAverageGrade(88);
+
+            } catch (err) {
+                console.error('حدث خطأ أثناء جلب البيانات:', err);
+                if (err.response?.status === 401) {
+                    navigate('/login');
+                } else {
+                    setError(err.message || 'حدث خطأ أثناء جلب البيانات');
+                }
+            } finally {
+                setLoading(false);
             }
         };
-        fetchProjects();
-    }, []);
+
+        fetchData();
+    }, [navigate]);
 
     useEffect(() => {
         filterProjects();
@@ -219,8 +196,10 @@ const  CoordinatorsProject = () => {
     };
 
     const viewProjectDetails = (groupId) => {
-        localStorage.setItem('selectedGroupId', groupId);
-        navigate('/group-supervisor');
+        if (groupId) {
+            localStorage.setItem('selectedGroupId', groupId);
+            navigate('/group-supervisor');
+        }
     };
 
     if (loading) {
@@ -236,34 +215,31 @@ const  CoordinatorsProject = () => {
             <SidebarWithRef 
                 ref={sidebarRef}
                 user={{
-                  name: supervisorInfo.name || "د.عفاف",
-                  role: "مشرف",
-                  image: supervisorInfo.image
+                  name: userInfo.name || "مستخدم",
+                  role: "مستخدم",
+                  image: userInfo.image
                 }}
                 collapsed={sidebarCollapsed}
                 onToggleCollapse={toggleSidebar}
                 onToggleEffect={toggleContentEffect}
                 navItems={[
-                  { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
-                  { icon: faProjectDiagram, text: "المشاريع", active: true, badge: activeProjectsCount, path: "/supervisor-project" },
+                  { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
+                  { icon: faProjectDiagram, text: "المشاريع", active: true, badge: activeProjectsCount, path: "/projects" },
                   { icon: faUsers, text: "الطلاب", path:"/students" },
                   { icon: faCalendarCheck, text: "المهام", badge: pendingTasksCount, alert: true, path: "/tasks" },
                   { icon: faFileAlt, text: "التقارير", path: "/reports" },
-                  { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/scheduling-supervisors-meetings" }
+                  { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/meetings" }
                 ]}
             />
             
-            {/* Overlay for mobile sidebar */}
             <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
             
-            {/* Main Content Area */}
             <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`} ref={mainContentRef}>
-                {/* Top Navigation */}
                 <div className='nav-top-dash'>
                     <TopNav 
                         user={{
-                            name: supervisorInfo.name || "د.عفاف",
-                            image: supervisorInfo.image
+                            name: userInfo.name || "مستخدم",
+                            image: userInfo.image
                         }}
                         notifications={{
                             bell: 3,
@@ -276,7 +252,6 @@ const  CoordinatorsProject = () => {
                     </button>
                 </div>
                 
-                {/* Main Content */}
                 <div className='supervisor-dashboard'>
                     <section className="filter-section">
                         <div className="filter-container">
@@ -365,4 +340,4 @@ const  CoordinatorsProject = () => {
     );
 };
 
-export default  CoordinatorsProject;  
+export default CoordinatorsProject;

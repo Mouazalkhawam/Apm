@@ -193,6 +193,8 @@ Route::middleware('auth:api')->group(function () {
 
     Route::get('/projects/current-semester', [ProjectController::class, 'getCurrentSemesterProjects']);
     Route::get('/projects/current-graduation', [ProjectController::class, 'getCurrentGraduationProjects']);
+    Route::get('/coordinator/current-projects', [ProjectController::class, 'getCurrentProjectsCoordinator']);
+   
 
     Route::get('supervisors/{supervisorId}/active-projects-count', 
     [SupervisorController::class, 'countActiveProjects']);
