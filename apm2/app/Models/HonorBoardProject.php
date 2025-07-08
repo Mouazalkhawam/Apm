@@ -18,4 +18,5 @@ class HonorBoardProject extends Model
     {
         return $this->belongsTo(Project::class, 'project_id', 'projectid');
     }
+    
 }
