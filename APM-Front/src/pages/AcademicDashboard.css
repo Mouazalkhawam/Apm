@@ -663,6 +663,8 @@
             border: none;
             background: none;
             cursor: pointer;
+            
+            margin-top: 5px;
         }
         
         .task-more:hover {
@@ -825,7 +827,7 @@
             }
             
             .tasks-students-grid {
-                grid-template-columns: 1fr 2fr;
+                grid-template-columns: 1fr;
             }
           
         }

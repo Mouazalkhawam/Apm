@@ -211,7 +211,7 @@
   /* تحسينات للمحتوى الرئيسي */
   .main-content-cord-dash {
     margin-right: 250px;
-    width: calc(100vw - 250px);
+    width: calc(100vw - 250px) !important;
     transition: all 0.3s ease;
     min-height: 100vh;
     display: flex;
