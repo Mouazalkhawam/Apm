@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import './SupervisorsProject.css';
+import './CoordinatorsProject';
 import TopNav from "../components/TopNav/TopNav";
 import Sidebar from "../components/Sidebar/Sidebar";
 import axios from 'axios';
@@ -48,7 +48,7 @@ const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
 ));
 
-const SupervisorsProject = () => {
+const  CoordinatorsProject = () => {
     // Refs
     const sidebarRef = useRef(null);
     const overlayRef = useRef(null);
@@ -365,4 +365,4 @@ const SupervisorsProject = () => {
     );
 };
 
-export default SupervisorsProject;
+export default  CoordinatorsProject;  

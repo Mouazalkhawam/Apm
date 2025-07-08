@@ -21,6 +21,7 @@ import SchedulingSupervisorsMeetings from './pages/SchedulingSupervisorsMeetings
 import SupervisorDashboard from './pages/SupervisorDashboard';
 import GroupManagementSupervisor from './pages/GroupManagementSupervisor';
 import SupervisorsProject from './pages/SupervisorsProject';
+import CoordinatorsProject from './pages/CoordinatorsProject';
 import SuperManageCoordinator from './pages/SuperManageCoordinator';
 import DiscussionsCoordinator from './pages/DiscussionsCoordinator';
 import AddSupervisor from './pages/AddSupervisor';
@@ -162,6 +163,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <SupervisorsProject />
+                            </ProtectedRoute>
+                          } 
+               />
+                <Route 
+                 path="/coordinator-project" 
+                 element={
+                  <ProtectedRoute>
+                    <CoordinatorsProject />
                             </ProtectedRoute>
                           } 
                />
