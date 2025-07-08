@@ -327,5 +327,24 @@ class AuthController extends Controller
             'data' => $supervisors
         ]);
     }
+    public function checkSupervisor(Request $request)
+    {
+        $user = $request->user();
+        
+        if (!$user->isSupervisor()) {
+            return response()->json([
+                'is_supervisor' => false,
+                'message' => 'المستخدم الحالي ليس مشرفًا'
+            ]);
+        }
+        
+        return response()->json([
+            'is_supervisor' => true,
+            'supervisor_id' => $user->supervisor->supervisorId,
+            'user_id' => $user->userId,
+            'name' => $user->name,
+            'email' => $user->email
+        ]);
+    }
 
 }

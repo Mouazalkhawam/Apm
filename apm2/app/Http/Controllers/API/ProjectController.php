@@ -171,51 +171,50 @@ class ProjectController extends Controller
             abort(403, 'لديك بالفعل مشروع فصلي قيد التنفيذ (ومقبول)');
         }
     }
-
     protected function sendNotifications(Group $group, $students, $supervisors)
-    {
-        // تحميل العلاقة مع المشروع مسبقاً
-        $group->load('project');
-        
-        // الحصول على القائد (المنشئ)
-        $leader = $group->students()
-            ->where('group_student.is_leader', true)
-            ->first();
+{
+    // تحميل العلاقة مع المشروع بشكل صريح
+    $group->load('project');
     
-        // إشعارات للطلاب (باستثناء القائد)
-        $group->students()
-            ->whereIn('students.studentId', $students)
-            ->where('students.studentId', '!=', $leader->studentId)
-            ->with('user')
-            ->each(function ($student) use ($group) {
-                NotificationService::sendRealTime(
-                    $student->user->userId,
-                    "تمت دعوتك لمشروع {$group->name}",
-                    [
-                        'type' => 'PROJECT_INVITATION',
-                        'group_id' => $group->groupid, // استخدام groupid بدلاً من projectid
-                        'project_id' => $group->project->projectid,
-                        'is_leader' => false
-                    ]
-                );
-            });
-    
-        // إشعارات للمشرفين
-        $group->supervisors()
-            ->whereIn('supervisors.supervisorId', $supervisors)
-            ->with('user')
-            ->each(function ($supervisor) use ($group) {
-                NotificationService::sendRealTime(
-                    $supervisor->user->userId,
-                    "تم تعيينك كمشرف على مشروع {$group->name}",
-                    [
-                        'type' => 'SUPERVISOR_INVITATION',
-                        'group_id' => $group->groupid, // استخدام groupid بدلاً من projectid
-                        'project_id' => $group->project->projectid
-                    ]
-                );
-            });
-    }
+    // الحصول على القائد (المنشئ)
+    $leader = $group->students()
+        ->where('group_student.is_leader', true)
+        ->first();
+
+    // إشعارات للطلاب (باستثناء القائد)
+    $group->students()
+        ->whereIn('students.studentId', $students)
+        ->where('students.studentId', '!=', $leader->studentId)
+        ->with('user')
+        ->each(function ($student) use ($group) {
+            NotificationService::sendRealTime(
+                $student->user->userId,
+                "تمت دعوتك لمشروع {$group->name}",
+                [
+                    'type' => 'PROJECT_INVITATION',
+                    'group_id' => $group->getKey(), // استخدم getKey() للحصول على المفتاح الأساسي
+                    'project_id' => $group->project->projectid,
+                    'is_leader' => false
+                ]
+            );
+        });
+
+    // إشعارات للمشرفين
+    $group->supervisors()
+        ->whereIn('supervisors.supervisorId', $supervisors)
+        ->with('user')
+        ->each(function ($supervisor) use ($group) {
+            NotificationService::sendRealTime(
+                $supervisor->user->userId,
+                "تم تعيينك كمشرف على مشروع {$group->name}",
+                [
+                    'type' => 'PROJECT_INVITATION',
+                    'group_id' => $group->getKey(), // استخدم getKey() للحصول على المفتاح الأساسي
+                    'project_id' => $group->project->projectid
+                ]
+            );
+        });
+}
     public function approveMembership(Request $request)
     {
         $request->validate([
@@ -700,6 +699,16 @@ protected function extractExperienceText($experience)
             ], 500);
         }
     }
+    protected function createPendingTask($type, $related, $supervisorId)
+    {
+        return PendingTask::create([
+            'type' => $type,
+            'related_id' => $related->id,
+            'related_type' => get_class($related),
+            'supervisor_id' => $supervisorId,
+            'status' => 'pending'
+        ]);
+    }
     public function addGroupMembers(Request $request, $groupId)
     {
         $request->validate([
@@ -752,7 +761,7 @@ protected function extractExperienceText($experience)
                         "تمت دعوتك للانضمام إلى مجموعة {$group->name}",
                         [
                             'type' => 'PROJECT_INVITATION',
-                            'group_id' => $groupId,
+                            'group_id' => $group->groupid, // استخدم groupid بدلاً من groupId
                             'project_id' => $group->projectid
                         ]
                     );
@@ -802,6 +811,7 @@ protected function extractExperienceText($experience)
                         'name' => $supervisor->user->name,
                         'created_at' => $now->toDateTimeString()
                     ];
+                    $this->createPendingTask('membership', $groupSupervisor, $supervisor->supervisorId);
                 }
             }
     

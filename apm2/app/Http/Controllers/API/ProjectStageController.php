@@ -19,77 +19,76 @@ class ProjectStageController extends Controller
     public function store(Request $request, $group_id)
     {
         $validator = Validator::make($request->all(), [
-            'title' => 'required|string|max:255',
+            'title' => 'required|string|max:255|unique:project_stages,title,NULL,id,project_id,' . $request->project_id,
             'description' => 'nullable|string',
-            'due_date' => 'required|date',
-            'order' => 'nullable|integer',
+            'due_date' => 'required|date|after:today',
+            'order' => 'nullable|integer|min:1',
+        ], [
+            'title.unique' => 'يوجد بالفعل مرحلة بنفس الاسم في هذا المشروع',
+            'due_date.after' => 'يجب أن يكون تاريخ الاستحقاق بعد اليوم الحالي'
         ]);
-    
+
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-    
-        try {
-            // 1. التحقق من وجود المجموعة
-            $group = Group::findOrFail($group_id);
-    
-            // 2. التحقق من وجود مشروع مرتبط بالمجموعة
-            if (!$group->project) {
-                return response()->json(['message' => 'لا يوجد مشروع مرتبط بهذه المجموعة.'], 404);
-            }
-    
-            // 3. جلب المستخدم الحالي وتحقق أنه مشرف
-            $user = Auth::user();
-            if (!$user || !$user->isSupervisor()) {
-                return response()->json(['message' => 'غير مصرح لك كمشرف.'], 403);
-            }
-    
-            // 4. جلب سجل المشرف والتحقق من صلاحيته
-            $supervisor = $user->supervisor;
-            if (!$supervisor) {
-                return response()->json(['message' => 'سجل المشرف غير موجود.'], 403);
-            }
-    
-            // 5. التحقق من أن المشرف معتمد لهذه المجموعة بالذات
-            $isApprovedForGroup = $supervisor->groups()
-                ->where('group_supervisor.groupid', $group_id)
-                ->where('group_supervisor.status', 'approved')
-                ->exists();
-    
-            if (!$isApprovedForGroup) {
-                return response()->json(['message' => 'غير مصرح لك بإدارة هذا المشروع.'], 403);
-            }
-    
-            // 6. التحقق من عدم وجود مرحلة بنفس الترتيب لهذا المشروع
-            $existingStage = ProjectStage::where('project_id', $group->project->projectid)
-                ->where('order', $request->order ?? 0)
-                ->first();
-    
-            if ($existingStage) {
-                return response()->json([
-                    'message' => 'يوجد بالفعل مرحلة بنفس الترتيب لهذا المشروع.',
-                    'conflicting_stage' => $existingStage
-                ], 409); // 409 Conflict
-            }
-    
-            // 7. إنشاء المرحلة الجديدة
-            $stage = ProjectStage::create([
-                'project_id' => $group->project->projectid,
-                'title' => $request->title,
-                'description' => $request->description,
-                'due_date' => $request->due_date,
-                'order' => $request->order ?? 0,
-            ]);
-    
             return response()->json([
-                'message' => 'تم إنشاء مرحلة المشروع بنجاح.',
-                'data' => $stage
-            ], 201);
-    
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'المجموعة غير موجودة.'], 404);
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        try {
+            $group = Group::with('project')->findOrFail($group_id);
+            $user = Auth::user();
+
+            if (!$user->isSupervisor() || !$group->isSupervisorApproved($user->supervisor->supervisorId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بإنشاء مراحل في هذا المشروع'
+                ], 403);
+            }
+
+            // التحقق من عدم وجود تعارض في ترتيب المراحل
+            if ($request->order && ProjectStage::where('project_id', $group->project->projectid)
+                ->where('order', $request->order)->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يوجد بالفعل مرحلة بنفس الترتيب في هذا المشروع'
+                ], 409);
+            }
+
+            return DB::transaction(function () use ($request, $group) {
+                $stage = ProjectStage::create([
+                    'project_id' => $group->project->projectid,
+                    'title' => $request->title,
+                    'description' => $request->description,
+                    'due_date' => $request->due_date,
+                    'order' => $request->order ?? ProjectStage::where('project_id', $group->project->projectid)->count() + 1,
+                    'status' => 'pending'
+                ]);
+
+                // إنشاء مهام معلقة لموافقة المشرفين إذا كان ذلك مطلوبًا
+                foreach ($group->approvedSupervisors as $supervisor) {
+                    PendingTask::create([
+                        'type' => 'stage_approval',
+                        'related_id' => $stage->id,
+                        'related_type' => ProjectStage::class,
+                        'supervisor_id' => $supervisor->supervisorId,
+                        'status' => 'pending',
+                        'due_date' => $request->due_date
+                    ]);
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $stage,
+                    'message' => 'تم إنشاء المرحلة بنجاح'
+                ], 201);
+            });
+
         } catch (\Exception $e) {
-            return response()->json(['message' => 'حدث خطأ أثناء معالجة الطلب: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء إنشاء المرحلة: ' . $e->getMessage()
+            ], 500);
         }
     }
     // عرض مراحل المشروع
@@ -155,187 +154,183 @@ class ProjectStageController extends Controller
             'data' => $stages
         ]);
     }
-
     public function submitStage(Request $request, $stage_id)
     {
         $validator = Validator::make($request->all(), [
-            'notes' => 'nullable|string',
-            'attachments' => 'nullable|array',
-            'attachments.*' => 'file|mimes:pdf,doc,docx,jpg,jpeg,png,zip,rar|max:2048',
+            'notes' => 'required|string|min:20',
+            'attachments.*' => 'nullable|file|mimes:pdf,doc,docx,jpg,png|max:5120',
+        ], [
+            'notes.min' => 'يجب أن يحتوي وصف التسليم على الأقل 20 حرفًا'
         ]);
 
         if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
-            // 1. التحقق من وجود المرحلة
-            $stage = ProjectStage::findOrFail($stage_id);
-            
-            // 2. التحقق من وجود مشروع مرتبط بالمرحلة
-            $project = $stage->project;
-            if (!$project) {
-                return response()->json(['message' => 'لا يوجد مشروع مرتبط بهذه المرحلة.'], 404);
-            }
-            
-            // 3. التحقق من وجود مجموعة مرتبطة بالمشروع
-            $group = $project->group;
-            if (!$group) {
-                return response()->json(['message' => 'لا يوجد مجموعة مرتبطة بهذا المشروع.'], 404);
-            }
-            
-            // 4. التحقق من أن المستخدم الحالي هو قائد الفريق
+            $stage = ProjectStage::with('project.group')->findOrFail($stage_id);
             $user = Auth::user();
-            if (!$user || !$user->isTeamLeader($group->groupId)) {
-                return response()->json(['message' => 'غير مصرح لك بتسليم هذه المرحلة.'], 403);
-            }
-            
-            // 5. التحقق من عدم وجود تسليم سابق لهذه المرحلة
-            $existingSubmission = StageSubmission::where('project_stage_id', $stage_id)->first();
-            if ($existingSubmission) {
+
+            if (!$user->student || !$stage->project->group->isTeamLeader($user->student->studentId)) {
                 return response()->json([
-                    'message' => 'تم تسليم هذه المرحلة مسبقاً.',
-                    'submission' => $existingSubmission
+                    'success' => false,
+                    'message' => 'فقط قائد الفريق يمكنه تسليم المراحل'
+                ], 403);
+            }
+
+            if ($stage->submissions()->exists()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تم تسليم هذه المرحلة مسبقاً'
                 ], 409);
             }
-            
-            // 6. إنشاء تسليم جديد للمرحلة
-            $submission = StageSubmission::create([
-                'project_stage_id' => $stage_id,
-                'submitted_at' => now(),
-                'status' => 'submitted',
-                'notes' => $request->notes,
-            ]);
-            
-            // 7. حفظ المرفقات إذا وجدت
-            if ($request->hasFile('attachments')) {
-                foreach ($request->file('attachments') as $file) {
-                    $path = $file->store('stage_submissions');
-                    
-                    // يمكنك هنا حفظ معلومات المرفقات في جدول منفصل إذا لزم الأمر
-                    // مثلاً: Attachment::create([...]);
+
+            return DB::transaction(function () use ($request, $stage, $user) {
+                $submission = StageSubmission::create([
+                    'project_stage_id' => $stage->id,
+                    'submitted_by' => $user->userId,
+                    'notes' => $request->notes,
+                    'status' => 'submitted',
+                    'submitted_at' => now()
+                ]);
+
+                // معالجة المرفقات إذا وجدت
+                if ($request->hasFile('attachments')) {
+                    foreach ($request->file('attachments') as $file) {
+                        $fileName = time() . '_' . $file->getClientOriginalName();
+                        $filePath = $file->storeAs('stage_attachments', $fileName, 'public');
+                        
+                        $submission->attachments()->create([
+                            'path' => $filePath,
+                            'name' => $file->getClientOriginalName(),
+                            'size' => $file->getSize()
+                        ]);
+                    }
                 }
-            }
-            
-            return response()->json([
-                'message' => 'تم تسليم المرحلة بنجاح.',
-                'data' => $submission
-            ], 201);
-            
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json(['message' => 'المرحلة غير موجودة.'], 404);
+
+                $stage->update(['status' => 'submitted']);
+
+                // إنشاء مهام معلقة لتقييم المرحلة
+                foreach ($stage->project->group->approvedSupervisors as $supervisor) {
+                    PendingTask::create([
+                        'type' => 'stage_evaluation',
+                        'related_id' => $submission->id,
+                        'related_type' => StageSubmission::class,
+                        'supervisor_id' => $supervisor->supervisorId,
+                        'status' => 'pending',
+                        'due_date' => $stage->due_date
+                    ]);
+
+                    NotificationService::sendRealTime(
+                        $supervisor->user->userId,
+                        "تم تسليم مرحلة جديدة: {$stage->title}",
+                        [
+                            'type' => 'STAGE_SUBMITTED',
+                            'stage_id' => $stage->id,
+                            'submission_id' => $submission->id
+                        ]
+                    );
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'data' => $submission,
+                    'message' => 'تم تسليم المرحلة بنجاح وتم إخطار المشرفين'
+                ], 201);
+            });
+
         } catch (\Exception $e) {
-            return response()->json(['message' => 'حدث خطأ أثناء معالجة الطلب: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تسليم المرحلة: ' . $e->getMessage()
+            ], 500);
         }
     }
 
-    public function evaluateStage(Request $request, $stage_id)
+    public function evaluateStage(Request $request, $submission_id)
     {
         $validator = Validator::make($request->all(), [
             'grade' => 'required|numeric|min:0|max:100',
-            'feedback' => 'nullable|string',
-            'status' => 'required|in:reviewed',
+            'feedback' => 'nullable|string|max:1000',
+            'status' => 'required|in:approved,rejected,needs_revision'
         ]);
 
         if ($validator->fails()) {
-            \Log::error('Validation failed', ['errors' => $validator->errors(), 'stage_id' => $stage_id]);
-            return response()->json(['errors' => $validator->errors()], 422);
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         try {
-            // 1. جلب المرحلة مع تحميل العلاقات بشكل صريح
-            \Log::info('Fetching stage with relations', ['stage_id' => $stage_id]);
-            $stage = ProjectStage::with([
-                'project' => function($query) {
-                    $query->with(['group.groupSupervisors']);
-                }
-            ])->findOrFail($stage_id);
-
-            // 2. التحقق من وجود المشروع والمجموعة بشكل صريح
-            if (!$stage->project) {
-                \Log::error('Project not found', ['stage_id' => $stage_id]);
-                return response()->json(['message' => 'المشروع غير موجود.'], 404);
-            }
-
-            if (!$stage->project->group) {
-                \Log::error('Group not found', ['project_id' => $stage->project->projectid]);
-                return response()->json(['message' => 'المجموعة غير موجودة.'], 404);
-            }
-
-            $group = $stage->project->group;
-            \Log::debug('Group loaded', ['group_id' => $group->groupId ?? null]);
-
-            // 3. جلب تسليم المرحلة
-            $submission = $stage->submissions()->first();
-            if (!$submission) {
-                \Log::error('No submission found', ['stage_id' => $stage_id]);
-                return response()->json(['message' => 'لا يوجد تسليم لهذه المرحلة.'], 404);
-            }
-
-            // 4. التحقق من صلاحيات المشرف
+            $submission = StageSubmission::with('stage.project.group')->findOrFail($submission_id);
             $user = Auth::user();
-            if (!$user || !$user->supervisor) {
-                \Log::error('User not authorized', ['user_id' => $user ? $user->id : null]);
-                return response()->json(['message' => 'غير مصرح لك بتقييم هذه المرحلة.'], 403);
+
+            if (!$user->isSupervisor()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بتقييم المراحل'
+                ], 403);
             }
 
-            // 5. طريقة بديلة للتحقق من صلاحية المشرف
-            $supervisorCheck = $group->groupSupervisors()
-                ->where('supervisorId', $user->supervisor->supervisorId)
-                ->where('status', 'approved')
-                ->exists();
+            $group = $submission->stage->project->group;
 
-            \Log::info('Supervisor authorization check', [
-                'group_id' => $group->groupId,
-                'supervisor_id' => $user->supervisor->supervisorId,
-                'is_approved' => $supervisorCheck,
-                'all_supervisors' => $group->groupSupervisors->pluck('supervisorId')
-            ]);
+            if (!$group->isSupervisorApproved($user->supervisor->supervisorId)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'غير مصرح لك بتقييم مراحل هذا المشروع'
+                ], 403);
+            }
 
-            if (!$supervisorCheck) {
-                \Log::error('Supervisor authorization failed', [
-                    'group_id' => $group->groupId,
-                    'supervisor_id' => $user->supervisor->supervisorId,
-                    'db_records' => GroupSupervisor::where('groupid', $group->groupId)->get()->toArray()
+            return DB::transaction(function () use ($request, $submission, $user, $group) {
+                $submission->update([
+                    'grade' => $request->grade,
+                    'feedback' => $request->feedback,
+                    'status' => $request->status,
+                    'evaluated_at' => now(),
+                    'evaluated_by' => $user->userId
                 ]);
-                return response()->json(['message' => 'غير مصرح لك بتقييم هذه المرحلة.'], 403);
-            }
 
-            // 6. تحديث التقييم
-            $submission->update([
-                'grade' => $request->grade,
-                'feedback' => $request->feedback,
-                'status' => $request->status,
-                'reviewed_by' => $user->userId,
-                'reviewed_at' => now(),
-            ]);
+                $submission->stage->update(['status' => $request->status]);
 
-            \Log::info('Stage evaluation successful', [
-                'stage_id' => $stage_id,
-                'reviewed_by' => $user->userId
-            ]);
+                // تحديث المهمة المعلقة
+                PendingTask::where('related_id', $submission->id)
+                    ->where('related_type', StageSubmission::class)
+                    ->where('supervisor_id', $user->supervisor->supervisorId)
+                    ->update(['status' => $request->status]);
 
-            return response()->json([
-                'message' => 'تم تقييم المرحلة بنجاح.',
-                'data' => $submission
-            ]);
+                // إرسال إشعارات لجميع أعضاء الفريق
+                foreach ($group->approvedStudents as $student) {
+                    NotificationService::sendRealTime(
+                        $student->user->userId,
+                        "تم تقييم مرحلة المشروع: {$submission->stage->title}",
+                        [
+                            'type' => 'STAGE_EVALUATED',
+                            'stage_id' => $submission->stage->id,
+                            'status' => $request->status,
+                            'grade' => $request->grade
+                        ]
+                    );
+                }
 
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            \Log::error('Model not found', [
-                'error' => $e->getMessage(),
-                'stage_id' => $stage_id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['message' => 'المرحلة غير موجودة.'], 404);
+                return response()->json([
+                    'success' => true,
+                    'data' => $submission,
+                    'message' => 'تم تقييم المرحلة بنجاح'
+                ]);
+            });
+
         } catch (\Exception $e) {
-            \Log::error('Evaluation error', [
-                'error' => $e->getMessage(),
-                'stage_id' => $stage_id,
-                'trace' => $e->getTraceAsString()
-            ]);
-            return response()->json(['message' => 'حدث خطأ غير متوقع: ' . $e->getMessage()], 500);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تقييم المرحلة: ' . $e->getMessage()
+            ], 500);
         }
     }
+
     public function getStageSubmission($stage_id)
     {
         try {
