@@ -1050,7 +1050,7 @@ const ProjectsCard = ({ setShowTasksPage, setShowProjectModal }) => {
               const progress = calculateProgress(project);
               
               return (
-                <div key={project.projectid} className="project-card">
+                <div key={project.projectid} className="project-card-pro">
                   <div className="project-header-profile">
                     <span>{project.type === 'graduation' ? 'مشروع التخرج' : 'مشروع فصلي'}</span>
                     <span className={`project-status ${

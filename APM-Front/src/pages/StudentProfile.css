@@ -678,7 +678,7 @@
             gap: 20px;
         }
         
-        .project-card {
+        .project-card-pro {
             border: 1px solid #eee;
             border-radius: 12px;
             overflow: hidden;
@@ -686,7 +686,7 @@
             background-color: white;
         }
         
-        .project-card:hover {
+        .project-card-pro:hover {
             transform: translateY(-5px);
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
