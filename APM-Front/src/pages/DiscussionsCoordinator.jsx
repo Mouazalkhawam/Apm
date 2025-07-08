@@ -213,6 +213,12 @@ const DiscussionsCoordinator = () => {
   };
 
   return (
+    <div className="dashboard-container-dash-sup">
+      <Sidebar />
+      <div className="main-container">
+                <div className='supervisor-dashboard'>
+        <TopNav />
+
     <div className="discussions-coordinator-container">
       {/* Sidebar Component */}
     
@@ -247,7 +253,7 @@ const DiscussionsCoordinator = () => {
                 className={`tabb-btn ${activeTab === 'graduation' ? 'active' : ''}`}
                 onClick={() => setActiveTab('graduation')}
               >
-                <i className="fas fa-graduation-cap"></i> مناقشات التخرج
+                <i className="fas fa-graduation-cap"></i> المناقشات النهائية
               </button>
             </div>
           </div>
@@ -386,7 +392,7 @@ const DiscussionsCoordinator = () => {
             <div className="fade-in">
               {/* Date Selection */}
               <div className="section">
-                <h2>تحديد تاريخ مناقشة التخرج</h2>
+                <h2>تحديد تاريخ المناقشة النهائية</h2>
                 <div className="form-row">
                   <div className="form-group">
                     <label htmlFor="graduationDate">التاريخ</label>
@@ -407,18 +413,18 @@ const DiscussionsCoordinator = () => {
 
               {/* Graduation Discussions Table */}
               <div className="section">
-                <h2>جدول مناقشات التخرج</h2>
+                <h2>جدول المناقشات النهائية</h2>
                 <div id="graduationDiscussionsContainer">
                   {graduationDiscussions.length === 0 ? (
                     <div className="empty-state">
                       <i className="fas fa-graduation-cap"></i>
-                      <p>لا توجد مناقشات تخرج مضافة بعد</p>
+                      <p>لا توجد مناقشات نهائية مضافة بعد</p>
                     </div>
                   ) : (
                     graduationDiscussions.map((discussion) => (
                       <div key={discussion.id} className="discussion-table">
                         <div className="table-header graduation-header">
-                          <h3>مناقشة تخرج - {formatDate(discussion.date)}</h3>
+                          <h3>مناقشة نهائية - {formatDate(discussion.date)}</h3>
                           <button
                             onClick={() => handleDeleteDiscussion(discussion.id)}
                             className="delete-btn"
@@ -521,6 +527,9 @@ const DiscussionsCoordinator = () => {
             </div>
           )}
         </div>
+      </div>
+      </div>
+      </div>
       </div>
     </div>
   );

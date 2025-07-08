@@ -4,6 +4,8 @@ import flatpickr from 'flatpickr';
 import 'flatpickr/dist/flatpickr.min.css';
 import { Arabic } from 'flatpickr/dist/l10n/ar.js';
 import './AcademicPeriods.css';
+import Sidebar from '../components/Sidebar/Sidebar';
+import TopNav from '../components/TopNav/TopNav';
 
 const AcademicPeriods = () => {
   const [formData, setFormData] = useState({
@@ -142,14 +144,14 @@ const AcademicPeriods = () => {
   };
 
   return (
-    <div className="container">
-      <header>
-        <h1>التقويم الأكاديمي الجامعي</h1>
-        <p>قم بتحديد تواريخ الفصول الدراسية للعام الجامعي</p>
-      </header>
-
+       <div className="dashboard-container-dash-sup">
+      <Sidebar />
+      <div className="main-container">
+                <div className='supervisor-dashboard'>
+        <TopNav />
+    <div className="containerr">
       {!showPreview ? (
-        <div className="form-container">
+        <div className="form-containerr">
           <div className="form-header">
             <h2>إعداد التقويم الأكاديمي</h2>
           </div>
@@ -358,6 +360,9 @@ const AcademicPeriods = () => {
           </div>
         </div>
       )}
+    </div>
+    </div>
+    </div>
     </div>
   );
 };

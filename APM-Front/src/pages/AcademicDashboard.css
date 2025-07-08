@@ -527,7 +527,7 @@
             text-decoration: none;
         }
         
-        .projects-list {
+        .projects-list-dash {
             display: flex;
             flex-direction: column;
             gap: 1rem;

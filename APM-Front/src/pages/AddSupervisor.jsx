@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import './AddSupervisor.css';
+import Sidebar from '../components/Sidebar/Sidebar';
+import TopNav from '../components/TopNav/TopNav';
 
 const AddSupervisor = () => {
   const [formData, setFormData] = useState({
@@ -118,10 +120,14 @@ const AddSupervisor = () => {
   };
 
   return (
+    <div className="dashboard-container-dash-sup">
+      <Sidebar />
+      <div className="main-container">
+                <div className='supervisor-dashboard'>
+        <TopNav />
+
     <div className="container">
-      <div className="headerr">
-        <h1>إنشاء حساب مشرف جديد</h1>
-      </div>
+    
       
       {message.show && (
         <div className={`alert alert-${message.type}`}>
@@ -233,6 +239,9 @@ const AddSupervisor = () => {
           </button>
         </div>
       </form>
+    </div>
+    </div>
+    </div>
     </div>
   );
 };

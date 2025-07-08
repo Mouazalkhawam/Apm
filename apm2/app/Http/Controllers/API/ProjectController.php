@@ -1051,7 +1051,6 @@ public function getSupervisorsWithStudentsNames()
         ], 500);
     }
 }
-
 public function getCurrentSemesterProjects()
 {
     try {
@@ -1074,11 +1073,14 @@ public function getCurrentSemesterProjects()
             ->whereHas('academicPeriods', function($query) use ($currentPeriod) {
                 $query->where('academic_periods.id', $currentPeriod->id);
             })
-            ->where('type', 'semester') // فقط المشاريع الفصلية
+            ->where('type', 'semester')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. تنسيق البيانات للإرجاع
+        // 3. حساب عدد المشاريع
+        $projectsCount = $projects->count();
+
+        // 4. تنسيق البيانات للإرجاع
         $formattedProjects = $projects->map(function ($project) {
             return [
                 'project_id' => $project->projectid,
@@ -1090,6 +1092,7 @@ public function getCurrentSemesterProjects()
                 'group' => [
                     'id' => $project->group->groupid,
                     'name' => $project->group->name,
+                    'students_count' => $project->group->approvedStudents->count(),
                     'students' => $project->group->approvedStudents->map(function($student) {
                         return [
                             'name' => $student->user->name,
@@ -1117,6 +1120,7 @@ public function getCurrentSemesterProjects()
         return response()->json([
             'success' => true,
             'data' => $formattedProjects,
+            'count' => $projectsCount,
             'message' => 'تم جلب مشاريع الفصل الحالي بنجاح'
         ]);
 
@@ -1149,11 +1153,14 @@ public function getCurrentGraduationProjects()
             ->whereHas('academicPeriods', function($query) use ($currentPeriod) {
                 $query->where('academic_periods.id', $currentPeriod->id);
             })
-            ->where('type', 'graduation') // فقط مشاريع التخرج
+            ->where('type', 'graduation')
             ->orderBy('created_at', 'desc')
             ->get();
 
-        // 3. تنسيق البيانات للإرجاع
+        // 3. حساب عدد المشاريع
+        $projectsCount = $projects->count();
+
+        // 4. تنسيق البيانات للإرجاع
         $formattedProjects = $projects->map(function ($project) {
             return [
                 'project_id' => $project->projectid,
@@ -1165,6 +1172,7 @@ public function getCurrentGraduationProjects()
                 'group' => [
                     'id' => $project->group->groupid,
                     'name' => $project->group->name,
+                    'students_count' => $project->group->approvedStudents->count(),
                     'students' => $project->group->approvedStudents->map(function($student) {
                         return [
                             'name' => $student->user->name,
@@ -1192,6 +1200,7 @@ public function getCurrentGraduationProjects()
         return response()->json([
             'success' => true,
             'data' => $formattedProjects,
+            'count' => $projectsCount,
             'message' => 'تم جلب مشاريع التخرج للفصل الحالي بنجاح'
         ]);
 
@@ -1199,6 +1208,54 @@ public function getCurrentGraduationProjects()
         return response()->json([
             'success' => false,
             'message' => 'فشل في جلب مشاريع التخرج: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+public function getLatestProjects()
+{
+    try {
+        // جلب أحدث 4 مشاريع مع العلاقات المطلوبة
+        $projects = Project::with([
+                'group' => function($query) {
+                    $query->withCount([
+                        'students as approved_students_count' => function($query) {
+                            $query->where('group_student.status', 'approved');
+                        },
+                        'supervisors as approved_supervisors_count' => function($query) {
+                            $query->where('group_supervisor.status', 'approved');
+                        }
+                    ]);
+                }
+            ])
+            ->orderBy('created_at', 'desc')
+            ->take(4)
+            ->get();
+
+        // تنسيق البيانات للإرجاع
+        $formattedProjects = $projects->map(function ($project) {
+            return [
+                'project_id' => $project->projectid,
+                'title' => $project->title,
+                'status' => $project->status,
+                'type' => $project->type,
+                'students_count' => $project->group->approved_students_count ?? 0,
+                'supervisors_count' => $project->group->approved_supervisors_count ?? 0,
+                'created_at' => $project->created_at->format('Y-m-d H:i'),
+                'updated_at' => $project->updated_at->format('Y-m-d H:i')
+            ];
+        });
+
+        return response()->json([
+            'success' => true,
+            'data' => $formattedProjects,
+            'message' => 'تم جلب أحدث المشاريع بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب المشاريع: ' . $e->getMessage()
         ], 500);
     }
 }

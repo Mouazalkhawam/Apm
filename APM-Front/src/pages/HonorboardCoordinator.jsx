@@ -208,27 +208,11 @@ const HonorboardCoordinator = () => {
   };
 
   return (
-    <div className="dashboard-container-dash-sup">
-      <SidebarWithRef 
-        ref={sidebarRef}
-        user={{
-          name: "د.عفاف",
-          role: "منسق المشاريع",
-          image: "https://randomuser.me/api/portraits/women/44.jpg"
-        }}
-        navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/projects" },
-          { icon: faUsers, text: "الطلاب", path:"/students" },
-          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/tasks" },
-          { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
-        ]}
-      />
-
+      <div className="dashboard-container-dash-sup">
+      <Sidebar />
       <div className="main-container">
-        <div className="honorboard-coordinator">
-          <TopNav />
+                <div className='supervisor-dashboard'>
+        <TopNav />
 
           <div className="container-honor">
             <div className="dashboard-honor">

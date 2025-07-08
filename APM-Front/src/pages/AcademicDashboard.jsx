@@ -9,10 +9,45 @@ import {
   faExclamationCircle, faCommentAlt,
   faTasks, faChevronDown, faTachometerAlt,
   faProjectDiagram, faUsers, faCalendarCheck,
-  faFileAlt, faComments
+  faFileAlt, faComments, faSyncAlt,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import Chart from 'chart.js/auto';
+import axios from 'axios';
 import './AcademicDashboard.css';
+
+// إنشاء مثيل مخصص لـ axios مع إعدادات افتراضية
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
+  timeout: 10000,
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+});
+
+// Interceptor لإضافة التوكن تلقائياً إلى كل طلب
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
+
+// Interceptor للتعامل مع الأخطاء العامة
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
@@ -30,9 +65,42 @@ const AcademicDashboard = () => {
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    graduationProjects: 0,
+    semesterProjects: 0,
+    pendingTasks: 0,
+    newDiscussions: 0
+  });
   
+  // States للمشاريع
+  const [latestProjects, setLatestProjects] = useState([]);
+  const [projectsLoading, setProjectsLoading] = useState(true);
+  const [projectsError, setProjectsError] = useState(null);
+
   // Chart instance
   let progressChart = null;
+
+  // دالة لجلب أحدث المشاريع
+  const fetchLatestProjects = async () => {
+    try {
+      setProjectsLoading(true);
+      setProjectsError(null);
+      
+      const response = await apiClient.get('/api/projects/latest');
+      
+      if (!response.data || !response.data.success) {
+        throw new Error('Failed to fetch latest projects');
+      }
+      
+      setLatestProjects(response.data.data);
+    } catch (error) {
+      setProjectsError(error.message || 'حدث خطأ أثناء جلب أحدث المشاريع');
+      console.error('Error fetching latest projects:', error);
+    } finally {
+      setProjectsLoading(false);
+    }
+  };
 
   // Initialize chart
   useEffect(() => {
@@ -100,13 +168,53 @@ const AcademicDashboard = () => {
     };
   }, []);
 
+  // Fetch stats data
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        // جلب مشاريع التخرج
+        const gradResponse = await apiClient.get('/api/projects/current-graduation');
+        const gradCount = gradResponse.data.count;
+        
+        // جلب المشاريع الفصلية
+        const semesterResponse = await apiClient.get('/api/projects/current-semester');
+        const semesterCount = semesterResponse.data.count;
+        
+        // جلب المهام المعلقة (تستبدل بAPI الخاص بك)
+        const tasksCount = 0;
+        
+        // جلب المناقشات الجديدة (تستبدل بAPI الخاص بك)
+        const discussionsCount = 0;
+        
+        setStats({
+          graduationProjects: gradCount,
+          semesterProjects: semesterCount,
+          pendingTasks: tasksCount,
+          newDiscussions: discussionsCount
+        });
+        
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem('access_token');
+          window.location.href = '/login';
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchStats();
+    fetchLatestProjects(); // جلب أحدث المشاريع عند التحميل
+  }, []);
+
   // Handle window resize and remove content-effect when mobile
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 769;
       setIsMobile(mobile);
       
-      // Remove content-effect class when switching to mobile
       if (mobile && contentEffectClass === 'content-effect') {
         setContentEffectClass('');
       }
@@ -142,7 +250,18 @@ const AcademicDashboard = () => {
   // Handle time range change
   const handleTimeRangeChange = (e) => {
     setActiveTimeRange(e.target.value);
-    // Here you would typically update chart data based on selected range
+  };
+
+  // دالة مساعدة لتحويل حالة المشروع لنص مقروء
+  const getStatusText = (status) => {
+    const statusMap = {
+      'pending': 'قيد الانتظار',
+      'in_progress': 'قيد التنفيذ',
+      'completed': 'مكتمل',
+      'rejected': 'مرفوض'
+    };
+    
+    return statusMap[status] || status;
   };
 
   return (
@@ -160,11 +279,11 @@ const AcademicDashboard = () => {
         onToggleEffect={toggleContentEffect}
         navItems={[
           { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/projects" },
+          { icon: faProjectDiagram, text: "المشاريع", badge: stats.graduationProjects + stats.semesterProjects, path: "/projects" },
           { icon: faUsers, text: "الطلاب", path:"/students" },
-          { icon: faCalendarCheck, text: "المهام", badge: 5, alert: true, path: "/tasks" },
+          { icon: faCalendarCheck, text: "المهام", badge: stats.pendingTasks, alert: true, path: "/tasks" },
           { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
+          { icon: faComments, text: "المناقشات", badge: stats.newDiscussions, path: "/discussions" }
         ]}
       />
       
@@ -201,59 +320,66 @@ const AcademicDashboard = () => {
             </div>
             
             {/* Stats Cards Grid */}
-            <div className="stats-grid">
-              <div className="stat-card blue">
-                <div className="stat-info">
-                  <p className="stat-desc">إجمالي المشاريع</p>
-                  <h3 className="stat-value">24</h3>
-                  <p className="stat-trend green">
-                    <FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الفصل
-                  </p>
+            {loading ? (
+              <div className="loading-stats">
+                <FontAwesomeIcon icon={faSyncAlt} spin />
+                جاري تحميل الإحصائيات...
+              </div>
+            ) : (
+              <div className="stats-grid">
+                <div className="stat-card blue">
+                  <div className="stat-info">
+                    <p className="stat-desc">إجمالي مشاريع التخرج</p>
+                    <h3 className="stat-value">{stats.graduationProjects}</h3>
+                    <p className="stat-trend green">
+                      <FontAwesomeIcon icon={faArrowUp} /> 5 مشاريع جديدة هذا الفصل
+                    </p>
+                  </div>
+                  <div className="stat-icon-container">
+                    <FontAwesomeIcon icon={faProjectDiagram} />
+                  </div>
                 </div>
-                <div className="stat-icon-container">
-                  <FontAwesomeIcon icon={faProjectDiagram} />
+                
+                <div className="stat-card green">
+                  <div className="stat-info">
+                    <p className="stat-desc">إجمالي المشاريع الفصلية</p>
+                    <h3 className="stat-value">{stats.semesterProjects}</h3>
+                    <p className="stat-trend green">
+                      <FontAwesomeIcon icon={faArrowUp} /> 12 مشروع جديد هذا الشهر
+                    </p>
+                  </div>
+                  <div className="stat-icon-container">
+                    <FontAwesomeIcon icon={faUsers} />
+                  </div>
+                </div>
+                
+                <div className="stat-card yellow">
+                  <div className="stat-info">
+                    <p className="stat-desc">المهام المعلقة</p>
+                    <h3 className="stat-value">{stats.pendingTasks}</h3>
+                    <p className="stat-trend red">
+                      <FontAwesomeIcon icon={faExclamationCircle} /> 3 مهام تأخرت
+                    </p>
+                  </div>
+                  <div className="stat-icon-container">
+                    <FontAwesomeIcon icon={faTasks} />
+                  </div>
+                </div>
+                
+                <div className="stat-card purple">
+                  <div className="stat-info">
+                    <p className="stat-desc">المناقشات الجديدة</p>
+                    <h3 className="stat-value">{stats.newDiscussions}</h3>
+                    <p className="stat-trend blue">
+                      <FontAwesomeIcon icon={faCommentAlt} /> 2 تحتاج إجابتك
+                    </p>
+                  </div>
+                  <div className="stat-icon-container">
+                    <FontAwesomeIcon icon={faComments} />
+                  </div>
                 </div>
               </div>
-              
-              <div className="stat-card green">
-                <div className="stat-info">
-                  <p className="stat-desc">الطلاب المسجلين</p>
-                  <h3 className="stat-value">143</h3>
-                  <p className="stat-trend green">
-                    <FontAwesomeIcon icon={faArrowUp} /> 12 طالب جديد هذا الشهر
-                  </p>
-                </div>
-                <div className="stat-icon-container">
-                  <FontAwesomeIcon icon={faUsers} />
-                </div>
-              </div>
-              
-              <div className="stat-card yellow">
-                <div className="stat-info">
-                  <p className="stat-desc">المهام المعلقة</p>
-                  <h3 className="stat-value">8</h3>
-                  <p className="stat-trend red">
-                    <FontAwesomeIcon icon={faExclamationCircle} /> 3 مهام تأخرت
-                  </p>
-                </div>
-                <div className="stat-icon-container">
-                  <FontAwesomeIcon icon={faTasks} />
-                </div>
-              </div>
-              
-              <div className="stat-card purple">
-                <div className="stat-info">
-                  <p className="stat-desc">المناقشات الجديدة</p>
-                  <h3 className="stat-value">7</h3>
-                  <p className="stat-trend blue">
-                    <FontAwesomeIcon icon={faCommentAlt} /> 2 تحتاج إجابتك
-                  </p>
-                </div>
-                <div className="stat-icon-container">
-                  <FontAwesomeIcon icon={faComments} />
-                </div>
-              </div>
-            </div>
+            )}
             
             {/* Main Content Grid */}
             <div className="main-grid">
@@ -282,47 +408,56 @@ const AcademicDashboard = () => {
                   <h2 className="projects-title">أحدث المشاريع</h2>
                   <a href="/projects" className="projects-link">عرض الكل</a>
                 </div>
-                <div className="projects-list">
-                  <div className="project-item">
-                    <div className="project-icon-container">
-                      <FontAwesomeIcon icon={faLaptopCode} />
-                    </div>
-                    <div className="project-info">
-                      <h4>نظام إدارة المخابر</h4>
-                      <p>3 طلاب · 75% مكتمل</p>
-                    </div>
+                
+                {projectsLoading ? (
+                  <div className="loading-projects">
+                    <FontAwesomeIcon icon={faSyncAlt} spin />
+                    جاري تحميل المشاريع...
                   </div>
-                  
-                  <div className="project-item green">
-                    <div className="project-icon-container">
-                      <FontAwesomeIcon icon={faMobileAlt} />
-                    </div>
-                    <div className="project-info">
-                      <h4>تطبيق حجز مواعيد</h4>
-                      <p>2 طلاب · 40% مكتمل</p>
-                    </div>
+                ) : projectsError ? (
+                  <div className="projects-error">
+                    <FontAwesomeIcon icon={faExclamationTriangle} />
+                    {projectsError}
+                    <button 
+                      onClick={fetchLatestProjects}
+                      className="retry-btn"
+                    >
+                      <FontAwesomeIcon icon={faSyncAlt} />
+                      إعادة المحاولة
+                    </button>
                   </div>
-                  
-                  <div className="project-item purple">
-                    <div className="project-icon-container">
-                      <FontAwesomeIcon icon={faChartLine} />
-                    </div>
-                    <div className="project-info">
-                      <h4>تحليل بيانات الطلاب</h4>
-                      <p>4 طلاب · 90% مكتمل</p>
-                    </div>
+                ) : (
+                  <div className="projects-list-dash">
+                    {latestProjects.map((project, index) => {
+                      // تحديد لون البطاقة حسب الترتيب
+                      const colors = ['', 'green', 'purple', 'yellow'];
+                      const colorClass = colors[index % colors.length];
+                      
+                      // تحديد الأيقونة حسب نوع المشروع
+                      let projectIcon = faLaptopCode;
+                      if (project.type === 'graduation') {
+                        projectIcon = faProjectDiagram;
+                      } else if (project.type === 'semester') {
+                        projectIcon = faTasks;
+                      }
+                      
+                      return (
+                        <div className={`project-item ${colorClass}`} key={project.project_id}>
+                          <div className="project-icon-container">
+                            <FontAwesomeIcon icon={projectIcon} />
+                          </div>
+                          <div className="project-info">
+                            <h4>{project.title}</h4>
+                            <p>
+                              {project.students_count} طالب · 
+                              الحالة: {getStatusText(project.status)}
+                            </p>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  
-                  <div className="project-item yellow">
-                    <div className="project-icon-container">
-                      <FontAwesomeIcon icon={faRobot} />
-                    </div>
-                    <div className="project-info">
-                      <h4>نظام توصية المقررات</h4>
-                      <p>5 طلاب · 30% مكتمل</p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

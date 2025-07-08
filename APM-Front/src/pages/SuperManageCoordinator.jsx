@@ -38,11 +38,11 @@ const SuperManageCoordinator = () => {
   });
 }, []);
  
-
   return (
-    <div className="dashboard-container-dash">
+    <div className="dashboard-container-dash-sup">
       <Sidebar />
-      <div className="scheduling-container">
+      <div className="main-container">
+                <div className='supervisor-dashboard'>
         <TopNav />
 
         <section className="supervisors-section">
@@ -75,6 +75,7 @@ const SuperManageCoordinator = () => {
           )}
         </section>
       </div>
+    </div>
     </div>
   );
 };

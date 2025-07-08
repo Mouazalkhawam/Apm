@@ -41,7 +41,7 @@ const TasksPage = () => {
   };
 
   return (
-    <div className="dashboard-container">
+   <div className="dashboard-container-dash-sup">
       <SidebarWithRef 
         ref={sidebarRef}
         user={{
@@ -66,7 +66,8 @@ const TasksPage = () => {
       
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      <div className="main-content-cord">
+      <div className="main-container">
+                <div className='supervisor-dashboard'>
         <TopNav 
           user={{
             name: "د.عفاف",
@@ -146,6 +147,7 @@ const TasksPage = () => {
           </div>
         </main>
       </div>
+    </div>
     </div>
   );
 };
