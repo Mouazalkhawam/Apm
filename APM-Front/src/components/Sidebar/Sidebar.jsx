@@ -15,14 +15,6 @@ const Sidebar = React.forwardRef(({
       role: "منسق المشاريع",
       image: "https://randomuser.me/api/portraits/women/44.jpg"
     },
-    navItems = [
-      { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
-      { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
-      { icon: faUsers, text: "الطلاب", path: "/students" },
-      { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
-      { icon: faFileAlt, text: "التقارير", path: "/reports" },
-      { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
-    ],
     collapsed = false,
     onToggleCollapse = () => {},
     onToggleEffect = () => {},
@@ -41,6 +33,63 @@ const Sidebar = React.forwardRef(({
     profile_picture: null
   });
   const [loading, setLoading] = useState(false);
+  const [navItems, setNavItems] = useState([]);
+
+  // تحديد عناصر القائمة بناءً على دور المستخدم
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await axios.get('http://127.0.0.1:8000/api/user', {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+            'Accept': 'application/json',
+          }
+        });
+        
+        const userData = response.data;
+        setFormData({
+          name: userData.name || '',
+          email: userData.email || '',
+          phone: userData.phone || '',
+          password: '',
+          password_confirmation: '',
+          profile_picture: null
+        });
+
+        // تحديث صورة المستخدم إذا كانت متوفرة
+        if (userData.profile_picture) {
+          user.image = userData.profile_picture;
+        }
+
+        // تحديد عناصر القائمة بناءً على الدور
+        if (userData.role === 'supervisor') {
+          setNavItems([
+            { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
+            { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
+            { icon: faUsers, text: "الطلاب", path: "/students" },
+            { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
+           /* { icon: faFileAlt, text: "التقارير", path: "/reports" },*/
+           /* { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }*/
+          ]);
+        } else if (userData.role === 'coordinator') {
+          setNavItems([
+            { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
+            { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
+            { icon: faUsers, text: "الطلاب", path: "/students" },
+            { icon: faUsers, text: "المشرفون", path: "/Supervisor-Management-Coordinator" },
+           /* { icon: faCalendarCheck, text: "الاجتماعات", badge: 5, alert: true, path: "/meetings" },
+            { icon: faFileAlt, text: "التقارير", path: "/reports" },*/
+            { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions-coordinator" }
+          ]);
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+        alert('حدث خطأ أثناء جلب بيانات المستخدم');
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Effect to handle window resize
   useEffect(() => {
@@ -64,39 +113,6 @@ const Sidebar = React.forwardRef(({
     };
   }, [collapsed, onToggleCollapse]);
 
-  // Function to fetch user data when modal opens
-  const fetchUserData = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.get('http://127.0.0.1:8000/api/user', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Accept': 'application/json',
-        }
-      });
-      
-      const userData = response.data;
-      setFormData({
-        name: userData.name || '',
-        email: userData.email || '',
-        phone: userData.phone || '',
-        password: '',
-        password_confirmation: '',
-        profile_picture: null
-      });
-      
-      // Update the user prop if needed
-      if (userData.profile_picture) {
-        user.image = userData.profile_picture;
-      }
-    } catch (error) {
-      console.error('Error fetching user data:', error);
-      alert('حدث خطأ أثناء جلب بيانات المستخدم');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleNavigation = (path) => {
     navigate(path);
     // Close sidebar on mobile after navigation
@@ -115,7 +131,6 @@ const Sidebar = React.forwardRef(({
 
   const handleSettingsClick = async () => {
     setShowSettingsModal(true);
-    await fetchUserData();
   };
 
   const handleCloseModal = () => {
@@ -165,8 +180,8 @@ const Sidebar = React.forwardRef(({
       if (response.data.success) {
         alert('تم تحديث الحساب بنجاح!');
         setShowSettingsModal(false);
-        // Refresh user data after update
-        await fetchUserData();
+        // Refresh the page to update user data
+        window.location.reload();
       } else {
         alert(response.data.message || 'حدث خطأ أثناء تحديث الحساب');
       }
@@ -244,7 +259,10 @@ const Sidebar = React.forwardRef(({
               </div>
               <div 
                 className="nav-link"
-                onClick={() => handleNavigation('/logout')}
+                onClick={() => {
+                  localStorage.removeItem('access_token');
+                  navigate('/login');
+                }}
               >
                 <FontAwesomeIcon icon={faSignOutAlt} className="nav-icon" />
                 <span className="sidebar-text nav-text">تسجيل الخروج</span>
@@ -255,94 +273,96 @@ const Sidebar = React.forwardRef(({
       </div>
 
       {/* Settings Modal */}
-      <div className={`modal-overlay ${showSettingsModal ? 'active' : ''}`}>
-        <div className="settings-modal">
-          <div className="modal-header-settings">
-            <h3>تعديل معلومات الحساب</h3>
-            <button onClick={handleCloseModal} className="close-modal">&times;</button>
+      {showSettingsModal && (
+        <div className="modal-overlay active">
+          <div className="settings-modal">
+            <div className="modal-header-settings">
+              <h3>تعديل معلومات الحساب</h3>
+              <button onClick={handleCloseModal} className="close-modal">&times;</button>
+            </div>
+            {loading ? (
+              <div className="loading-spinner">جاري تحميل البيانات...</div>
+            ) : (
+              <form onSubmit={handleSubmit} encType="multipart/form-data">
+                <div className="form-group">
+                  <label>الاسم الكامل</label>
+                  <input 
+                    type="text" 
+                    name="name" 
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>البريد الإلكتروني</label>
+                  <input 
+                    type="email" 
+                    name="email" 
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>رقم الهاتف</label>
+                  <input 
+                    type="tel" 
+                    name="phone" 
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>كلمة المرور الجديدة (اختياري)</label>
+                  <input 
+                    type="password" 
+                    name="password" 
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>تأكيد كلمة المرور الجديدة</label>
+                  <input 
+                    type="password" 
+                    name="password_confirmation" 
+                    value={formData.password_confirmation}
+                    onChange={handleInputChange}
+                    placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label>صورة الملف الشخصي</label>
+                  <input 
+                    type="file" 
+                    name="profile_picture"
+                    onChange={handleFileChange}
+                    accept="image/*"
+                  />
+                  {user.image && (
+                    <div className="current-image-preview">
+                      <p>الصورة الحالية:</p>
+                      <img src={user.image} alt="Current Profile" className="profile-preview" />
+                    </div>
+                  )}
+                </div>
+                
+                <div className="modal-actions">
+                  <button type="button" className="cancel-btn" onClick={handleCloseModal}>إلغاء</button>
+                  <button type="submit" className="save-btn">حفظ التغييرات</button>
+                </div>
+              </form>
+            )}
           </div>
-          {loading ? (
-            <div className="loading-spinner">جاري تحميل البيانات...</div>
-          ) : (
-            <form onSubmit={handleSubmit} encType="multipart/form-data">
-              <div className="form-group">
-                <label>الاسم الكامل</label>
-                <input 
-                  type="text" 
-                  name="name" 
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>البريد الإلكتروني</label>
-                <input 
-                  type="email" 
-                  name="email" 
-                  value={formData.email}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>رقم الهاتف</label>
-                <input 
-                  type="tel" 
-                  name="phone" 
-                  value={formData.phone}
-                  onChange={handleInputChange}
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>كلمة المرور الجديدة (اختياري)</label>
-                <input 
-                  type="password" 
-                  name="password" 
-                  value={formData.password}
-                  onChange={handleInputChange}
-                  placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>تأكيد كلمة المرور الجديدة</label>
-                <input 
-                  type="password" 
-                  name="password_confirmation" 
-                  value={formData.password_confirmation}
-                  onChange={handleInputChange}
-                  placeholder="اتركه فارغاً إذا لم ترغب في التغيير"
-                />
-              </div>
-              
-              <div className="form-group">
-                <label>صورة الملف الشخصي</label>
-                <input 
-                  type="file" 
-                  name="profile_picture"
-                  onChange={handleFileChange}
-                  accept="image/*"
-                />
-                {user.image && (
-                  <div className="current-image-preview">
-                    <p>الصورة الحالية:</p>
-                    <img src={user.image} alt="Current Profile" className="profile-preview" />
-                  </div>
-                )}
-              </div>
-              
-              <div className="modal-actions">
-                <button type="button" className="cancel-btn" onClick={handleCloseModal}>إلغاء</button>
-                <button type="submit" className="save-btn">حفظ التغييرات</button>
-              </div>
-            </form>
-          )}
         </div>
-      </div>
+      )}
     </>
   );
 });
