@@ -789,7 +789,7 @@
         }
         .nav-top-dash{
             width: 99%;
-            overflow: scroll;
+           /* overflow: scroll;*/
         }
         
         .status-badge.green {
