@@ -16,6 +16,7 @@ body {
 }
 .discussions-coordinator-container{
     margin: 1rem;
+    overflow-y: scroll;
 }
 
 .container {

@@ -180,7 +180,7 @@ const SupervisorsProject = () => {
                 ]}
               />
               
-            <div className="main-container">
+            <div className="main-content-cord-dash">
                 <div className='supervisor-dashboard'>
                 <TopNav />
                 <section className="filter-section">
