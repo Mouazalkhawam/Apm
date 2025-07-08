@@ -84,7 +84,6 @@ const Header = ({
 
       setEcho(echoInstance);
 
-
       return () => {
         echoInstance.disconnect();
       };
@@ -276,13 +275,15 @@ const Header = ({
       console.error('Error marking notification as read:', err);
     }
   };
-
-  // قبول العضوية
   const handleAcceptMembership = async () => {
+    const token = localStorage.getItem('access_token');
+  
+    if (!token || !selectedNotification?.extra_data?.group_id) {
+      console.error('❌ Missing group_id in notification extra_data');
+      return;
+    }
+  
     try {
-      const token = localStorage.getItem('access_token');
-      if (!token || !selectedNotification) return;
-
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/projects/approve`, {
         user_id: localStorage.getItem('user_id'),
         group_id: selectedNotification.extra_data.group_id
@@ -291,7 +292,7 @@ const Header = ({
           'Authorization': `Bearer ${token}`
         }
       });
-
+  
       if (response.data.success) {
         markAsRead(selectedNotification.id);
         setShowAcceptModal(false);
@@ -299,9 +300,13 @@ const Header = ({
       }
     } catch (err) {
       console.error('Error accepting membership:', err);
+    
+      if (err.response && err.response.status === 422) {
+        console.error('Validation errors:', err.response.data.errors);
+      }
     }
   };
-
+  
   // تحديد جميع الإشعارات كمقروءة
   const markAllAsRead = async () => {
     try {
@@ -339,7 +344,7 @@ const Header = ({
 
   // التعامل مع النقر على الإشعار
   const handleNotificationClick = (notification) => {
-    if (notification.type === 'PROJECT_INVITATION' && notification.extra_data?.group_id) {
+    if (notification.type === 'PROJECT_INVITATION') {
       setSelectedNotification(notification);
       setShowAcceptModal(true);
     } else {
@@ -565,6 +570,7 @@ const Header = ({
       channel.stopListening('.App\\Events\\NewMessageSent');
     };
   }, [echo, selectedConversation]);
+
   return (
     <header className="header">
       <div className="header-content-main">
@@ -776,7 +782,7 @@ const Header = ({
               </button>
             </div>
             <div className="modal-body">
-              <p>هل ترغب في قبول دعوة الانضمام إلى المشروع؟</p>
+              <p>هل ترغب في قبول دعوة الانضمام إلى المشروع "{selectedNotification?.data?.project_name}"؟</p>
               <div className="modal-actions">
                 <button className="btn btn-cancel" onClick={() => setShowAcceptModal(false)}>
                   إلغاء

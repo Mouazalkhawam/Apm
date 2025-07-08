@@ -51,4 +51,14 @@ class Supervisor extends Model
         return $this->hasMany(Meeting::class, 'supervisor_id', 'supervisorId');
     }
 
+
+    public function pendingTasks()
+    {
+        return $this->hasMany(PendingTask::class, 'supervisor_id', 'supervisorId');
+    }
+
+    public function pendingTasksCount()
+    {
+        return $this->pendingTasks()->pending()->count();
+    }
 }

@@ -11,8 +11,10 @@ use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\AcademicPeriodController;
 use App\Http\Controllers\API\ResourceController;
 use App\Http\Controllers\API\EvaluationController;
+use App\Http\Controllers\API\PendingTaskController;
 use App\Http\Controllers\Admin\HonorBoardController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SupervisorController;
 use App\Http\Controllers\DiscussionScheduleController;
 use App\Http\Controllers\MessageController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +36,7 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/users', [AuthController::class, 'getUsersByRole']);
     Route::get('/students', [AuthController::class, 'getStudentsForDropdown']);
     Route::get('/supervisors', [AuthController::class, 'getSupervisorsForDropdown']);
+    Route::get('/check-supervisor', [AuthController::class, 'checkSupervisor']);
     Route::post('/refresh', [AuthController::class, 'refreshToken']);
     Route::put('/profile/update', [AuthController::class, 'updateProfile']);
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
@@ -191,5 +194,9 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/current-semester', [ProjectController::class, 'getCurrentSemesterProjects']);
     Route::get('/projects/current-graduation', [ProjectController::class, 'getCurrentGraduationProjects']);
 
-    
+    Route::get('supervisors/{supervisorId}/active-projects-count', 
+    [SupervisorController::class, 'countActiveProjects']);
+
+    Route::get('pending-tasks', [PendingTaskController::class, 'index']);
+    Route::post('pending-tasks/{task}/process', [PendingTaskController::class, 'processTask']);
 });
