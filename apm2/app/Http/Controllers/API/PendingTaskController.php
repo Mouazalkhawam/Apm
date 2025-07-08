@@ -68,29 +68,34 @@ class PendingTaskController extends Controller
 
     protected function processMembership($task)
     {
-        $related = $task->related;
+        $groupSupervisor = $task->related;
         
         if ($task->status == 'approved') {
-            $related->update(['status' => 'approved']);
+            $groupSupervisor->update(['status' => 'approved']);
             
             // إرسال إشعار بالموافقة
             NotificationService::sendRealTime(
-                $related->user->userId,
-                "تم قبول عضويتك في المشروع",
-                ['type' => 'MEMBERSHIP_APPROVED']
+                $groupSupervisor->supervisor->user->userId,
+                "تم قبول عضويتك كمشرف على المشروع",
+                ['type' => 'SUPERVISOR_MEMBERSHIP_APPROVED']
             );
+            
+            // حذف المهمة المعلقة بعد اكتمالها
+            $task->delete();
         } else {
-            $related->update(['status' => 'rejected']);
+            $groupSupervisor->update(['status' => 'rejected']);
             
             // إرسال إشعار بالرفض
             NotificationService::sendRealTime(
-                $related->user->userId,
-                "تم رفض عضويتك في المشروع",
-                ['type' => 'MEMBERSHIP_REJECTED']
+                $groupSupervisor->supervisor->user->userId,
+                "تم رفض عضويتك كمشرف على المشروع",
+                ['type' => 'SUPERVISOR_MEMBERSHIP_REJECTED']
             );
+            
+            // حذف المهمة المعلقة
+            $task->delete();
         }
     }
-
     protected function processTaskEvaluation($task)
     {
         // معالجة تقييم المهمة
@@ -114,4 +119,5 @@ class PendingTaskController extends Controller
             $stageSubmission->update(['status' => 'approved']);
         }
     }
+    
 }

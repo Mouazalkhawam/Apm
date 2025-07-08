@@ -710,43 +710,47 @@ protected function extractExperienceText($experience)
         ]);
     }
     public function addGroupMembers(Request $request, $groupId)
-    {
-        $request->validate([
-            'members' => 'required|array|min:1',
-            'members.*.user_id' => 'required|exists:users,userId',
-            'members.*.type' => 'required|in:student,supervisor'
-        ]);
-    
-        return DB::transaction(function () use ($request, $groupId) {
-            $user = Auth::user();
-            $isLeader = GroupStudent::where('groupid', $groupId)
-                ->where('studentId', $user->student->studentId)
-                ->where('is_leader', true)
-                ->exists();
-    
-            if (!$isLeader) {
-                abort(403, 'Only the group leader can add members');
-            }
-    
-            $group = Group::findOrFail($groupId);
-            $addedMembers = [];
-            $notificationService = new NotificationService();
-            $now = now(); // الحصول على الوقت الحالي مرة واحدة لاستخدامه في جميع الإدراجات
-    
-            foreach ($request->members as $member) {
+{
+    $request->validate([
+        'members' => 'required|array|min:1',
+        'members.*.user_id' => 'required|exists:users,userId',
+        'members.*.type' => 'required|in:student,supervisor'
+    ]);
+
+    return DB::transaction(function () use ($request, $groupId) {
+        $user = Auth::user();
+        
+        // التحقق من أن المستخدم قائد للمجموعة
+        $isLeader = GroupStudent::where('groupid', $groupId)
+            ->where('studentId', $user->student->studentId)
+            ->where('is_leader', true)
+            ->exists();
+
+        if (!$isLeader) {
+            abort(403, 'Only the group leader can add members');
+        }
+
+        $group = Group::with('project')->findOrFail($groupId);
+        $addedMembers = [];
+        $notificationService = new NotificationService();
+        $now = now();
+
+        foreach ($request->members as $member) {
+            try {
                 if ($member['type'] === 'student') {
                     $student = Student::where('userId', $member['user_id'])->firstOrFail();
                     
+                    // التحقق من عدم وجود العضوية مسبقاً
                     $existing = GroupStudent::where('groupid', $groupId)
                         ->where('studentId', $student->studentId)
                         ->first();
-    
+
                     if ($existing) {
                         continue;
                     }
-    
-                    // استخدام insertGetId للحصول على ID السجل المضاف
-                    $id = DB::table('group_student')->insertGetId([
+
+                    // إنشاء عضوية الطالب
+                    $groupStudent = GroupStudent::create([
                         'groupid' => $groupId,
                         'studentId' => $student->studentId,
                         'status' => 'pending',
@@ -754,74 +758,129 @@ protected function extractExperienceText($experience)
                         'created_at' => $now,
                         'updated_at' => $now
                     ]);
-    
-                    // إرسال الإشعار
+
+                    // إرسال الإشعار للطالب
                     $notificationService->sendRealTime(
                         $member['user_id'],
                         "تمت دعوتك للانضمام إلى مجموعة {$group->name}",
                         [
                             'type' => 'PROJECT_INVITATION',
-                            'group_id' => $group->groupid, // استخدم groupid بدلاً من groupId
-                            'project_id' => $group->projectid
+                            'group_id' => $groupId,
+                            'project_id' => $group->project->projectid
                         ]
                     );
-    
+
                     $addedMembers[] = [
-                        'id' => $id,
+                        'id' => $groupStudent->id,
                         'user_id' => $member['user_id'],
                         'type' => 'student',
                         'name' => $student->user->name,
                         'created_at' => $now->toDateTimeString()
                     ];
+
                 } elseif ($member['type'] === 'supervisor') {
                     $supervisor = Supervisor::where('userId', $member['user_id'])->firstOrFail();
                     
+                    // التحقق من عدم وجود العضوية مسبقاً
                     $existing = GroupSupervisor::where('groupid', $groupId)
                         ->where('supervisorId', $supervisor->supervisorId)
                         ->first();
-    
+
                     if ($existing) {
                         continue;
                     }
-    
-                    // استخدام insertGetId للحصول على ID السجل المضاف
-                    $id = DB::table('group_supervisor')->insertGetId([
+
+                    // إنشاء عضوية المشرف
+                    $groupSupervisor = GroupSupervisor::create([
                         'groupid' => $groupId,
                         'supervisorId' => $supervisor->supervisorId,
                         'status' => 'pending',
                         'created_at' => $now,
                         'updated_at' => $now
                     ]);
-    
-                    // إرسال الإشعار
+
+                    // تسجيل معلومات قبل إنشاء المهمة
+                    \Log::info('Creating pending task for supervisor', [
+                        'supervisor_id' => $supervisor->supervisorId,
+                        'group_supervisor_id' => $groupSupervisor->id
+                    ]);
+
+                    // إنشاء مهمة معلقة واحدة فقط
+                    $pendingTask = PendingTask::create([
+                        'type' => 'supervisor_membership',
+                        'related_id' => $groupSupervisor->id,
+                        'related_type' => GroupSupervisor::class,
+                        'supervisor_id' => $supervisor->supervisorId,
+                        'status' => 'pending',
+                        'created_at' => $now,
+                        'updated_at' => $now
+                    ]);
+
+                    // تسجيل نتيجة إنشاء المهمة
+                    \Log::info('Pending task created', [
+                        'task_id' => $pendingTask->id,
+                        'supervisor_id' => $pendingTask->supervisor_id
+                    ]);
+
+                    // إرسال الإشعار للمشرف
                     $notificationService->sendRealTime(
                         $member['user_id'],
                         "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}",
                         [
                             'type' => 'SUPERVISOR_INVITATION',
                             'group_id' => $groupId,
-                            'project_id' => $group->projectid
+                            'project_id' => $group->project->projectid,
+                            'pending_task_id' => $pendingTask->id,
+                            'has_pending_task' => true
                         ]
                     );
-    
+
                     $addedMembers[] = [
-                        'id' => $id,
+                        'id' => $groupSupervisor->id,
                         'user_id' => $member['user_id'],
                         'type' => 'supervisor',
                         'name' => $supervisor->user->name,
-                        'created_at' => $now->toDateTimeString()
+                        'created_at' => $now->toDateTimeString(),
+                        'pending_task_id' => $pendingTask->id,
+                        'has_pending_task' => true
                     ];
-                    $this->createPendingTask('membership', $groupSupervisor, $supervisor->supervisorId);
                 }
+            } catch (\Exception $e) {
+                \Log::error('Error adding member', [
+                    'member' => $member,
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString()
+                ]);
+                continue;
             }
-    
-            return response()->json([
-                'success' => true,
-                'message' => 'Members added successfully',
-                'data' => $addedMembers
-            ]);
-        });
-    }
+        }
+
+        // إرسال إشعار للقائد بإضافة الأعضاء
+        if (!empty($addedMembers)) {
+            $notificationService->sendRealTime(
+                $user->userId,
+                "تم إضافة أعضاء جدد إلى مجموعة {$group->name}",
+                [
+                    'type' => 'MEMBERS_ADDED',
+                    'group_id' => $groupId,
+                    'members_count' => count($addedMembers),
+                    'added_members' => $addedMembers
+                ]
+            );
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Members added successfully',
+            'data' => [
+                'added_members' => $addedMembers,
+                'total_members' => GroupStudent::where('groupid', $groupId)->count() + 
+                                  GroupSupervisor::where('groupid', $groupId)->count(),
+                'pending_tasks_created' => count(array_filter($addedMembers, fn($m) => $m['type'] === 'supervisor'))
+            ]
+        ]);
+    });
+}
     public function getSupervisorGroups()
 {
     try {
