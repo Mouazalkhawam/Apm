@@ -19,8 +19,12 @@ import './SchedulingSupervisorsMeetings.css';
 import TopNav from "../components/TopNav/TopNav";
 import Sidebar from "../components/Sidebar/Sidebar";
 import axios from 'axios';
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
 
 const SchedulingSupervisorsMeetings = () => {
+  
   const [collapsed, setCollapsed] = useState(false);
   const sidebarRef = useRef(null);
   const [datetimeInputs, setDatetimeInputs] = useState(['']);
@@ -35,7 +39,65 @@ const SchedulingSupervisorsMeetings = () => {
   const [loadingMeetings, setLoadingMeetings] = useState(true);
   const [supervisorId, setSupervisorId] = useState(localStorage.getItem('supervisor_id') || null);
   const [errors, setErrors] = useState({});
+ const [supervisorInfo, setSupervisorInfo] = useState({
+    name: '',
+    image: ''
+  });
+   useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // الحصول على التوكن من localStorage
+        const token = localStorage.getItem('access_token');
+        
+        if (!token) {
+          throw new Error('لم يتم العثور على token في localStorage');
+        }
 
+        // تكوين رأس الطلب
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        };
+
+        // 1. جلب معلومات المشرف
+        const checkResponse = await axios.get('http://127.0.0.1:8000/api/check-supervisor', config);
+        
+        if (!checkResponse.data.is_supervisor) {
+          throw new Error('المستخدم الحالي ليس مشرفًا');
+        }
+
+        // تحديث معلومات المشرف
+        setSupervisorInfo({
+          name: checkResponse.data.name,
+          image: checkResponse.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+        });
+
+        const supervisorId = checkResponse.data.supervisor_id;
+
+        // 2. جلب عدد المشاريع النشطة
+        const projectsResponse = await axios.get(
+          `http://127.0.0.1:8000/api/supervisors/${supervisorId}/active-projects-count`, 
+          config
+        );
+        setActiveProjectsCount(projectsResponse.data.active_projects_count);
+
+        // 3. جلب البيانات الأخرى (يمكنك استبدالها بطلبات API فعلية)
+        setPendingTasksCount(14); // يمكن استبدالها بطلب API
+        setActiveStudentsCount(23); // يمكن استبدالها بطلب API
+        setAverageGrade(88); // يمكن استبدالها بطلب API
+
+      } catch (err) {
+        console.error('حدث خطأ أثناء جلب البيانات:', err);
+        setError(err.message || 'حدث خطأ أثناء جلب البيانات');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
   // Fetch groups from API
   useEffect(() => {
     const fetchGroups = async () => {
@@ -395,11 +457,27 @@ const SchedulingSupervisorsMeetings = () => {
     setShowConfirmation(false);
     document.querySelector('.scheduled-meetings').scrollIntoView({ behavior: 'smooth' });
   };
-
+ 
   return (
-    <div className="dashboard-container-dash">
-      <Sidebar />
-      <div className="scheduling-container">
+    <div className="dashboard-container-dash-sup">
+          <SidebarWithRef 
+              ref={sidebarRef}
+              user={{
+                name: supervisorInfo.name || "د.عفاف",
+                role: "مشرف",
+                image: supervisorInfo.image
+              }}
+              navItems={[
+                { icon: faTachometerAlt, text: "اللوحة الرئيسية",  path: "/supervisors-dashboard" },
+                { icon: faProjectDiagram, text: "المشاريع", path: "/supervisor-project" },
+                { icon: faUsers, text: "الطلاب", path:"/students" },
+                { icon: faCalendarCheck, text: "المهام", alert: true, path: "/tasks" },
+                { icon: faFileAlt, text: "التقارير", path: "/reports" },
+                { icon: faComments, text: "جدولة الاجتماعات", badge: 3,active: true, path: "/scheduling-supervisors-meetings" }
+              ]}
+            />
+      <div className="main-container">
+        <div className='supervisor-dashboard'>
         {/* Top Navigation */}
         <TopNav 
           user={{
@@ -590,6 +668,7 @@ const SchedulingSupervisorsMeetings = () => {
           </>
         )}
       </div>
+    </div>
     </div>
   );
 };

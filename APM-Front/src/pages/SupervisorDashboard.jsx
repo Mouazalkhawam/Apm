@@ -122,12 +122,12 @@ const SupervisorDashboard = () => {
           image: supervisorInfo.image
         }}
         navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: activeProjectsCount, path: "/projects" },
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
+          { icon: faProjectDiagram, text: "المشاريع", badge: activeProjectsCount, path: "/supervisor-project" },
           { icon: faUsers, text: "الطلاب", path:"/students" },
           { icon: faCalendarCheck, text: "المهام", badge: pendingTasksCount, alert: true, path: "/tasks" },
           { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }
+          { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/scheduling-supervisors-meetings" }
         ]}
       />
       

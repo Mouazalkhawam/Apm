@@ -1,11 +1,26 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import './SupervisorsProject.css';
 import TopNav from "../components/TopNav/TopNav";
 import Sidebar from "../components/Sidebar/Sidebar";
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { 
+  faTachometerAlt, faProjectDiagram, faUsers, 
+  faCalendarCheck, faFileAlt, faComments,
+} from '@fortawesome/free-solid-svg-icons';
+
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
 
 const SupervisorsProject = () => {
+    const sidebarRef = useRef(null);
+    const [activeProjectsCount, setActiveProjectsCount] = useState(0);
+    const [pendingTasksCount, setPendingTasksCount] = useState(0);
+    const [activeStudentsCount, setActiveStudentsCount] = useState(0);
+    const [averageGrade, setAverageGrade] = useState(0);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
     const [projects, setProjects] = useState([]);
     const [filteredProjects, setFilteredProjects] = useState([]);
     const [filters, setFilters] = useState({
@@ -13,8 +28,64 @@ const SupervisorsProject = () => {
         semester: '',
         progress: ''
     });
-
+    const [supervisorInfo, setSupervisorInfo] = useState({
+        name: '',
+        image: ''
+    });
     const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchData = async () => {
+            try {
+                setLoading(true);
+                setError(null);
+                
+                const token = localStorage.getItem('access_token');
+                
+                if (!token) {
+                    throw new Error('لم يتم العثور على token في localStorage');
+                }
+
+                const config = {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+
+                const checkResponse = await axios.get('http://127.0.0.1:8000/api/check-supervisor', config);
+                
+                if (!checkResponse.data.is_supervisor) {
+                    throw new Error('المستخدم الحالي ليس مشرفًا');
+                }
+
+                setSupervisorInfo({
+                    name: checkResponse.data.name,
+                    image: checkResponse.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+                });
+
+                const supervisorId = checkResponse.data.supervisor_id;
+
+                const projectsResponse = await axios.get(
+                    `http://127.0.0.1:8000/api/supervisors/${supervisorId}/active-projects-count`, 
+                    config
+                );
+                setActiveProjectsCount(projectsResponse.data.active_projects_count);
+
+                setPendingTasksCount(14);
+                setActiveStudentsCount(23);
+                setAverageGrade(88);
+
+            } catch (err) {
+                console.error('حدث خطأ أثناء جلب البيانات:', err);
+                setError(err.message || 'حدث خطأ أثناء جلب البيانات');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchData();
+    }, []);
 
     useEffect(() => {
         const fetchProjects = async () => {
@@ -41,6 +112,7 @@ const SupervisorsProject = () => {
                 }
             } catch (error) {
                 console.error('خطأ في جلب المشاريع:', error);
+                setError('حدث خطأ أثناء جلب بيانات المشاريع');
             }
         };
         fetchProjects();
@@ -77,14 +149,39 @@ const SupervisorsProject = () => {
     };
 
     const viewProjectDetails = (groupId) => {
-        localStorage.setItem('group_id', groupId);
+        localStorage.setItem('selectedGroupId', groupId);
         navigate('/group-supervisor');
     };
 
+    if (loading) {
+        return <div className="loading-container">جاري التحميل...</div>;
+    }
+
+    if (error) {
+        return <div className="error-container">حدث خطأ: {error}</div>;
+    }
+
     return (
-        <div className="dashboard-container-dash">
-            <Sidebar />
-            <div className="supervisors-project">
+        <div className="dashboard-container-dash-sup">
+            <SidebarWithRef 
+                ref={sidebarRef}
+                user={{
+                  name: supervisorInfo.name || "د.عفاف",
+                  role: "مشرف",
+                  image: supervisorInfo.image
+                }}
+                navItems={[
+                  { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
+                  { icon: faProjectDiagram, text: "المشاريع", active: true, badge: activeProjectsCount, path: "/supervisor-project" },
+                  { icon: faUsers, text: "الطلاب", path:"/students" },
+                  { icon: faCalendarCheck, text: "المهام", badge: pendingTasksCount, alert: true, path: "/tasks" },
+                  { icon: faFileAlt, text: "التقارير", path: "/reports" },
+                  { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/scheduling-supervisors-meetings" }
+                ]}
+              />
+              
+            <div className="main-container">
+                <div className='supervisor-dashboard'>
                 <TopNav />
                 <section className="filter-section">
                     <div className="filter-container">
@@ -168,6 +265,7 @@ const SupervisorsProject = () => {
                     )}
                 </div>
             </div>
+        </div>
         </div>
     );
 };

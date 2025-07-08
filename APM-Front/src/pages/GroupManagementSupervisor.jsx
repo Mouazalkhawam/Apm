@@ -1,36 +1,127 @@
-import React, { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { useRef } from 'react';
 import { 
-  faFileAlt, 
-  faUsers, 
-  faUserFriends, 
-  faChartBar, 
-  faTasks, 
-  faCalendarAlt, 
-  faComments 
+  faTachometerAlt, faProjectDiagram, faUsers, 
+  faCalendarCheck, faFileAlt, faComments, faUserFriends,
+  faChevronLeft, faBars, faSearch, faBell, faChartBar,
+  faEnvelope, faEllipsisV, faLaptopCode, faCalendarAlt,
+  faMobileAlt, faChartLine, faRobot, 
+  faArrowUp, faExclamationCircle, faCommentAlt,
+  faTasks, faChevronDown
 } from '@fortawesome/free-solid-svg-icons';
 import { useNavigate } from 'react-router-dom';
 import './GroupProjectManagement.css';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
+import axios from 'axios'; // أضف هذا الاستيراد
+
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
+
 const GroupManagementSupervisor = () => {
   const navigate = useNavigate();
+  const sidebarRef = useRef(null);
+  const [activeProjectsCount, setActiveProjectsCount] = useState(0);
+  const [pendingTasksCount, setPendingTasksCount] = useState(0); // أضف هذا السطر
+  const [activeStudentsCount, setActiveStudentsCount] = useState(0); // أضف هذا السطر
+  const [averageGrade, setAverageGrade] = useState(0); // أضف هذا السطر
+  const [loading, setLoading] = useState(true); // أضف هذا السطر
+  const [error, setError] = useState(null); // أضف هذا السطر
+  const [supervisorInfo, setSupervisorInfo] = useState({
+    name: '',
+    image: null // غيرت إلى null بدلاً من سلسلة فارغة
+  });
 
   useEffect(() => {
-    // Set animation delays programmatically
     const cards = document.querySelectorAll('.group-nav-card');
     cards.forEach((card, index) => {
       card.style.animationDelay = `${0.1 + (index * 0.1)}s`;
     });
   }, []);
+ 
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const token = localStorage.getItem('access_token');
+        
+        if (!token) {
+          throw new Error('لم يتم العثور على token في localStorage');
+        }
+
+        const config = {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        };
+
+        const checkResponse = await axios.get('http://127.0.0.1:8000/api/check-supervisor', config);
+        
+        if (!checkResponse.data.is_supervisor) {
+          throw new Error('المستخدم الحالي ليس مشرفًا');
+        }
+
+        setSupervisorInfo({
+          name: checkResponse.data.name,
+          image: checkResponse.data.profile_picture || null // استخدم null بدلاً من السلسلة الفارغة
+        });
+
+        const supervisorId = checkResponse.data.supervisor_id;
+
+        const projectsResponse = await axios.get(
+          `http://127.0.0.1:8000/api/supervisors/${supervisorId}/active-projects-count`, 
+          config
+        );
+        setActiveProjectsCount(projectsResponse.data.active_projects_count);
+
+        setPendingTasksCount(14);
+        setActiveStudentsCount(23);
+        setAverageGrade(88);
+
+      } catch (err) {
+        console.error('حدث خطأ أثناء جلب البيانات:', err);
+        setError(err.message || 'حدث خطأ أثناء جلب البيانات');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return <div className="loading-container">جاري التحميل...</div>;
+  }
+
+  if (error) {
+    return <div className="error-container">حدث خطأ: {error}</div>;
+  }
 
   return ( 
-     <div className="dashboard-container-dash">
-        
-       
-         <Sidebar />
-    <div className="group-project-container" dir="rtl">
-     
+    <div className="dashboard-container-dash-sup">
+      <SidebarWithRef 
+        ref={sidebarRef}
+        user={{
+          name: supervisorInfo.name || "د.عفاف",
+          role: "مشرف",
+          image: supervisorInfo.image
+        }}
+        navItems={[
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
+          { icon: faProjectDiagram, text: "المشاريع", active: true, badge: activeProjectsCount, path: "/supervisor-project" },
+          { icon: faUsers, text: "الطلاب", path:"/students" },
+          { icon: faCalendarCheck, text: "المهام", badge: pendingTasksCount, alert: true, path: "/tasks" },
+          { icon: faFileAlt, text: "التقارير", path: "/reports" },
+          { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/scheduling-supervisors-meetings" }
+        ]}
+      />
+        <div className="main-container">
+        <div className='supervisor-dashboard'>
       <TopNav/>
       {/* Navigation Cards Section */}
       <div className="group-nav-grid">
@@ -153,6 +244,7 @@ const GroupManagementSupervisor = () => {
           </div>
         </div>
       </div>
+    </div>
     </div>
     </div>
   );
