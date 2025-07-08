@@ -11,6 +11,12 @@ body {
     color: #374151;
     padding: 20px;
 }
+.main-content{
+    margin: 1rem;
+}
+.discussions-coordinator-container{
+    margin: 1rem;
+}
 
 .container {
     width: 100%;
@@ -153,6 +159,7 @@ textarea {
 
 /* Buttons */
 .btn {
+    margin-top: 30px;
     display: inline-flex;
     align-items: center;
     justify-content: center;

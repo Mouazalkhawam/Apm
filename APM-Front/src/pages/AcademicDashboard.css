@@ -788,8 +788,9 @@
             border-radius: 9999px;
         }
         .nav-top-dash{
-            width: 99%;
+            width: 100%;
            /* overflow: scroll;*/
+           margin-bottom: -56px;
         }
         
         .status-badge.green {

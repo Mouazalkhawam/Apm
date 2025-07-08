@@ -13,6 +13,10 @@ import './DiscussionsCoordinator.css';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
 
+const SidebarWithRef = React.forwardRef((props, ref) => (
+  <Sidebar ref={ref} {...props} />
+));
+
 const DiscussionsCoordinator = () => {
   const [activeTab, setActiveTab] = useState('phase');
   const [phaseDate, setPhaseDate] = useState('');
@@ -23,36 +27,51 @@ const DiscussionsCoordinator = () => {
   const [graduationHall, setGraduationHall] = useState('');
   const [phaseDiscussions, setPhaseDiscussions] = useState([]);
   const [graduationDiscussions, setGraduationDiscussions] = useState([]);
+  
+  // Sidebar states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [contentEffectClass, setContentEffectClass] = useState('');
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   const sidebarRef = useRef(null);
   const overlayRef = useRef(null);
 
+  // Toggle sidebar collapse
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  const toggleMobileSidebar = () => {
-    setMobileSidebarOpen(!mobileSidebarOpen);
+  // Toggle content effect - only if not mobile
+  const toggleContentEffect = () => {
+    if (!isMobile) {
+      setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
+    }
   };
 
+  // Mobile sidebar handlers
+  const toggleMobileSidebar = () => {
+    sidebarRef.current?.classList.add('sidebar-open');
+    overlayRef.current?.classList.add('overlay-open');
+  };
+  
   const closeMobileSidebar = () => {
-    setMobileSidebarOpen(false);
+    sidebarRef.current?.classList.remove('sidebar-open');
+    overlayRef.current?.classList.remove('overlay-open');
   };
 
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setSidebarCollapsed(true);
-      } else {
-        setSidebarCollapsed(false);
+      const mobile = window.innerWidth < 769;
+      setIsMobile(mobile);
+      
+      if (mobile && contentEffectClass === 'content-effect') {
+        setContentEffectClass('');
       }
     };
 
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [contentEffectClass]);
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -213,31 +232,53 @@ const DiscussionsCoordinator = () => {
   };
 
   return (
-    <div className="dashboard-container-dash-sup">
-      <Sidebar />
-      <div className="main-container">
-                <div className='supervisor-dashboard'>
-        <TopNav />
-
-    <div className="discussions-coordinator-container">
+    <div className="dashboard-container-dash">
       {/* Sidebar Component */}
-    
+      <SidebarWithRef 
+        ref={sidebarRef}
+        user={{
+          name: "د.عفاف",
+          role: "منسق المشاريع",
+          image: "https://randomuser.me/api/portraits/women/44.jpg"
+        }}
+        collapsed={sidebarCollapsed}
+        onToggleCollapse={toggleSidebar}
+        onToggleEffect={toggleContentEffect}
+        navItems={[
+          { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
+          { icon: faProjectDiagram, text: "المشاريع", path: "/projects" },
+          { icon: faUsers, text: "الطلاب", path:"/students" },
+          { icon: faCalendarCheck, text: "المهام", path: "/tasks" },
+          { icon: faFileAlt, text: "التقارير", path: "/reports" },
+          { icon: faComments, text: "المناقشات", active: true, path: "/discussions" }
+        ]}
+      />
       
-      {/* Mobile Sidebar Toggle */}
-      <button className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
-        <FontAwesomeIcon icon={faBars} />
-      </button>
+      {/* Overlay for mobile sidebar */}
+      <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      {/* Overlay */}
-      <div className={`overlay ${mobileSidebarOpen ? 'active' : ''}`} onClick={closeMobileSidebar}></div>
-      
-      {/* Main Content */}
-      <div className={`main-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
+      {/* Main Content Area */}
+      <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`}>
         {/* Top Navigation */}
-        
+        <div className='nav-top-dash'>
+          <TopNav 
+            user={{
+              name: "د.عفاف",
+              image: "https://randomuser.me/api/portraits/women/44.jpg"
+            }}
+            notifications={{
+              bell: 3,
+              envelope: 7
+            }}
+            searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
+          />
+          <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+            <FontAwesomeIcon icon={faBars} />
+          </button>
+        </div>
         
         {/* Page Content */}
-        <div className="page-content">
+        <div className="discussions-coordinator-container">
           {/* Tabs Navigation */}
           <div className="tabs-container">
             <div className="tabs-group" role="group">
@@ -527,9 +568,6 @@ const DiscussionsCoordinator = () => {
             </div>
           )}
         </div>
-      </div>
-      </div>
-      </div>
       </div>
     </div>
   );
