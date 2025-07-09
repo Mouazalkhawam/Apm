@@ -265,4 +265,34 @@ class DiscussionScheduleController extends Controller
             ], 500);
         }
     }
+    /**
+ * الحصول على عدد المناقشات في الشهر الحالي
+ */
+public function getCurrentMonthDiscussionsCount()
+{
+    try {
+        $currentMonth = now()->month;
+        $currentYear = now()->year;
+        
+        $count = DiscussionSchedule::whereMonth('date', $currentMonth)
+            ->whereYear('date', $currentYear)
+            ->count();
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'count' => $count,
+                'month' => now()->translatedFormat('F'),
+                'year' => $currentYear
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error getting current month discussions count: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب عدد المناقشات'
+        ], 500);
+    }
+}
 }

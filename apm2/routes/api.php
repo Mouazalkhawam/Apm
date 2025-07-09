@@ -204,4 +204,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/latest', [ProjectController::class, 'getLatestProjects']);
     Route::post('/coordinator/create-supervisor', [AuthController::class, 'createSupervisor']);
 
+    Route::get('/discussions/current-month-count', [DiscussionScheduleController::class, 'getCurrentMonthDiscussionsCount']);
+
 });

@@ -157,23 +157,7 @@ const AcademicPeriods = () => {
           </div>
 
           <form id="academicCalendarForm" className="form-content" onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label htmlFor="academicYear">العام الجامعي</label>
-              <select
-                id="academicYear"
-                name="academicYear"
-                value={formData.academicYear}
-                onChange={handleInputChange}
-                required
-              >
-                <option value="" disabled>اختر العام الجامعي</option>
-                <option value="1445-1446">1445-1446 هـ</option>
-                <option value="1446-1447">1446-1447 هـ</option>
-                <option value="1447-1448">1447-1448 هـ</option>
-              </select>
-            </div>
-
-            {/* الفصل الدراسي الأول */}
+      {/* الفصل الدراسي الأول */}
             <div id="firstTermSection" className="term-section first-term">
               <div className="term-header">
                 <h3 className="term-title">

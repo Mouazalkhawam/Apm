@@ -78,6 +78,19 @@ const AcademicDashboard = () => {
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState(null);
 
+  // داخل مكون AcademicDashboard
+const fetchCurrentMonthDiscussions = async () => {
+  try {
+    const response = await apiClient.get('/api/discussions/current-month-count');
+    if (response.data && response.data.success) {
+      return response.data.data.count;
+    }
+    throw new Error('Failed to fetch discussions count');
+  } catch (error) {
+    console.error('Error fetching discussions count:', error);
+    return 0; // القيمة الافتراضية في حالة الخطأ
+  }
+};
   // Chart instance
   let progressChart = null;
 
@@ -169,45 +182,45 @@ const AcademicDashboard = () => {
   }, []);
 
   // Fetch stats data
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        // جلب مشاريع التخرج
-        const gradResponse = await apiClient.get('/api/projects/current-graduation');
-        const gradCount = gradResponse.data.count;
-        
-        // جلب المشاريع الفصلية
-        const semesterResponse = await apiClient.get('/api/projects/current-semester');
-        const semesterCount = semesterResponse.data.count;
-        
-        // جلب المهام المعلقة (تستبدل بAPI الخاص بك)
-        const tasksCount = 0;
-        
-        // جلب المناقشات الجديدة (تستبدل بAPI الخاص بك)
-        const discussionsCount = 0;
-        
-        setStats({
-          graduationProjects: gradCount,
-          semesterProjects: semesterCount,
-          pendingTasks: tasksCount,
-          newDiscussions: discussionsCount
-        });
-        
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        if (error.response?.status === 401) {
-          localStorage.removeItem('access_token');
-          window.location.href = '/login';
-        }
-      } finally {
-        setLoading(false);
+ useEffect(() => {
+  const fetchStats = async () => {
+    setLoading(true);
+    try {
+      // جلب مشاريع التخرج
+      const gradResponse = await apiClient.get('/api/projects/current-graduation');
+      const gradCount = gradResponse.data.count;
+      
+      // جلب المشاريع الفصلية
+      const semesterResponse = await apiClient.get('/api/projects/current-semester');
+      const semesterCount = semesterResponse.data.count;
+      
+      // جلب المهام المعلقة (تستبدل بAPI الخاص بك)
+      const tasksCount = 0;
+      
+      // جلب عدد المناقشات في الشهر الجاري
+      const discussionsCount = await fetchCurrentMonthDiscussions();
+      
+      setStats({
+        graduationProjects: gradCount,
+        semesterProjects: semesterCount,
+        pendingTasks: tasksCount,
+        newDiscussions: discussionsCount
+      });
+      
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+      if (error.response?.status === 401) {
+        localStorage.removeItem('access_token');
+        window.location.href = '/login';
       }
-    };
-    
-    fetchStats();
-    fetchLatestProjects(); // جلب أحدث المشاريع عند التحميل
-  }, []);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  fetchStats();
+  fetchLatestProjects();
+}, []);
 
   // Handle window resize and remove content-effect when mobile
   useEffect(() => {
@@ -368,7 +381,7 @@ const AcademicDashboard = () => {
                 
                 <div className="stat-card purple">
                   <div className="stat-info">
-                    <p className="stat-desc">المناقشات الجديدة</p>
+                    <p className="stat-desc">المناقشات خلال الشهر الجاري</p>
                     <h3 className="stat-value">{stats.newDiscussions}</h3>
                     <p className="stat-trend blue">
                       <FontAwesomeIcon icon={faCommentAlt} /> 2 تحتاج إجابتك

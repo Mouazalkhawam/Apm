@@ -165,7 +165,6 @@ const AddSupervisor = () => {
           color: '#e74c3c'
         });
         
-        setTimeout(() => navigate('/supervisors'), 2000);
       }
     } catch (error) {
       console.error('Error creating supervisor:', error);
