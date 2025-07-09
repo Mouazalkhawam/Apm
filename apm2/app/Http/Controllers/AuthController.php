@@ -346,5 +346,54 @@ class AuthController extends Controller
             'email' => $user->email
         ]);
     }
+    // ✅ إنشاء حساب مشرف جديد (للمنسق فقط) - بإدخال محدود
+public function createSupervisor(Request $request)
+{
+    // التحقق من أن المستخدم الحالي هو منسق
+    $currentUser = Auth::user();
+    if ($currentUser->role !== 'coordinator') {
+        return response()->json(['message' => 'غير مصرح لك بإنشاء حسابات المشرفين.'], 403);
+    }
+
+    $request->validate([
+        'name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:users',
+        'phone' => 'required|string|max:20|unique:users',
+    ]);
+
+    // إنشاء حساب المستخدم
+    $userData = [
+        'name' => $request->name,
+        'email' => $request->email,
+        'phone' => $request->phone,
+        'password' => Hash::make($request->password),
+        'role' => 'supervisor',
+    ];
+
+    // معالجة صورة الملف الشخصي (إذا تم رفعها)
+    if ($request->hasFile('profile_picture')) {
+        $image = $request->file('profile_picture');
+        $imageName = time().'.'.$image->extension();
+        $image->move(public_path('images/users'), $imageName);
+        $userData['profile_picture'] = 'images/users/'.$imageName;
+    }
+
+    $user = User::create($userData);
+
+    // إنشاء سجل المشرف مع قيم افتراضية
+    $supervisor = \App\Models\Supervisor::create([
+        'userId' => $user->userId,
+        'specialization' => 'غير محدد',
+        'department' => 'غير محدد',
+        'position' => 'مشرف',
+    ]);
+
+    return response()->json([
+        'success' => true,
+        'message' => 'تم إنشاء حساب المشرف بنجاح!',
+        'user' => $user,
+        'supervisor' => $supervisor
+    ], 201);
+}
 
 }

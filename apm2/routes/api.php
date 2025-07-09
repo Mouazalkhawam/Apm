@@ -202,4 +202,6 @@ Route::middleware('auth:api')->group(function () {
     Route::get('pending-tasks', [PendingTaskController::class, 'index']);
     Route::post('pending-tasks/{task}/process', [PendingTaskController::class, 'processTask']);
     Route::get('/projects/latest', [ProjectController::class, 'getLatestProjects']);
+    Route::post('/coordinator/create-supervisor', [AuthController::class, 'createSupervisor']);
+
 });
