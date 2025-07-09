@@ -126,7 +126,7 @@ const AddSupervisor = () => {
                 <div className='supervisor-dashboard'>
         <TopNav />
 
-    <div className="container">
+    <div className="container-add-sup">
     
       
       {message.show && (

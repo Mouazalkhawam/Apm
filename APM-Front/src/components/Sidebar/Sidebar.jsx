@@ -3,7 +3,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faGraduationCap, faChevronRight, faChevronLeft, 
   faTachometerAlt, faProjectDiagram, faUsers, faCalendarCheck,
-  faFileAlt, faComments, faCog, faSignOutAlt
+  faFileAlt, faComments, faCog, faSignOutAlt,
+  faUserPlus, faChalkboardTeacher, faTrophy
 } from '@fortawesome/free-solid-svg-icons';
 import "./Sidebar.css";
 import { useNavigate } from 'react-router-dom';
@@ -68,17 +69,18 @@ const Sidebar = React.forwardRef(({
             { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
             { icon: faUsers, text: "الطلاب", path: "/students" },
             { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
-           /* { icon: faFileAlt, text: "التقارير", path: "/reports" },*/
-           /* { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" }*/
+            /* { icon: faFileAlt, text: "التقارير", path: "/reports" }, */
+            /* { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" } */
           ]);
         } else if (userData.role === 'coordinator') {
           setNavItems([
             { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
             { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
             { icon: faUsers, text: "الطلاب", path: "/students" },
+            { icon: faUserPlus, text: "إضافة مشرف", path: "/add-supervisor" },
             { icon: faUsers, text: "المشرفون", path: "/Supervisor-Management-Coordinator" },
-           /* { icon: faCalendarCheck, text: "الاجتماعات", badge: 5, alert: true, path: "/meetings" },
-            { icon: faFileAlt, text: "التقارير", path: "/reports" },*/
+            { icon: faChalkboardTeacher, text: "إدارة الفصول", path: "/academic-periods" },
+            { icon: faTrophy, text: "لوحة الشرف", path: "/honorboard-coordinator" },
             { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions-coordinator" }
           ]);
         }
@@ -169,7 +171,6 @@ const Sidebar = React.forwardRef(({
       }
       formDataToSend.append('_method', 'PUT');
       
-
       const response = await axios.post('http://127.0.0.1:8000/api/profile/update', formDataToSend, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('access_token')}`,

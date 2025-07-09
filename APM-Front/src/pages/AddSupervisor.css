@@ -13,13 +13,14 @@ body {
 }
 
 /* Container */
-.container {
+.container-add-sup {
     max-width: 800px;
     margin: 50px auto;
     padding: 20px;
+    overflow: scroll;
     background-color: #fff;
     border-radius: 10px;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 5px 15px rgba(0, 0, 0);
 }
 
 /* Header */
@@ -106,7 +107,7 @@ body {
 
 /* Responsive */
 @media (max-width: 768px) {
-    .container {
+    .container-add-sup {
         margin: 20px;
         padding: 15px;
     }

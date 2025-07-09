@@ -11,6 +11,19 @@
     width: 80%;
     margin: 20px;
 }
+.sup-projects-container{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f9fafb;
+    color: #333;
+    line-height: 1.6;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: scroll;
+}
 
 /* Header Styles */
 .project-header {

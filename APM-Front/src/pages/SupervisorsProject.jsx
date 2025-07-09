@@ -277,7 +277,8 @@ const SupervisorsProject = () => {
                 </div>
                 
                 {/* Main Content */}
-                <div className='supervisor-dashboard'>
+                
+                    <div className='sup-projects-container'>
                     <section className="filter-section">
                         <div className="filter-container">
                             <div className="filter-item">
@@ -359,10 +360,11 @@ const SupervisorsProject = () => {
                             ))
                         )}
                     </div>
-                </div>
+                    </div>
+                
             </div>
         </div>
     );
 };
 
-export default SupervisorsProject;
+export default SupervisorsProject;  
