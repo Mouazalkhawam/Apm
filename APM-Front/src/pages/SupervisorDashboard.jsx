@@ -14,6 +14,7 @@ import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
 import axios from 'axios';
 import Chart from 'chart.js/auto';
+import { useNavigate } from 'react-router-dom';
 
 const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
@@ -41,6 +42,8 @@ const SupervisorDashboard = () => {
     image: ''
   });
   const [pendingTasks, setPendingTasks] = useState([]);
+
+  const navigate = useNavigate();
 
   // Initialize chart
   useEffect(() => {
@@ -239,6 +242,16 @@ const SupervisorDashboard = () => {
         return 'متأخرة';
       default:
         return 'غير معروف';
+    }
+  };
+
+  // Handle task click
+  const handleTaskClick = (task) => {
+    if (task.type === 'stage_evaluation' || task.type === 'task_evaluation') {
+      // Save group_id to localStorage
+      localStorage.setItem('selectedGroupId', task.group_data.group_id);
+      // Navigate to project management page
+      navigate('/student-project-management');
     }
   };
 
@@ -457,7 +470,16 @@ const SupervisorDashboard = () => {
                 <ul className="tasks-list">
                   {pendingTasks.length > 0 ? (
                     pendingTasks.map((task, index) => (
-                      <li className="task-item-dash-super" key={index}>
+                      <li 
+                        className="task-item-dash-super" 
+                        key={index}
+                        onClick={() => handleTaskClick(task)}
+                        style={{
+                          cursor: (task.type === 'stage_evaluation' || task.type === 'task_evaluation') 
+                            ? 'pointer' 
+                            : 'default'
+                        }}
+                      >
                         <div className="task-icon">
                           {task.type === 'membership' && <FontAwesomeIcon icon={faUsers} />}
                           {task.type === 'task_evaluation' && <FontAwesomeIcon icon={faFileAlt} />}
@@ -467,7 +489,7 @@ const SupervisorDashboard = () => {
                           <h4 className="task-title-dash-super">
                             {task.type === 'membership' && 'طلب عضوية مجموعة'}
                             {task.type === 'task_evaluation' && 'تقييم مهمة: ' + (task.task_data?.title || '')}
-                            {task.type === 'stage_evaluation' && 'تقييم مرحلة'}
+                            {task.type === 'stage_evaluation' && 'تقييم مرحلة: ' + (task.stage_data?.title || task.notes || '')}
                           </h4>
                           <span className="task-project">
                             {task.group_data?.group_name || 'غير محدد'}

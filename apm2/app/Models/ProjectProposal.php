@@ -32,7 +32,8 @@ class ProjectProposal extends Model
         'functional_requirements',
         'non_functional_requirements',
         'technology_stack',
-        'problem_mindmap_path'
+        'problem_mindmap_path',
+        'status'
     ];
 
     protected $casts = [
@@ -40,7 +41,8 @@ class ProjectProposal extends Model
         'functional_requirements' => 'array',
         'non_functional_requirements' => 'array',
         'tools' => 'array',
-        'programming_languages' => 'array'
+        'programming_languages' => 'array',
+        'status' => 'string'
     ];
 
     public function group()
@@ -84,5 +86,21 @@ class ProjectProposal extends Model
     public function isGraduationProject()
     {
         return $this->project_type === 'grad-project';
+    }
+
+    public function getStatusNameAttribute()
+    {
+        return [
+            'needs_revision' => 'بحاجة لإصلاح',
+            'approved' => 'مقبول'
+        ][$this->status] ?? 'غير محدد';
+    }
+    public function needsRevision()
+    {
+        return $this->status === 'needs_revision';
+    }
+    public function isApproved()
+    {
+        return $this->status === 'approved';
     }
 }

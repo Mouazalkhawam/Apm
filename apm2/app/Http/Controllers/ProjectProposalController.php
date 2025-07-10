@@ -405,4 +405,88 @@ public function showByGroup($groupid)
         $proposal = ProjectProposal::where('group_id', $group_id)->first();
         return response()->json(['exists' => $proposal !== null]);
     }
+
+    public function approveProposal($proposalId)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isCoordinator()) {
+            return response()->json(['message' => 'ليست لديك صلاحية الموافقة على المقترحات'], 403);
+        }
+
+        $proposal = ProjectProposal::findOrFail($proposalId);
+        $proposal->status = 'approved';
+        $proposal->save();
+
+        return response()->json([
+            'message' => 'تم قبول المقترح بنجاح',
+            'status' => $proposal->status
+        ], 200);
+    }
+
+
+    public function markAsNeedsRevision($proposalId)
+    {
+        $user = Auth::user();
+        
+        if (!$user->isCoordinator()) {
+            return response()->json(['message' => 'ليست لديك صلاحية رفض المقترحات'], 403);
+        }
+
+        $proposal = ProjectProposal::findOrFail($proposalId);
+        $proposal->status = 'needs_revision';
+        $proposal->save();
+
+        return response()->json([
+            'message' => 'تم تغيير حالة المقترح إلى "بحاجة لإصلاح"',
+            'status' => $proposal->status
+        ], 200);
+    }
+/**
+ * تغيير حالة مقترح المجموعة إلى مقبول
+ */
+public function approveProposalByGroup($groupId)
+{
+    $user = Auth::user();
+    
+    if (!$user->isCoordinator()) {
+        return response()->json(['message' => 'ليست لديك صلاحية الموافقة على المقترحات'], 403);
+    }
+
+    // البحث عن المقترح باستخدام group_id
+    $proposal = ProjectProposal::where('group_id', $groupId)->firstOrFail();
+    
+    $proposal->status = 'approved';
+    $proposal->save();
+
+    return response()->json([
+        'message' => 'تم قبول مقترح المجموعة بنجاح',
+        'status' => $proposal->status,
+        'status_name' => $proposal->status_name
+    ], 200);
+}
+
+/**
+ * تغيير حالة مقترح المجموعة إلى بحاجة لإصلاح
+ */
+public function markProposalAsNeedsRevisionByGroup($groupId)
+{
+    $user = Auth::user();
+    
+    if (!$user->isCoordinator()) {
+        return response()->json(['message' => 'ليست لديك صلاحية رفض المقترحات'], 403);
+    }
+
+    // البحث عن المقترح باستخدام group_id
+    $proposal = ProjectProposal::where('group_id', $groupId)->firstOrFail();
+    
+    $proposal->status = 'needs_revision';
+    $proposal->save();
+
+    return response()->json([
+        'message' => 'تم تغيير حالة مقترح المجموعة إلى "بحاجة لإصلاح"',
+        'status' => $proposal->status,
+        'status_name' => $proposal->status_name
+    ], 200);
+}
 }

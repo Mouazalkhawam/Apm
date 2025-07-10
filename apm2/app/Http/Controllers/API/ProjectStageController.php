@@ -253,7 +253,7 @@ class ProjectStageController extends Controller
                         'status' => 'pending',
                         'group_id' => $group->groupid,
                         'stage_id' => $stage->id,
-                        'due_date' => $stage->due_date
+                        'notes' => 'تسليم مرحلة: ' . $stage->title
                     ];
     
                     $pendingTask = PendingTask::create($taskData);
@@ -401,7 +401,7 @@ class ProjectStageController extends Controller
             'message' => 'حدث خطأ أثناء تقييم المرحلة: ' . $e->getMessage()
         ], 500);
     }
-}
+}   
     public function getStageSubmission($stage_id)
     {
         try {
