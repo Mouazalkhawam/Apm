@@ -12,6 +12,7 @@ use App\Models\GroupStudent;
 use App\Models\User;
 use App\Models\AcademicPeriod;
 use App\Models\HonorBoardProject;
+use App\Models\PendingTask;
 use App\Services\NotificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -22,86 +23,170 @@ use Carbon\Carbon;
 class ProjectController extends Controller
 {
     public function createProject(Request $request)
-    {
-        $request->validate([
-            'title' => 'required|string',
-            'description' => 'nullable|string',
-            'students' => 'required|array|min:1|exists:students,studentId',
-            'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId',
-            'type' => 'required|in:semester,graduation'
+{
+    $request->validate([
+        'title' => 'required|string',
+        'description' => 'nullable|string',
+        'students' => 'required|array|min:1|exists:students,studentId',
+        'supervisors' => 'required|array|min:1|exists:supervisors,supervisorId',
+        'type' => 'required|in:semester,graduation'
+    ]);
+
+    return DB::transaction(function () use ($request) {
+        $creator = Student::where('userId', Auth::id())->firstOrFail();
+        
+        // التحقق من شروط المشاريع
+        if ($request->type === 'graduation') {
+            $this->validateGraduationProject($creator);
+            $periods = $this->getGraduationPeriods();
+        } else {
+            $this->validateSemesterProject($creator);
+            $periods = $this->getSemesterPeriod();
+        }
+
+        if (empty($periods)) {
+            abort(400, 'لا يوجد فصل دراسي فعال حاليًا');
+        }
+
+        // إنشاء المشروع
+        $project = Project::create([
+            'title' => $request->title,
+            'description' => $request->description,
+            'startdate' => $periods->first()->start_date,
+            'enddate' => $periods->last()->end_date,
+            'headid' => Auth::id(),
+            'type' => $request->type
         ]);
 
-        return DB::transaction(function () use ($request) {
-            $creator = Student::where('userId', Auth::id())->firstOrFail();
-            
-            // التحقق من شروط المشاريع
-            if ($request->type === 'graduation') {
-                $this->validateGraduationProject($creator);
-                $periods = $this->getGraduationPeriods();
-            } else {
-                $this->validateSemesterProject($creator);
-                $periods = $this->getSemesterPeriod();
+        // ربط المشروع بالفصول الدراسية
+        $project->academicPeriods()->attach($periods->pluck('id'));
+
+        // إنشاء الفريق
+        $group = Group::create([
+            'projectid' => $project->projectid,
+            'name' => $request->title,
+        ]);
+
+        // إعداد بيانات الطلاب
+        $studentsData = [];
+        $studentsData[$creator->studentId] = [
+            'status' => 'approved',
+            'is_leader' => true
+        ];
+        
+        foreach ($request->students as $studentId) {
+            if ($studentId != $creator->studentId) {
+                $studentsData[$studentId] = [
+                    'status' => 'pending',
+                    'is_leader' => false
+                ];
             }
+        }
+        
+        $group->students()->attach($studentsData);
 
-            if (empty($periods)) {
-                abort(400, 'لا يوجد فصل دراسي فعال حاليًا');
-            }
+        // ربط المشرفين وإنشاء المهام المعلقة
+        $now = now();
+$pendingTasks = [];
+$projectTitle = $project->title;
+$groupId = $group->groupId;
 
-            // إنشاء المشروع
-            $project = Project::create([
-                'title' => $request->title,
-                'description' => $request->description,
-                'startdate' => $periods->first()->start_date,
-                'enddate' => $periods->last()->end_date,
-                'headid' => Auth::id(),
-                'type' => $request->type
-            ]);
+// تأكد من أن $groupId له قيمة صحيحة
+if (empty($groupId)) {
+    throw new \Exception('Group ID is missing or invalid');
+}
 
-            // ربط المشروع بالفصول الدراسية
-            $project->academicPeriods()->attach($periods->pluck('id'));
+foreach ($request->supervisors as $supervisorId) {
+    // 1. إنشاء سجل group_supervisor
+    DB::table('group_supervisor')->insert([
+        'supervisorId' => $supervisorId,
+        'groupid' => $groupId,
+        'status' => 'pending',
+        'created_at' => $now,
+        'updated_at' => $now
+    ]);
 
-            // إنشاء الفريق
-            $group = Group::create([
-                'projectid' => $project->projectid,
-                'name' => $request->title,
-            ]);
+    // 2. إنشاء المهمة المعلقة باستخدام معرف مركب
+    $pendingTask = PendingTask::create([
+        'type' => 'supervisor_membership',
+        'related_id' => $groupId, // يمكن استخدام groupId أو أي قيمة مؤقتة
+        'related_type' => GroupSupervisor::class,
+        'supervisor_id' => $supervisorId,
+        'group_id' => $groupId,
+        'status' => 'pending',
+        'notes' => "تمت دعوتك للانضمام كمشرف على مشروع: {$projectTitle}",
+        'created_at' => $now,
+        'updated_at' => $now
+    ]);
 
-            // إعداد بيانات الطلاب
-            $studentsData = [];
-            $studentsData[$creator->studentId] = [
-                'status' => 'approved',
-                'is_leader' => true
-            ];
-            
-            foreach ($request->students as $studentId) {
-                if ($studentId != $creator->studentId) {
-                    $studentsData[$studentId] = [
-                        'status' => 'pending',
-                        'is_leader' => false
-                    ];
-                }
-            }
-            
-            $group->students()->attach($studentsData);
+    $pendingTasks[] = $pendingTask;
+}
+        // إرسال الإشعارات
+        $this->sendNotificationsWithPendingTasks(
+            $group, 
+            array_keys($studentsData), 
+            $request->supervisors,
+            $pendingTasks
+        );
 
-            // ربط المشرفين (جميعهم بحالة pending)
-            $group->supervisors()->attach(
-                $request->supervisors,
-                ['status' => 'pending']
-            );
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'project' => $project,
+                'group' => $group->load(['students', 'supervisors']),
+                'pending_tasks' => $pendingTasks
+            ]
+        ], 201);
+    });
+}
 
-            // إرسال الإشعارات (لن ترسل للقائد تلقائياً)
-            $this->sendNotifications($group, array_keys($studentsData), $request->supervisors);
+protected function sendNotificationsWithPendingTasks(Group $group, $students, $supervisors, $pendingTasks)
+{
+    $group->load('project');
+    $leader = $group->students()
+        ->where('group_student.is_leader', true)
+        ->first();
 
-            return response()->json([
-                'success' => true,
-                'data' => [
-                    'project' => $project,
-                    'group' => $group->load(['students', 'supervisors'])
+    // إشعارات للطلاب
+    $group->students()
+        ->whereIn('students.studentId', $students)
+        ->where('students.studentId', '!=', $leader->studentId)
+        ->with('user')
+        ->each(function ($student) use ($group) {
+            NotificationService::sendRealTime(
+                $student->user->userId,
+                "تمت دعوتك لمشروع {$group->name}",
+                [
+                    'type' => 'PROJECT_INVITATION',
+                    'group_id' => $group->getKey(),
+                    'project_id' => $group->project->projectid,
+                    'is_leader' => false
                 ]
-            ], 201);
+            );
         });
-    }
+
+    // إشعارات للمشرفين مع معلومات المهام المعلقة
+    $supervisorTasks = collect($pendingTasks)->keyBy('supervisor_id');
+    
+    $group->supervisors()
+        ->whereIn('supervisors.supervisorId', $supervisors)
+        ->with('user')
+        ->each(function ($supervisor) use ($group, $supervisorTasks) {
+            $task = $supervisorTasks->get($supervisor->supervisorId);
+            
+            NotificationService::sendRealTime(
+                $supervisor->user->userId,
+                "تم تعيينك كمشرف على مشروع {$group->name} - يرجى قبول الدعوة",
+                [
+                    'type' => 'PROJECT_INVITATION',
+                    'group_id' => $group->getKey(),
+                    'project_id' => $group->project->projectid,
+                    'pending_task_id' => $task ? $task->id : null,
+                    'has_pending_task' => true
+                ]
+            );
+        });
+}
     protected function getGraduationPeriods()
     {
         $currentPeriod = AcademicPeriod::where('is_current', true)->first();
@@ -215,59 +300,69 @@ class ProjectController extends Controller
             );
         });
 }
-    public function approveMembership(Request $request)
-    {
-        $request->validate([
-            'user_id' => 'required|exists:users,userId',
-            'group_id' => 'required|exists:groups,groupid',
-        ]);
-    
-        $user = User::findOrFail($request->user_id);
-        $group = Group::findOrFail($request->group_id);
-    
-        // Initialize the notification service
-        $notificationService = new NotificationService();
-    
-        DB::transaction(function () use ($user, $group, $notificationService) {
+public function approveMembership(Request $request)
+{
+    $request->validate([
+        'user_id' => 'required|exists:users,userId',
+        'group_id' => 'required|exists:groups,groupid',
+    ]);
+
+    $user = User::with(['student', 'supervisor'])->findOrFail($request->user_id);
+    $group = Group::with('project')->findOrFail($request->group_id);
+    $notificationService = new NotificationService();
+
+    return DB::transaction(function () use ($user, $group, $notificationService) {
+        try {
             if ($user->role === 'student') {
-                GroupStudent::where([
-                    'groupid' => $group->groupid,
-                    'studentId' => $user->student->studentId
-                ])->update(['status' => 'approved']);
+                // معالجة قبول عضوية الطالب
+                $updated = DB::table('group_student')
+                    ->where('groupid', $group->groupid)
+                    ->where('studentId', $user->student->studentId)
+                    ->update(['status' => 'approved']);
                 
-                // إرسال إشعار قبول العضوية للطالب
-                $notificationService->sendRealTime(
-                    $user->userId,
-                    "تم قبول عضويتك في مجموعة {$group->name}",
-                    [
-                        'type' => 'MEMBERSHIP_APPROVAL',
-                        'group_id' => $group->groupid,
-                        'project_id' => $group->project->projectid
-                    ]
-                );
+                if ($updated) {
+                    $notificationService->sendRealTime(
+                        $user->userId,
+                        "تم قبول عضويتك في مجموعة {$group->name}",
+                        [
+                            'type' => 'MEMBERSHIP_APPROVAL',
+                            'group_id' => $group->groupid,
+                            'project_id' => $group->project->projectid
+                        ]
+                    );
+                }
+                
             } elseif ($user->role === 'supervisor') {
-                GroupSupervisor::where([
-                    'groupid' => $group->groupid,
-                    'supervisorId' => $user->supervisor->supervisorId
-                ])->update(['status' => 'approved']);
+                // معالجة قبول عضوية المشرف
+                $updated = DB::table('group_supervisor')
+                    ->where('groupid', $group->groupid)
+                    ->where('supervisorId', $user->supervisor->supervisorId)
+                    ->update(['status' => 'approved', 'updated_at' => now()]);
                 
-                // إرسال إشعار قبول العضوية للمشرف
-                $notificationService->sendRealTime(
-                    $user->userId,
-                    "تم قبول عضويتك كمشرف على مجموعة {$group->name}",
-                    [
-                        'type' => 'SUPERVISOR_APPROVAL',
-                        'group_id' => $group->groupid,
-                        'project_id' => $group->project->projectid
-                    ]
-                );
+                if ($updated) {
+                    // حذف المهمة المعلقة المرتبطة باستخدام group_id
+                    PendingTask::where('type', 'supervisor_membership')
+                        ->where('supervisor_id', $user->supervisor->supervisorId)
+                        ->where('group_id', $group->groupid)
+                        ->delete();
+                    
+                    // إرسال إشعار للمشرف
+                    $notificationService->sendRealTime(
+                        $user->userId,
+                        "تم قبول عضويتك كمشرف على مجموعة {$group->name}",
+                        [
+                            'type' => 'SUPERVISOR_APPROVAL',
+                            'group_id' => $group->groupid,
+                            'project_id' => $group->project->projectid
+                        ]
+                    );
+                }
             }
-            
-            // إرسال إشعار للمسؤول/القائد بقبول العضوية
-            $leaderId = $group->project->headid;
-            if ($leaderId != $user->userId) {
+
+            // إرسال إشعار للقائد
+            if ($group->project->headid != $user->userId) {
                 $notificationService->sendRealTime(
-                    $leaderId,
+                    $group->project->headid,
                     "تم قبول طلب العضوية من قبل {$user->name} لمجموعة {$group->name}",
                     [
                         'type' => 'MEMBERSHIP_APPROVAL_NOTICE',
@@ -277,11 +372,21 @@ class ProjectController extends Controller
                     ]
                 );
             }
-        });
-    
-        return response()->json(['success' => true]);
-    }
 
+            return response()->json([
+                'success' => true,
+                'message' => 'تم قبول العضوية بنجاح'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Failed to approve membership: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل في قبول العضوية: ' . $e->getMessage()
+            ], 500);
+        }
+    });
+}
     public function getRecommendations(Request $request)
 {
     // التحقق من صحة البيانات المدخلة
@@ -827,7 +932,7 @@ protected function extractExperienceText($experience)
                         $member['user_id'],
                         "تمت دعوتك لتكون مشرفًا على مجموعة {$group->name}",
                         [
-                            'type' => 'SUPERVISOR_INVITATION',
+                            'type' => 'PROJECT_INVITATION',
                             'group_id' => $groupId,
                             'project_id' => $group->project->projectid,
                             'pending_task_id' => $pendingTask->id,
@@ -1336,5 +1441,56 @@ public function getCurrentProjectsCoordinator()
             'message' => 'فشل في جلب مشاريع الفصل الحالي: ' . $e->getMessage()
         ], 500);
     }
+}
+
+
+public function rejectMembership(Request $request)
+{
+    $request->validate([
+        'user_id' => 'required|exists:users,userId',
+        'group_id' => 'required|exists:groups,groupid',
+    ]);
+
+    $user = Auth::user();
+    $group = Group::findOrFail($request->group_id);
+
+    if (!$user->isSupervisor()) {
+        return response()->json(['message' => 'Unauthorized'], 403);
+    }
+
+    DB::transaction(function () use ($user, $group) {
+        // حذف العضوية من group_supervisor
+        $deleted = GroupSupervisor::where([
+            'groupid' => $group->groupid,
+            'supervisorId' => $user->supervisor->supervisorId
+        ])->delete();
+
+        if ($deleted) {
+            // حذف المهمة المعلقة المرتبطة
+            PendingTask::where([
+                'type' => 'supervisor_membership',
+                'supervisor_id' => $user->supervisor->supervisorId,
+                'related_id' => DB::table('group_supervisor')
+                    ->where('groupid', $group->groupid)
+                    ->where('supervisorId', $user->supervisor->supervisorId)
+                    ->value('id')
+            ])->delete();
+
+            // إرسال إشعار للقائد
+            $notificationService = new NotificationService();
+            $notificationService->sendRealTime(
+                $group->project->headid,
+                "تم رفض طلب العضوية من قبل {$user->name} لمجموعة {$group->name}",
+                [
+                    'type' => 'MEMBERSHIP_REJECTION_NOTICE',
+                    'group_id' => $group->groupid,
+                    'project_id' => $group->project->projectid,
+                    'rejected_user_id' => $user->userId
+                ]
+            );
+        }
+    });
+
+    return response()->json(['success' => true]);
 }
 }

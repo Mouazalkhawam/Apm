@@ -18,4 +18,9 @@ class GroupSupervisor extends Pivot
     ];
 
     public $timestamps = true;
+
+    public function pendingTask()
+    {
+        return $this->morphOne(PendingTask::class, 'related');
+    }
 }

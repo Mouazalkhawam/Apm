@@ -40,6 +40,7 @@ const SupervisorDashboard = () => {
     name: '',
     image: ''
   });
+  const [pendingTasks, setPendingTasks] = useState([]);
 
   // Initialize chart
   useEffect(() => {
@@ -145,8 +146,16 @@ const SupervisorDashboard = () => {
         );
         setActiveProjectsCount(projectsResponse.data.active_projects_count);
 
-        // 3. جلب البيانات الأخرى
-        setPendingTasksCount(14);
+        // 3. جلب المهام المعلقة
+        const pendingTasksResponse = await axios.get(
+          'http://127.0.0.1:8000/api/pending-tasks',
+          config
+        );
+        
+        setPendingTasks(pendingTasksResponse.data.data.tasks);
+        setPendingTasksCount(pendingTasksResponse.data.data.pending_tasks_count);
+
+        // 4. جلب البيانات الأخرى
         setActiveStudentsCount(23);
         setAverageGrade(88);
 
@@ -197,6 +206,40 @@ const SupervisorDashboard = () => {
   const closeMobileSidebar = () => {
     sidebarRef.current?.classList.remove('sidebar-open');
     overlayRef.current?.classList.remove('overlay-open');
+  };
+
+  // Function to format task due date
+  const formatDueDate = (createdAt) => {
+    const now = new Date();
+    const createdDate = new Date(createdAt);
+    const diffTime = Math.abs(now - createdDate);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+    
+    if (diffDays === 0) {
+      return 'اليوم';
+    } else if (diffDays === 1) {
+      return 'غدًا';
+    } else if (diffDays > 1 && diffDays <= 7) {
+      return `${diffDays} أيام`;
+    } else {
+      return new Date(createdAt).toLocaleDateString('ar-EG');
+    }
+  };
+
+  // Function to get task status
+  const getTaskStatus = (status) => {
+    switch(status) {
+      case 'pending':
+        return 'في الانتظار';
+      case 'approved':
+        return 'مقبولة';
+      case 'rejected':
+        return 'مرفوضة';
+      case 'overdue':
+        return 'متأخرة';
+      default:
+        return 'غير معروف';
+    }
   };
 
   if (loading) {
@@ -412,53 +455,35 @@ const SupervisorDashboard = () => {
                 </div>
                 
                 <ul className="tasks-list">
-                  <li className="task-item-dash-super">
-                    <div className="task-icon">
-                      <FontAwesomeIcon icon={faFileAlt} />
+                  {pendingTasks.length > 0 ? (
+                    pendingTasks.map((task, index) => (
+                      <li className="task-item-dash-super" key={index}>
+                        <div className="task-icon">
+                          {task.type === 'membership' && <FontAwesomeIcon icon={faUsers} />}
+                          {task.type === 'task_evaluation' && <FontAwesomeIcon icon={faFileAlt} />}
+                          {task.type === 'stage_evaluation' && <FontAwesomeIcon icon={faTasks} />}
+                        </div>
+                        <div className="task-info">
+                          <h4 className="task-title-dash-super">
+                            {task.type === 'membership' && 'طلب عضوية مجموعة'}
+                            {task.type === 'task_evaluation' && 'تقييم مهمة: ' + (task.task_data?.title || '')}
+                            {task.type === 'stage_evaluation' && 'تقييم مرحلة'}
+                          </h4>
+                          <span className="task-project">
+                            {task.group_data?.group_name || 'غير محدد'}
+                          </span>
+                        </div>
+                        <span className="task-due">{formatDueDate(task.created_at)}</span>
+                        <span className={`task-status status-${task.status}`}>
+                          {getTaskStatus(task.status)}
+                        </span>
+                      </li>
+                    ))
+                  ) : (
+                    <div className="no-tasks-message">
+                      <p>لا توجد مهام معلقة حالياً</p>
                     </div>
-                    <div className="task-info">
-                      <h4 className="task-title-dash-super">مراجعة كود نظام المشاريع</h4>
-                      <span className="task-project">نظام إدارة المشاريع</span>
-                    </div>
-                    <span className="task-due">غدًا</span>
-                    <span className="task-status status-pending">في الانتظار</span>
-                  </li>
-                  
-                  <li className="task-item-dash-super">
-                    <div className="task-icon">
-                      <FontAwesomeIcon icon={faComments} />
-                    </div>
-                    <div className="task-info">
-                      <h4 className="task-title-dash-super">تقديم ملاحظات على التصميم</h4>
-                      <span className="task-project">تطبيق الجوال التعليمي</span>
-                    </div>
-                    <span className="task-due">3 أيام</span>
-                    <span className="task-status status-pending">في الانتظار</span>
-                  </li>
-                  
-                  <li className="task-item-dash-super">
-                    <div className="task-icon">
-                      <FontAwesomeIcon icon={faExclamationCircle} />
-                    </div>
-                    <div className="task-info">
-                      <h4 className="task-title-dash-super">تقييم اختبار الوحدة</h4>
-                      <span className="task-project">موقع التجارة الإلكترونية</span>
-                    </div>
-                    <span className="task-due">متأخر 2 أيام</span>
-                    <span className="task-status status-overdue">متأخر</span>
-                  </li>
-                  
-                  <li className="task-item-dash-super">
-                    <div className="task-icon">
-                      <FontAwesomeIcon icon={faUsers} />
-                    </div>
-                    <div className="task-info">
-                      <h4 className="task-title-dash-super">مقابلة الفريق</h4>
-                      <span className="task-project">نظام إدارة المشاريع</span>
-                    </div>
-                    <span className="task-due">5 أيام</span>
-                    <span className="task-status status-pending">في الانتظار</span>
-                  </li>
+                  )}
                 </ul>
               </section>
             </div>

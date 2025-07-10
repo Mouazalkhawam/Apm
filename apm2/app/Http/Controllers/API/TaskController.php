@@ -7,10 +7,13 @@ use App\Models\Task;
 use App\Models\ProjectStage;
 use App\Models\Student;
 use App\Models\TaskSubmission;
+use App\Models\PendingTask;
+use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\DB;
+use App\Services\NotificationService;
 
 class TaskController extends Controller
 {
@@ -59,30 +62,20 @@ class TaskController extends Controller
                 'assigned_by' => $user->userId,
             ]);
 
-            // إنشاء مهام معلقة للمشرفين لتقييم المهمة
-            foreach ($group->approvedSupervisors as $supervisor) {
-                PendingTask::create([
-                    'type' => 'task_evaluation',
-                    'related_id' => $task->id,
-                    'related_type' => Task::class,
-                    'supervisor_id' => $supervisor->supervisorId,
-                    'status' => 'pending'
-                ]);
-            }
-
             return response()->json($task, 201);
         });
     }
-        // عرض مهام مرحلة معينة
-        public function getStageTasks($stage_id)
-        {
-            $tasks = Task::with(['assignee.user', 'assigner', 'submissions'])
-                ->where('project_stage_id', $stage_id)
-                ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
-                ->get();
-        
-            return response()->json($tasks);
-        }
+
+    // عرض مهام مرحلة معينة
+    public function getStageTasks($stage_id)
+    {
+        $tasks = Task::with(['assignee.user', 'assigner', 'submissions'])
+            ->where('project_stage_id', $stage_id)
+            ->orderByRaw("FIELD(priority, 'high', 'medium', 'low')")
+            ->get();
+    
+        return response()->json($tasks);
+    }
 
     // تحديث حالة المهمة
     public function updateStatus(Request $request, $task_id)
@@ -108,140 +101,240 @@ class TaskController extends Controller
     }
 
     // تقديم حل للمهمة
-    // ... (بقية الدوال كما هي)
-
-// تقديم حل للمهمة مع إمكانية رفع ملف
+   /**
+ * تقديم حل للمهمة مع إنشاء مهام معلقة للمشرفين
+ */
+/**
+ * تقديم حل للمهمة مع إنشاء مهام معلقة للمشرفين
+ */
+/**
+ * تقديم حل للمهمة مع إنشاء مهام معلقة للمشرفين (النسخة المعدلة)
+ */
+/**
+ * تقديم حل للمهمة مع الاستعلامات المتسلسلة المطلوبة
+/**
+ * تقديم حل للمهمة مع طباعة جميع الـ IDs في مسار الاستعلام
+ */
+/**
+ * تقديم حل للمهمة - النسخة النهائية الكاملة
+ */
+/**
+ * تقديم حل للمهمة - النسخة النهائية الكاملة مع طباعة group_id
+ */
+/**
+ * تقديم حل للمهمة - النسخة النهائية مع استخدام groupId
+ */
+/**
+ * تقديم حل للمهمة مع شرح مفصل لمسار groupId
+ */
 public function submitTask(Request $request, $task_id)
 {
+    \Log::info('🚀 بدء عملية تسليم المهمة', ['task_id' => $task_id, 'user' => Auth::id()]);
+
+    // التحقق من صحة البيانات المدخلة
     $validator = Validator::make($request->all(), [
         'content' => 'required|string|min:20',
         'github_repo' => 'required|string',
         'github_commit_url' => 'required|url',
         'commit_description' => 'required|string|max:500',
         'attachment' => 'nullable|file|max:10240',
-    ], [
-        'content.min' => 'يجب أن يحتوي وصف التسليم على الأقل 20 حرفًا'
     ]);
 
     if ($validator->fails()) {
+        \Log::error('❌ فشل التحقق من البيانات', $validator->errors()->toArray());
         return response()->json([
             'success' => false,
             'errors' => $validator->errors()
         ], 422);
     }
 
+    DB::beginTransaction();
     try {
-        $task = Task::with('stage.project.group')->findOrFail($task_id);
-        $user = Auth::user();
-
-        if ($user->student->studentId != $task->assigned_to) {
-            return response()->json([
-                'success' => false,
-                'message' => 'غير مصرح لك بتسليم هذه المهمة'
-            ], 403);
+        // ==================== [1] جلب المهمة ====================
+        \Log::debug('🔍 جلب بيانات المهمة...');
+        $task = DB::table('tasks')->where('id', $task_id)->first();
+        
+        if (!$task) {
+            throw new \Exception('المهمة غير موجودة');
         }
 
-        return DB::transaction(function () use ($request, $task, $user) {
-            $data = [
+        \Log::debug('✅ بيانات المهمة', [
+            'task_id' => $task->id,
+            'project_stage_id' => $task->project_stage_id,
+            'assigned_to' => $task->assigned_to
+        ]);
+
+        // ==================== [2] التحقق من الصلاحيات ====================
+        \Log::debug('🔐 التحقق من صلاحيات المستخدم...');
+        $user = Auth::user();
+        if ($user->student->studentId != $task->assigned_to) {
+            throw new \Exception('غير مصرح لك بتسليم هذه المهمة');
+        }
+
+        // ==================== [3] جلب مرحلة المشروع ====================
+        \Log::debug('📂 جلب مرحلة المشروع...');
+        $stage = DB::table('project_stages')->where('id', $task->project_stage_id)->first();
+        
+        if (!$stage) {
+            throw new \Exception('مرحلة المشروع غير موجودة');
+        }
+
+        \Log::debug('✅ مرحلة المشروع', [
+            'stage_id' => $stage->id,
+            'project_id' => $stage->project_id
+        ]);
+
+        // ==================== [4] جلب المشروع الرئيسي ====================
+        \Log::debug('📁 جلب المشروع الرئيسي...');
+        $project = DB::table('projects')->where('projectid', $stage->project_id)->first();
+        
+        if (!$project) {
+            throw new \Exception('المشروع غير موجود');
+        }
+
+        \Log::debug('✅ المشروع الرئيسي', [
+            'project_id' => $project->projectid,
+            'project_title' => $project->title
+        ]);
+
+        // ==================== [5] جلب المجموعة باستعلام مباشر ====================
+        \Log::debug('👥 البحث عن المجموعة التابعة للمشروع...');
+        $group = DB::table('groups')->where('projectid', $project->projectid)->first();
+        
+        if (!$group) {
+            \Log::critical('❌ لا توجد مجموعة لهذا المشروع', [
+                'project_id' => $project->projectid,
+                'available_groups' => DB::table('groups')->get()->toArray()
+            ]);
+            throw new \Exception('لا توجد مجموعة مسجلة لهذا المشروع');
+        }
+
+        \Log::debug('🎯 تم العثور على المجموعة', [
+            'groupid' => $group->groupid,
+            'group_name' => $group->name,
+            'project_id_in_group' => $group->projectid
+        ]);
+
+        // ==================== [6] جلب المشرفين المعتمدين ====================
+        \Log::debug('👨‍🏫 جلب المشرفين المعتمدين للمجموعة...');
+        $supervisors = DB::table('group_supervisor')
+            ->where('groupid', $group->groupid)
+            ->where('status', 'approved')
+            ->get();
+
+        \Log::debug('📋 قائمة المشرفين المعتمدين', [
+            'groupid' => $group->groupid,
+            'total_supervisors' => $supervisors->count(),
+            'supervisor_ids' => $supervisors->pluck('supervisorId')
+        ]);
+
+        if ($supervisors->isEmpty()) {
+            throw new \Exception('لا يوجد مشرفون معتمدون لهذه المجموعة');
+        }
+
+        // ==================== [7] إنشاء تسليم المهمة ====================
+        \Log::debug('📝 إنشاء تسليم المهمة...');
+        $submissionData = [
+            'task_id' => $task->id,
+            'studentId' => $user->student->studentId,
+            'content' => $request->content,
+            'github_repo' => $request->github_repo,
+            'github_commit_url' => $request->github_commit_url,
+            'commit_description' => $request->commit_description,
+            'created_at' => now(),
+            'updated_at' => now()
+        ];
+
+        if ($request->hasFile('attachment')) {
+            $file = $request->file('attachment');
+            $fileName = time().'_'.Str::slug($file->getClientOriginalName());
+            $filePath = $file->storeAs('task_attachments', $fileName, 'public');
+            $submissionData['attachment_path'] = $filePath;
+            $submissionData['attachment_name'] = $file->getClientOriginalName();
+            \Log::debug('📎 تم رفع المرفق', ['file_name' => $fileName]);
+        }
+
+        $submissionId = DB::table('task_submissions')->insertGetId($submissionData);
+        \Log::info('✅ تم إنشاء تسليم المهمة', ['submission_id' => $submissionId]);
+
+        // ==================== [8] تحديث حالة المهمة ====================
+        DB::table('tasks')
+            ->where('id', $task->id)
+            ->update(['status' => 'completed', 'updated_at' => now()]);
+        
+        \Log::debug('🔄 تم تحديث حالة المهمة', [
+            'task_id' => $task->id,
+            'new_status' => 'completed'
+        ]);
+
+        // ==================== [9] إنشاء مهام معلقة للمشرفين ====================
+        \Log::debug('📌 إنشاء مهام معلقة للمشرفين...');
+        foreach ($supervisors as $supervisor) {
+            $pendingTaskId = DB::table('pending_tasks')->insertGetId([
+                'type' => 'task_evaluation',
+                'related_id' => $submissionId,
+                'related_type' => 'App\Models\TaskSubmission',
+                'supervisor_id' => $supervisor->supervisorId,
+                'group_id' => $group->groupid,
                 'task_id' => $task->id,
-                'studentId' => $user->student->studentId,
-                'content' => $request->content,
-                'github_repo' => $request->github_repo,
-                'github_commit_url' => $request->github_commit_url,
-                'commit_description' => $request->commit_description,
-            ];
+                'status' => 'pending',
+                'notes' => "تقييم مهمة: {$task->title}",
+                'created_at' => now(),
+                'updated_at' => now()
+            ]);
+            
+            \Log::debug('📬 تم إنشاء مهمة معلقة', [
+                'pending_task_id' => $pendingTaskId,
+                'for_supervisor' => $supervisor->supervisorId
+            ]);
+        }
 
-            if ($request->hasFile('attachment')) {
-                $file = $request->file('attachment');
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                $filePath = $file->storeAs('task_attachments', $fileName, 'public');
+        DB::commit();
 
-                $data['attachment_path'] = $filePath;
-                $data['attachment_name'] = $file->getClientOriginalName();
-                $data['attachment_size'] = $file->getSize();
-            }
+        \Log::info('🎉 تم تسليم المهمة بنجاح', [
+            'task_id' => $task->id,
+            'submission_id' => $submissionId,
+            'groupid' => $group->groupid,
+            'supervisors_notified' => $supervisors->count()
+        ]);
 
-            $submission = TaskSubmission::create($data);
-            $task->update(['status' => 'submitted']);
-
-            $group = $task->stage->project->group;
-
-            // إنشاء مهام معلقة لتقييم التسليم
-            foreach ($group->approvedSupervisors as $supervisor) {
-                PendingTask::create([
-                    'type' => 'task_evaluation',
-                    'related_id' => $submission->id,
-                    'related_type' => TaskSubmission::class,
-                    'supervisor_id' => $supervisor->supervisorId,
-                    'status' => 'pending',
-                    'due_date' => now()->addDays(3)
-                ]);
-
-                NotificationService::sendRealTime(
-                    $supervisor->user->userId,
-                    "تم تسليم المهمة: {$task->title}",
-                    [
-                        'type' => 'TASK_SUBMITTED',
-                        'task_id' => $task->id,
-                        'submission_id' => $submission->id
-                    ]
-                );
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $submission,
-                'message' => 'تم تسليم المهمة بنجاح وتم إخطار المشرفين'
-            ], 201);
-        });
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'submission_id' => $submissionId,
+                'task_id' => $task->id,
+                'pending_tasks' => $supervisors->count()
+            ],
+            'message' => 'تم تسليم المهمة بنجاح'
+        ], 201);
 
     } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('💥 فشل في تسليم المهمة', [
+            'error' => $e->getMessage(),
+            'task_id' => $task_id,
+            'trace' => $e->getTraceAsString()
+        ]);
+
         return response()->json([
             'success' => false,
-            'message' => 'حدث خطأ أثناء تسليم المهمة: ' . $e->getMessage()
+            'message' => 'حدث خطأ: ' . $e->getMessage()
         ], 500);
     }
 }
-
-// ... (بقية الدوال كما هي)
-
-    // تقييم المهمة (للمشرف)
+    // تقييم تسليم المهمة من قبل المشرف
    /**
- * تقييم تسليم مهمة مع تحديث المهمة المعلقة
- *
- * @param Request $request
- * @param int $submission_id
- * @return \Illuminate\Http\JsonResponse
+ * تقييم تسليم المهمة (النسخة المعدلة لتعمل مع task_id بدلاً من submission_id)
  */
-public function gradeTask(Request $request, $submission_id)
+/**
+ * تقييم تسليم المهمة مع حذف المهام المعلقة المتعلقة بها
+ */
+public function gradeTaskSubmission(Request $request, $task_id)
 {
-    // التحقق من وجود التسليم مع تحميل العلاقات
-    $submission = TaskSubmission::with([
-        'task.stage.project.group',
-        'student.user'
-    ])->findOrFail($submission_id);
-
-    $user = Auth::user();
-    $task = $submission->task;
-    $group = $task->stage->project->group;
-
-    // التحقق من أن المستخدم مشرف معتمد في المجموعة
-    if (!$user->isSupervisor() || !$group->isSupervisorApproved($user->supervisor->supervisorId)) {
-        return response()->json([
-            'success' => false,
-            'message' => 'غير مصرح لك بتقييم هذه المهمة'
-        ], 403);
-    }
-
-    // التحقق من صحة البيانات
+    // التحقق من صحة البيانات المدخلة
     $validator = Validator::make($request->all(), [
         'grade' => 'required|numeric|min:0|max:100',
         'feedback' => 'nullable|string|max:1000',
-        'status' => 'required|in:approved,rejected,needs_revision'
-    ], [
-        'grade.min' => 'يجب أن تكون الدرجة بين 0 و 100',
-        'grade.max' => 'يجب أن تكون الدرجة بين 0 و 100',
-        'status.in' => 'حالة التقييم غير صالحة'
     ]);
 
     if ($validator->fails()) {
@@ -253,7 +346,39 @@ public function gradeTask(Request $request, $submission_id)
 
     DB::beginTransaction();
     try {
-        // تحديث تقييم التسليم
+        // ======== [1] جلب المهمة والتحقق من وجودها ========
+        $task = Task::with(['stage.project.group'])->find($task_id);
+        
+        if (!$task) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المهمة غير موجودة'
+            ], 404);
+        }
+
+        // ======== [2] جلب آخر تسليم للمهمة ========
+        $submission = $task->latestSubmission();
+        
+        if (!$submission) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد تسليم لهذه المهمة'
+            ], 404);
+        }
+
+        // ======== [3] التحقق من صلاحيات المستخدم ========
+        $user = Auth::user();
+        $group = $task->stage->project->group;
+
+        // يجب أن يكون المستخدم مشرفاً معتمداً للمجموعة
+        if (!$user->isSupervisor() || !$group->isSupervisorApproved($user->supervisor->supervisorId)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'غير مصرح لك بتقييم هذه المهمة'
+            ], 403);
+        }
+
+        // ======== [4] تحديث تقييم التسليم ========
         $submission->update([
             'grade' => $request->grade,
             'feedback' => $request->feedback,
@@ -261,40 +386,42 @@ public function gradeTask(Request $request, $submission_id)
             'evaluated_by' => $user->userId
         ]);
 
-        // تحديث حالة المهمة الأصلية
-        $task->update(['status' => $request->status]);
-
-        // تحديث المهمة المعلقة المرتبطة
-        PendingTask::where('related_id', $submission->id)
+        // ======== [5] حذف جميع المهام المعلقة المتعلقة بهذا التسليم ========
+        $deletedPendingTasks = PendingTask::where('related_id', $submission->id)
             ->where('related_type', TaskSubmission::class)
-            ->where('supervisor_id', $user->supervisor->supervisorId)
-            ->update([
-                'status' => $request->status,
-                'completed_at' => now()
-            ]);
+            ->where('task_id', $task->id)
+            ->delete();
 
-        // إرسال إشعار للطالب
-        NotificationService::sendRealTime(
-            $submission->student->user->userId,
-            "تم تقييم مهمتك: {$task->title}",
-            [
-                'type' => 'TASK_GRADED',
-                'task_id' => $task->id,
-                'grade' => $request->grade,
-                'status' => $request->status,
-                'feedback' => $request->feedback
-            ]
-        );
+        \Log::info('🗑️ تم حذف المهام المعلقة', [
+            'deleted_count' => $deletedPendingTasks,
+            'task_id' => $task->id,
+            'submission_id' => $submission->id
+        ]);
+
+        // ======== [6] إرسال إشعار للطالب ========
+        if ($submission->student && $submission->student->user) {
+            NotificationService::sendRealTime(
+                $submission->student->user->userId,
+                "تم تقييم مهمتك: {$task->title}",
+                [
+                    'type' => 'TASK_GRADED',
+                    'task_id' => $task->id,
+                    'grade' => $request->grade,
+                    'feedback' => $request->feedback
+                ]
+            );
+        }
 
         DB::commit();
 
         return response()->json([
             'success' => true,
             'data' => [
+                'task' => $task,
                 'submission' => $submission,
-                'task_status' => $request->status
+                'pending_tasks_deleted' => $deletedPendingTasks
             ],
-            'message' => 'تم تقييم المهمة بنجاح'
+            'message' => 'تم تقييم المهمة بنجاح وحذف المهام المعلقة المرتبطة بها'
         ]);
 
     } catch (\Exception $e) {
@@ -305,27 +432,22 @@ public function gradeTask(Request $request, $submission_id)
         ], 500);
     }
 }
-
     public function getStudentTaskStats()
     {
         $user = Auth::user();
         
-        // التأكد من أن المستخدم طالب
         if (!$user->student) {
             return response()->json(['message' => 'User is not a student'], 400);
         }
 
         $studentId = $user->student->studentId;
 
-        // عدد المهام الكلية المسندة للطالب
         $totalTasks = Task::where('assigned_to', $studentId)->count();
 
-        // عدد المهام المكتملة (التي لها submissions)
         $completedTasks = Task::where('assigned_to', $studentId)
-            ->whereHas('submissions')
+            ->where('status', 'completed')
             ->count();
 
-        // عدد المهام غير المكتملة (ليس لها submissions)
         $incompleteTasks = $totalTasks - $completedTasks;
 
         return response()->json([
@@ -372,9 +494,7 @@ public function gradeTask(Request $request, $submission_id)
             'message' => 'User is not a student or supervisor'
         ], 400);
     }
-    /**
- * الحصول على مهام الطالب لمشروع معين
- */
+
     public function getStudentProjectTasks($projectId)
     {
         $user = Auth::user();
@@ -407,7 +527,6 @@ public function gradeTask(Request $request, $submission_id)
         $submission = TaskSubmission::findOrFail($submission_id);
         $user = Auth::user();
 
-        // التحقق من الصلاحيات (المشرف أو صاحب التسليم)
         $isOwner = $user->student && $user->student->studentId == $submission->studentId;
         $isSupervisor = $user->isSupervisor();
 
@@ -423,75 +542,18 @@ public function gradeTask(Request $request, $submission_id)
         
         return response()->download($path, $submission->attachment_name);
     }
-    public function gradeTaskSubmission(Request $request, $task_id)
-    {
-        // 1. التحقق من وجود المهمة
-        $task = Task::with('submissions')->findOrFail($task_id);
-        
-        // 2. التحقق من أن المستخدم مشرف
-        $user = Auth::user();
-        if (!$user->isSupervisor()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'غير مصرح - يجب أن تكون مشرفاً لتقييم المهام'
-            ], 403);
-        }
-
-        // 3. التحقق من وجود تسليم للمهمة
-        if ($task->submissions->isEmpty()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'لا يوجد تسليم لهذه المهمة بعد'
-            ], 404);
-        }
-
-        // 4. التحقق من صحة البيانات المدخلة
-        $validator = Validator::make($request->all(), [
-            'grade' => 'required|numeric|min:0|max:100',
-            'feedback' => 'nullable|string|max:1000'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        // 5. تحديث تقييم التسليم
-        try {
-            // نأخذ آخر تسليم للمهمة
-            $submission = $task->submissions->last();
-            
-            $submission->update([
-                'grade' => $request->grade,
-                'feedback' => $request->feedback
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'data' => $submission,
-                'message' => 'تم تقييم التسليم بنجاح'
-            ]);
-
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء تقييم التسليم: ' . $e->getMessage()
-            ], 500);
-        }
-    }
     public function checkTaskGrading($task_id)
     {
         try {
-            // 1. التحقق من وجود المهمة
-            $task = Task::findOrFail($task_id);
+            // جلب المهمة مع العلاقات الأساسية
+            $task = Task::with(['submissions' => function($query) {
+                $query->latest()->limit(1);
+            }])->findOrFail($task_id);
             
-            // 2. التحقق من وجود تسليم للمهمة
-            $submission = TaskSubmission::where('task_id', $task_id)
-                ->orderBy('created_at', 'desc')
-                ->first();
-
+            // الحصول على آخر تسليم يدوياً
+            $submission = $task->submissions->first();
+            
+            // التحقق من وجود تسليم
             if (!$submission) {
                 return response()->json([
                     'success' => true,
@@ -499,20 +561,21 @@ public function gradeTask(Request $request, $submission_id)
                     'message' => 'لم يتم تسليم هذه المهمة بعد'
                 ]);
             }
-
-            // 3. التحقق من وجود تقييم للتسليم
+    
+            // التحقق من وجود تقييم
             $isGraded = !is_null($submission->grade);
-
+            
             return response()->json([
                 'success' => true,
                 'is_graded' => $isGraded,
-                'grade' => $isGraded ? $submission->grade : null,
-                'feedback' => $isGraded ? $submission->feedback : null,
+                'grade' => $submission->grade,
+                'feedback' => $submission->feedback,
+                'submission_date' => $submission->created_at,
                 'message' => $isGraded 
                     ? 'تم تقييم هذه المهمة' 
                     : 'تم تسليم المهمة ولكن لم يتم تقييمها بعد'
             ]);
-
+    
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,

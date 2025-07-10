@@ -12,21 +12,119 @@ class PendingTaskController extends Controller
 {
     // الحصول على المهام المعلقة للمشرف الحالي
     public function index()
-    {
-        $user = Auth::user();
-        
-        if (!$user->supervisor) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
+{
+    $user = Auth::user();
+    
+    \Log::info('PendingTaskController accessed', [
+        'user_id' => $user->userId,
+        'role' => $user->role,
+        'is_supervisor' => $user->isSupervisor(),
+        'is_coordinator' => $user->isCoordinator()
+    ]);
 
-        $tasks = PendingTask::with(['related', 'supervisor.user'])
-            ->forSupervisor($user->supervisor->supervisorId)
-            ->pending()
-            ->get();
-
-        return response()->json(['data' => $tasks]);
+    if (!$user->isSupervisor() && !$user->isCoordinator()) {
+        return response()->json(['message' => 'غير مصرح - فقط المشرفون أو منسقو المشاريع يمكنهم عرض المهام المعلقة'], 403);
     }
 
+    try {
+        $query = $user->isSupervisor() 
+            ? $user->supervisor->pendingTasks()
+            : PendingTask::query();
+
+        $tasks = $query->with([
+                'supervisor.user' => function($q) {
+                    $q->select('userId', 'name', 'email');
+                },
+                'group' => function($q) {
+                    $q->select('groupId', 'name');
+                },
+                'task' => function($q) {
+                    $q->select('id', 'title');
+                }
+            ])
+            ->pending()
+            ->latest()
+            ->get();
+
+        $pendingTasksCount = $user->isSupervisor() 
+            ? $user->supervisor->pendingTasks()->count()
+            : PendingTask::count();
+
+        $formattedTasks = [];
+        foreach ($tasks as $task) {
+            try {
+                $relatedData = null;
+                $groupData = null;
+                
+                if ($task->related_type && $task->related_id) {
+                    try {
+                        $relatedModel = $task->related_type::find($task->related_id);
+                        
+                        if ($relatedModel instanceof \App\Models\GroupSupervisor) {
+                            $relatedModel->load('group.project');
+                            $relatedData = [
+                                'group_id' => $relatedModel->groupid ?? null,
+                                'project_title' => $relatedModel->group->project->title ?? null
+                            ];
+                        }
+                    } catch (\Exception $e) {
+                        \Log::warning('Error loading related model', [
+                            'task_id' => $task->id,
+                            'error' => $e->getMessage()
+                        ]);
+                    }
+                }
+
+                // جلب بيانات المجموعة من العلاقة المباشرة
+                if ($task->group) {
+                    $groupData = [
+                        'group_id' => $task->group->groupId,
+                        'group_name' => $task->group->name
+                    ];
+                }
+
+                $formattedTasks[] = [
+                    'id' => $task->id,
+                    'type' => $task->type,
+                    'status' => $task->status,
+                    'created_at' => $task->created_at,
+                    'notes' => $task->notes,
+                    'supervisor' => $task->supervisor->user->only(['name', 'email']),
+                    'related_data' => $relatedData,
+                    'group_data' => $groupData,
+                    'task_data' => $task->task ? $task->task->only(['id', 'title']) : null
+                ];
+
+            } catch (\Exception $e) {
+                \Log::error('Error processing task', [
+                    'task_id' => $task->id,
+                    'error' => $e->getMessage()
+                ]);
+                continue;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'tasks' => $formattedTasks,
+                'pending_tasks_count' => $pendingTasksCount
+            ],
+            'message' => 'تم جلب المهام المعلقة بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error in PendingTaskController', [
+            'error' => $e->getMessage()
+        ]);
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب المهام المعلقة',
+            'error_details' => env('APP_DEBUG') ? $e->getMessage() : null
+        ], 500);
+    }
+}
     // معالجة المهمة المعلقة (قبول/رفض)
     public function processTask(Request $request, $taskId)
     {
