@@ -1,572 +1,651 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import axios from 'axios';
 import { 
-  faTachometerAlt, 
-  faProjectDiagram, 
-  faUsers, 
-  faCalendarCheck, 
-  faFileAlt, 
-  faComments,
-  faBars
+  faBars, 
+  faCalendarAlt, 
+  faGraduationCap, 
+  faTrashAlt, 
+  faPlus, 
+  faSave, 
+  faSpinner 
 } from '@fortawesome/free-solid-svg-icons';
 import './DiscussionsCoordinator.css';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
 
-const SidebarWithRef = React.forwardRef((props, ref) => (
-  <Sidebar ref={ref} {...props} />
-));
-
 const DiscussionsCoordinator = () => {
+  // States
   const [activeTab, setActiveTab] = useState('phase');
-  const [phaseDate, setPhaseDate] = useState('');
-  const [phaseTime, setPhaseTime] = useState('');
-  const [phaseHall, setPhaseHall] = useState('');
-  const [graduationDate, setGraduationDate] = useState('');
-  const [graduationTime, setGraduationTime] = useState('');
-  const [graduationHall, setGraduationHall] = useState('');
+  const [selectedType, setSelectedType] = useState('');
+  const [date, setDate] = useState('');
   const [phaseDiscussions, setPhaseDiscussions] = useState([]);
   const [graduationDiscussions, setGraduationDiscussions] = useState([]);
-  
-  // Sidebar states
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [contentEffectClass, setContentEffectClass] = useState('');
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
-  const sidebarRef = useRef(null);
-  const overlayRef = useRef(null);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [semesterGroups, setSemesterGroups] = useState([]);
+  const [graduationGroups, setGraduationGroups] = useState([]);
+  const [discussionTypes, setDiscussionTypes] = useState([]);
+  const [loading, setLoading] = useState({
+    groups: false,
+    types: false,
+    saving: false,
+    discussions: false
+  });
 
-  // Toggle sidebar collapse
-  const toggleSidebar = () => {
-    setSidebarCollapsed(!sidebarCollapsed);
-  };
+  // Sidebar functions
+  const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen);
+  const closeMobileSidebar = () => setMobileSidebarOpen(false);
+  const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
 
-  // Toggle content effect - only if not mobile
-  const toggleContentEffect = () => {
-    if (!isMobile) {
-      setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
+  // Fetch data functions
+  const fetchDiscussionTypes = async () => {
+    try {
+      setLoading(prev => ({ ...prev, types: true }));
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://localhost:8000/api/discussion-types', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        setDiscussionTypes(response.data.data);
+        if (response.data.data.length > 0) {
+          setSelectedType(response.data.data[0]);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching discussion types:', error);
+      if (error.response?.status === 401) {
+        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, types: false }));
     }
   };
 
-  // Mobile sidebar handlers
-  const toggleMobileSidebar = () => {
-    sidebarRef.current?.classList.add('sidebar-open');
-    overlayRef.current?.classList.add('overlay-open');
-  };
-  
-  const closeMobileSidebar = () => {
-    sidebarRef.current?.classList.remove('sidebar-open');
-    overlayRef.current?.classList.remove('overlay-open');
-  };
-
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 769;
-      setIsMobile(mobile);
+  const fetchGroups = async () => {
+    try {
+      setLoading(prev => ({ ...prev, groups: true }));
+      const token = localStorage.getItem('access_token');
       
-      if (mobile && contentEffectClass === 'content-effect') {
-        setContentEffectClass('');
-      }
-    };
+      const [semesterRes, graduationRes] = await Promise.all([
+        axios.get('http://localhost:8000/api/projects/current-semester', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        }),
+        axios.get('http://localhost:8000/api/projects/current-graduation', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        })
+      ]);
 
+      if (semesterRes.data.success) {
+        const formattedGroups = semesterRes.data.data.map(project => ({
+          id: project.group?.id || 0,
+          name: project.group?.name || 'غير معروف',
+          title: project.title || 'بدون عنوان'
+        }));
+        setSemesterGroups(formattedGroups);
+        console.log('Semester Groups:', formattedGroups);
+      }
+
+      if (graduationRes.data.success) {
+        const formattedGroups = graduationRes.data.data.map(project => ({
+          id: project.group?.id || 0,
+          name: project.group?.name || 'غير معروف',
+          title: project.title || 'بدون عنوان'
+        }));
+        setGraduationGroups(formattedGroups);
+        console.log('Graduation Groups:', formattedGroups);
+      }
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+      if (error.response?.status === 401) {
+        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, groups: false }));
+    }
+  };
+
+  const fetchPreviousDiscussions = async () => {
+    try {
+      setLoading(prev => ({ ...prev, discussions: true }));
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://localhost:8000/api/schedules', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        const processData = (type) => response.data.data
+          .filter(d => d.project_info?.project_type === type)
+          .map(d => ({
+            id: d.schedule_info.id,
+            type: d.schedule_info.type,
+            date: d.schedule_info.date,
+            time: d.schedule_info.time,
+            hall: d.schedule_info.location,
+            groups: [{
+              id: d.group_info?.group_id,
+              name: d.group_info?.group_name,
+              title: d.project_info?.title || 'بدون عنوان',
+              time: d.schedule_info.time,
+              hall: d.schedule_info.location,
+              notes: d.schedule_info.notes || '',
+              type: d.schedule_info.type
+            }]
+          }));
+
+        setPhaseDiscussions(processData('semester'));
+        setGraduationDiscussions(processData('graduation'));
+      }
+    } catch (error) {
+      console.error('Error fetching previous discussions:', error);
+      if (error.response?.status === 401) {
+        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, discussions: false }));
+    }
+  };
+
+  // Initialize data
+  useEffect(() => {
+    fetchDiscussionTypes();
+    fetchGroups();
+    fetchPreviousDiscussions();
+    
+    const handleResize = () => {
+      setSidebarCollapsed(window.innerWidth < 768);
+    };
+    
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [contentEffectClass]);
+  }, []);
 
+  // Helper functions
   const formatDate = (dateString) => {
     if (!dateString) return '';
     const options = { year: 'numeric', month: 'long', day: 'numeric' };
     return new Date(dateString).toLocaleDateString('ar-EG', options);
   };
 
-  const handleAddPhaseDiscussion = () => {
-    if (!phaseDate) {
+  // Discussion handlers
+  const handleAddDiscussion = (type) => {
+    const isPhase = type === 'phase';
+    
+    if (!selectedType || !date) {
       alert('الرجاء إدخال جميع البيانات المطلوبة');
       return;
     }
 
-    const newDiscussion = {
-      id: `phase-${Date.now()}`,
-      date: phaseDate,
-      time: phaseTime || '08:00',
-      hall: phaseHall || 'القاعة الرئيسية',
+    const discussion = {
+      id: `${type}-${Date.now()}`,
+      type: selectedType,
+      date: date,
+      time: '08:00',
+      hall: 'القاعة الرئيسية',
       groups: [{
+        id: '',
         name: '',
-        time: phaseTime || '08:00',
-        hall: phaseHall || 'القاعة الرئيسية',
-        notes: ''
+        title: '',
+        time: '08:00',
+        hall: 'القاعة الرئيسية',
+        notes: '',
+        type: selectedType
       }]
     };
 
-    setPhaseDiscussions([newDiscussion, ...phaseDiscussions]);
-    setPhaseDate('');
-    setPhaseTime('');
-    setPhaseHall('');
-  };
-
-  const handleAddGraduationDiscussion = () => {
-    if (!graduationDate ) {
-      alert('الرجاء إدخال جميع البيانات المطلوبة');
-      return;
+    if (isPhase) {
+      setPhaseDiscussions(prev => [discussion, ...prev]);
+    } else {
+      setGraduationDiscussions(prev => [discussion, ...prev]);
     }
-
-    const newDiscussion = {
-      id: `graduation-${Date.now()}`,
-      date: graduationDate,
-      time: graduationTime,
-      hall: graduationHall,
-      groups: [{
-        name: '',
-        time: graduationTime,
-        hall: graduationHall,
-        notes: ''
-      }]
-    };
-
-    setGraduationDiscussions([newDiscussion, ...graduationDiscussions]);
-    setGraduationDate('');
-    setGraduationTime('');
-    setGraduationHall('');
+    
+    setSelectedType(discussionTypes.length > 0 ? discussionTypes[0] : '');
+    setDate('');
   };
 
-  const handleDeleteDiscussion = (id) => {
-    if (window.confirm('هل أنت متأكد من حذف هذه المناقشة؟')) {
-      if (id.startsWith('phase')) {
-        setPhaseDiscussions(phaseDiscussions.filter(disc => disc.id !== id));
-      } else {
-        setGraduationDiscussions(graduationDiscussions.filter(disc => disc.id !== id));
+  const handleDeleteDiscussion = async (id, isPhase) => {
+    if (!window.confirm('هل أنت متأكد من حذف هذه المناقشة؟')) return;
+
+    if (!id.startsWith('phase-') && !id.startsWith('graduation-')) {
+      try {
+        const token = localStorage.getItem('access_token');
+        await axios.delete(`http://localhost:8000/api/schedules/${id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } catch (error) {
+        console.error('Error deleting discussion:', error);
+        if (error.response?.status === 401) {
+          alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+          return;
+        } else {
+          alert('حدث خطأ أثناء حذف المناقشة من الخادم');
+          return;
+        }
       }
     }
-  };
 
-  const handleAddPhaseRow = (discussionId) => {
-    const discussion = phaseDiscussions.find(disc => disc.id === discussionId);
-    if (discussion) {
-      const newGroup = {
-        name: '',
-        time: discussion.time,
-        hall: discussion.hall,
-        notes: ''
-      };
-      
-      const updatedDiscussions = phaseDiscussions.map(disc => {
-        if (disc.id === discussionId) {
-          return {
-            ...disc,
-            groups: [...disc.groups, newGroup]
-          };
-        }
-        return disc;
-      });
-      
-      setPhaseDiscussions(updatedDiscussions);
-    }
-  };
-
-  const handleAddGraduationRow = (discussionId) => {
-    const discussion = graduationDiscussions.find(disc => disc.id === discussionId);
-    if (discussion) {
-      const newGroup = {
-        name: '',
-        time: discussion.time,
-        hall: discussion.hall,
-        notes: ''
-      };
-      
-      const updatedDiscussions = graduationDiscussions.map(disc => {
-        if (disc.id === discussionId) {
-          return {
-            ...disc,
-            groups: [...disc.groups, newGroup]
-          };
-        }
-        return disc;
-      });
-      
-      setGraduationDiscussions(updatedDiscussions);
-    }
-  };
-
-  const handleSaveDiscussion = (discussionId) => {
-    if (discussionId.startsWith('phase')) {
-      alert('تم حفظ المناقشة المرحلية بنجاح');
+    if (isPhase) {
+      setPhaseDiscussions(prev => prev.filter(d => d.id !== id));
     } else {
-      alert('تم حفظ مناقشة التخرج بنجاح');
+      setGraduationDiscussions(prev => prev.filter(d => d.id !== id));
+    }
+
+    alert('تم حذف المناقشة بنجاح');
+  };
+
+  const handleAddRow = (discussionId, isPhase) => {
+    const updateDiscussions = (discussions) => 
+      discussions.map(d => 
+        d.id === discussionId 
+          ? { ...d, groups: [...d.groups, {
+              id: `temp-${Date.now()}`,
+              name: '',
+              title: '',
+              time: '08:00',
+              hall: d.hall,
+              notes: '',
+              type: d.type
+            }] }
+          : d
+      );
+
+    if (isPhase) {
+      setPhaseDiscussions(updateDiscussions(phaseDiscussions));
+    } else {
+      setGraduationDiscussions(updateDiscussions(graduationDiscussions));
+    }
+  };
+const handleSaveDiscussion = async (discussionId, isPhase) => {
+  try {
+    setLoading(prev => ({ ...prev, saving: true }));
+    const discussions = isPhase ? phaseDiscussions : graduationDiscussions;
+    const discussion = discussions.find(d => d.id === discussionId);
+
+    if (!discussion) {
+      alert('المناقشة غير موجودة');
+      return;
+    }
+
+    const invalidGroups = discussion.groups.filter(group => !group.id || !group.name);
+    if (invalidGroups.length > 0) {
+      const groupNumbers = invalidGroups.map((_, index) => index + 1).join('، ');
+      throw new Error(`الرجاء اختيار مشروع للمجموعات التالية: ${groupNumbers}`);
+    }
+
+    const token = localStorage.getItem('access_token');
+
+    // 🟡 نجهز المصفوفة للإرسال دفعة واحدة
+    const discussionDataArray = discussion.groups.map(group => ({
+      date: discussion.date,
+      type: group.type,
+      group_id: group.id,
+      time: group.time,
+      location: group.hall,
+      notes: group.notes || '',
+      project_type: isPhase ? 'semester' : 'graduation'
+    }));
+
+    console.log('Data being sent:', discussionDataArray);
+
+    let response;
+
+    if (discussionId.startsWith('phase-') || discussionId.startsWith('graduation-')) {
+      // 🟢 إرسال دفعة واحدة كمصفوفة
+      response = await axios.post('http://localhost:8000/api/schedules', discussionDataArray, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+    } else {
+      // 🔴 تحديث المناقشة (إن وُجد)
+      response = await Promise.all(
+        discussionDataArray.map((data) =>
+          axios.put(`http://localhost:8000/api/schedules/${discussionId}`, data, {
+            headers: { 'Authorization': `Bearer ${token}` }
+          })
+        )
+      );
+    }
+
+    if (
+      (Array.isArray(response) && response.every(res => res.data.success)) ||
+      (response.data && response.data.success)
+    ) {
+      alert('تم حفظ المناقشة بنجاح');
+
+      if (discussionId.startsWith('phase-') || discussionId.startsWith('graduation-')) {
+        const updatedDiscussion = {
+          ...discussion,
+          id: Array.isArray(response) ? response[0].data.data.scheduledId : response.data.data[0].scheduledId,
+          groups: discussion.groups.map((group, index) => ({
+            ...group,
+            id: Array.isArray(response)
+              ? response[index].data.data.group_id
+              : response.data.data[index].group_id,
+            name: Array.isArray(response)
+              ? response[index].data.data.group_name || group.name
+              : response.data.data[index].group_name || group.name,
+            title: Array.isArray(response)
+              ? response[index].data.data.project_title || group.title
+              : response.data.data[index].project_title || group.title
+          }))
+        };
+
+        if (isPhase) {
+          setPhaseDiscussions(prev =>
+            prev.map(d => d.id === discussionId ? updatedDiscussion : d)
+          );
+        } else {
+          setGraduationDiscussions(prev =>
+            prev.map(d => d.id === discussionId ? updatedDiscussion : d)
+          );
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error saving discussion:', error);
+    if (error.response?.status === 422) {
+      const errors = error.response.data.errors;
+      let errorMessage = 'خطأ في التحقق من البيانات:\n';
+      for (const key in errors) {
+        errorMessage += `${errors[key].join(', ')}\n`;
+      }
+      alert(errorMessage);
+    } else if (error.response?.status === 401) {
+      alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+    } else if (error.message) {
+      alert(error.message);
+    } else {
+      alert('حدث خطأ أثناء حفظ المناقشة');
+    }
+  } finally {
+    setLoading(prev => ({ ...prev, saving: false }));
+  }
+};
+
+
+  const handleGroupChange = (discussionId, groupIndex, field, value, isPhase) => {
+    const groups = isPhase ? semesterGroups : graduationGroups;
+    
+    const updateDiscussions = (discussions) => 
+      discussions.map(d => 
+        d.id === discussionId
+          ? {
+              ...d,
+              groups: d.groups.map((g, i) => 
+                i === groupIndex
+                  ? {
+                      ...g,
+                      [field]: value,
+                      ...(field === 'name' ? {
+                        id: groups.find(gr => gr.name === value)?.id || '',
+                        title: groups.find(gr => gr.name === value)?.title || ''
+                      } : {})
+                    }
+                  : g
+              )
+            }
+          : d
+      );
+
+    if (isPhase) {
+      setPhaseDiscussions(updateDiscussions(phaseDiscussions));
+    } else {
+      setGraduationDiscussions(updateDiscussions(graduationDiscussions));
     }
   };
 
-  const handleGroupChange = (discussionId, groupIndex, field, value) => {
-    if (discussionId.startsWith('phase')) {
-      const updatedDiscussions = phaseDiscussions.map(disc => {
-        if (disc.id === discussionId) {
-          const updatedGroups = [...disc.groups];
-          updatedGroups[groupIndex] = {
-            ...updatedGroups[groupIndex],
-            [field]: value
-          };
-          return {
-            ...disc,
-            groups: updatedGroups
-          };
-        }
-        return disc;
-      });
-      setPhaseDiscussions(updatedDiscussions);
-    } else {
-      const updatedDiscussions = graduationDiscussions.map(disc => {
-        if (disc.id === discussionId) {
-          const updatedGroups = [...disc.groups];
-          updatedGroups[groupIndex] = {
-            ...updatedGroups[groupIndex],
-            [field]: value
-          };
-          return {
-            ...disc,
-            groups: updatedGroups
-          };
-        }
-        return disc;
-      });
-      setGraduationDiscussions(updatedDiscussions);
-    }
+  // Render functions
+  const renderDiscussionForm = (isPhase) => {
+    return (
+      <div className="section">
+        <h2>{isPhase ? 'إضافة مناقشة فصلية' : 'إضافة مناقشة تخرج'}</h2>
+        <div className="form-row">
+          <div className="form-group">
+            <label>نوع المناقشة</label>
+            <select
+              value={selectedType}
+              onChange={(e) => setSelectedType(e.target.value)}
+              disabled={loading.types}
+            >
+              {loading.types ? (
+                <option value="">جاري التحميل...</option>
+              ) : (
+                <>
+                  <option value="">اختر نوع المناقشة</option>
+                  {discussionTypes.map((type, index) => (
+                    <option key={index} value={type}>{type}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          </div>
+          <div className="form-group">
+            <label>التاريخ</label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button 
+              className={`btn ${isPhase ? 'btn-blue' : 'btn-green'}`}
+              onClick={() => handleAddDiscussion(isPhase ? 'phase' : 'graduation')}
+              disabled={!selectedType || !date}
+            >
+              <FontAwesomeIcon icon={faPlus} /> إضافة مناقشة
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDiscussionTable = (discussions, isPhase) => {
+    const groups = isPhase ? semesterGroups : graduationGroups;
+
+    return (
+      <div className="section">
+        <h2>جدول {isPhase ? 'المناقشات الفصلية' : 'مناقشات التخرج'}</h2>
+        <div id={`${isPhase ? 'phase' : 'graduation'}DiscussionsContainer`}>
+          {discussions.length === 0 ? (
+            <div className="empty-state">
+              <FontAwesomeIcon icon={isPhase ? faCalendarAlt : faGraduationCap} />
+              <p>لا توجد مناقشات {isPhase ? 'فصلية' : 'تخرج'} مضافة بعد</p>
+            </div>
+          ) : (
+            discussions.map((discussion) => (
+              <div key={discussion.id} className="discussion-table">
+                <div className={`table-header ${isPhase ? 'phase-header' : 'graduation-header'}`}>
+                  <h3>
+                    {isPhase ? 'مناقشة فصلية' : 'مناقشة تخرج'} - {formatDate(discussion.date)}
+                  </h3>
+                  <button
+                    onClick={() => handleDeleteDiscussion(discussion.id, isPhase)}
+                    className="delete-btn"
+                  >
+                    <FontAwesomeIcon icon={faTrashAlt} />
+                  </button>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>اسم المشروع</th>
+                        <th>وقت المناقشة</th>
+                        <th>القاعة</th>
+                        <th>ملاحظات</th>
+                        <th>النوع</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {discussion.groups.map((group, index) => (
+                        <tr key={`${discussion.id}-${index}`}>
+                          <td>
+                            <select
+                              className="table-select"
+                              value={group.name}
+                              onChange={(e) => {
+                                const selectedValue = e.target.value;
+                                handleGroupChange(discussion.id, index, 'name', selectedValue, isPhase);
+                              }}
+                              disabled={loading.groups}
+                            >
+                              {loading.groups ? (
+                                <option value="">جاري تحميل المشاريع...</option>
+                              ) : (
+                                <>
+                                  <option value="">اختر مشروع</option>
+                                  {groups.map((g) => (
+                                    <option key={`group-${g.id}`} value={g.name}>
+                                      {g.title} - {g.name}
+                                    </option>
+                                  ))}
+                                </>
+                              )}
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="time"
+                              className="table-input"
+                              value={group.time}
+                              onChange={(e) =>
+                                handleGroupChange(discussion.id, index, 'time', e.target.value, isPhase)
+                              }
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="text"
+                              className="table-input"
+                              value={group.hall}
+                              onChange={(e) =>
+                                handleGroupChange(discussion.id, index, 'hall', e.target.value, isPhase)
+                              }
+                            />
+                          </td>
+                          <td>
+                            <textarea
+                              className="table-textarea"
+                              rows="1"
+                              placeholder="ملاحظات"
+                              value={group.notes}
+                              onChange={(e) =>
+                                handleGroupChange(discussion.id, index, 'notes', e.target.value, isPhase)
+                              }
+                            ></textarea>
+                          </td>
+                          <td>
+                            <select
+                              className="table-select"
+                              value={group.type}
+                              onChange={(e) =>
+                                handleGroupChange(discussion.id, index, 'type', e.target.value, isPhase)
+                              }
+                            >
+                              {discussionTypes.map((type, idx) => (
+                                <option key={idx} value={type}>{type}</option>
+                              ))}
+                            </select>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="table-footer">
+                  <button
+                    onClick={() => handleAddRow(discussion.id, isPhase)}
+                    className="btn-add-row"
+                  >
+                    <FontAwesomeIcon icon={faPlus} /> إضافة صف
+                  </button>
+                  <button
+                    onClick={() => handleSaveDiscussion(discussion.id, isPhase)}
+                    className="btn-save"
+                    disabled={loading.saving}
+                  >
+                    {loading.saving ? (
+                      <>
+                        <FontAwesomeIcon icon={faSpinner} spin /> جاري الحفظ...
+                      </>
+                    ) : (
+                      <>
+                        <FontAwesomeIcon icon={faSave} /> حفظ
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="dashboard-container-dash">
-      {/* Sidebar Component */}
-      <SidebarWithRef 
-        ref={sidebarRef}
-        user={{
-          name: "د.عفاف",
-          role: "منسق المشاريع",
-          image: "https://randomuser.me/api/portraits/women/44.jpg"
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-        onToggleEffect={toggleContentEffect}
-        navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", path: "/projects" },
-          { icon: faUsers, text: "الطلاب", path:"/students" },
-          { icon: faCalendarCheck, text: "المهام", path: "/tasks" },
-          { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { icon: faComments, text: "المناقشات", active: true, path: "/discussions" }
-        ]}
-      />
-      
-      {/* Overlay for mobile sidebar */}
-      <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
-      
-      {/* Main Content Area */}
-      <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`}>
-        {/* Top Navigation */}
-        <div className='nav-top-dash'>
-          <TopNav 
-            user={{
-              name: "د.عفاف",
-              image: "https://randomuser.me/api/portraits/women/44.jpg"
-            }}
-            notifications={{
-              bell: 3,
-              envelope: 7
-            }}
-            searchPlaceholder="ابحث عن مشاريع، طلاب، مهام..."
-          />
-          <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
-            <FontAwesomeIcon icon={faBars} />
-          </button>
-        </div>
-        
-        {/* Page Content */}
-        <div className="discussions-coordinator-container">
-          {/* Tabs Navigation */}
-          <div className="tabs-container">
-            <div className="tabs-group" role="group">
-              <button
-                type="button"
-                className={`tabb-btn ${activeTab === 'phase' ? 'active' : ''}`}
-                onClick={() => setActiveTab('phase')}
-              >
-                <i className="fas fa-calendar-alt"></i> المناقشات المرحلية
-              </button>
-              <button
-                type="button"
-                className={`tabb-btn ${activeTab === 'graduation' ? 'active' : ''}`}
-                onClick={() => setActiveTab('graduation')}
-              >
-                <i className="fas fa-graduation-cap"></i> المناقشات النهائية
-              </button>
+    <div className="dashboard-container-dash-sup">
+      <Sidebar />
+      <div className="main-container">
+        <div className='supervisor-dashboard'>
+          <TopNav />
+
+          <div className="discussions-coordinator-container">
+            <button className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
+              <FontAwesomeIcon icon={faBars} />
+            </button>
+            
+            <div className={`overlay ${mobileSidebarOpen ? 'active' : ''}`} onClick={closeMobileSidebar}></div>
+            
+            <div className={`main-content ${sidebarCollapsed ? 'collapsed' : ''}`}>
+              <div className="page-content">
+                <div className="tabs-container">
+                  <div className="tabs-group" role="group">
+                    <button
+                      type="button"
+                      className={`tabb-btn ${activeTab === 'phase' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('phase')}
+                    >
+                      <FontAwesomeIcon icon={faCalendarAlt} /> مناقشات المشاريع الفصلية
+                    </button>
+                    <button
+                      type="button"
+                      className={`tabb-btn ${activeTab === 'graduation' ? 'active' : ''}`}
+                      onClick={() => setActiveTab('graduation')}
+                    >
+                      <FontAwesomeIcon icon={faGraduationCap} /> مناقشات مشاريع التخرج
+                    </button>
+                  </div>
+                </div>
+
+                {loading.discussions ? (
+                  <div className="loading-state">
+                    <FontAwesomeIcon icon={faSpinner} spin />
+                    <p>جاري تحميل المناقشات السابقة...</p>
+                  </div>
+                ) : (
+                  <>
+                    {activeTab === 'phase' && (
+                      <div className="fade-in">
+                        {renderDiscussionForm(true)}
+                        {renderDiscussionTable(phaseDiscussions, true)}
+                      </div>
+                    )}
+
+                    {activeTab === 'graduation' && (
+                      <div className="fade-in">
+                        {renderDiscussionForm(false)}
+                        {renderDiscussionTable(graduationDiscussions, false)}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </div>
-
-          {/* Phase Discussions Section */}
-          {activeTab === 'phase' && (
-            <div className="fade-in">
-              {/* Date Selection */}
-              <div className="section">
-                <h2>تحديد تاريخ المناقشة المرحلية</h2>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="phaseDate">التاريخ</label>
-                    <input
-                      type="date"
-                      id="phaseDate"
-                      value={phaseDate}
-                      onChange={(e) => setPhaseDate(e.target.value)}
-                    />
-                  </div>
-              
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button className="btn btn-blue" onClick={handleAddPhaseDiscussion}>
-                      <i className="fas fa-plus"></i> إضافة مناقشة
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Phase Discussions Table */}
-              <div className="section">
-                <h2>جدول المناقشات المرحلية</h2>
-                <div id="phaseDiscussionsContainer">
-                  {phaseDiscussions.length === 0 ? (
-                    <div className="empty-state">
-                      <i className="fas fa-calendar-times"></i>
-                      <p>لا توجد مناقشات مرحلية مضافة بعد</p>
-                    </div>
-                  ) : (
-                    phaseDiscussions.map((discussion) => (
-                      <div key={discussion.id} className="discussion-table">
-                        <div className="table-header phase-header">
-                          <h3>مناقشة مرحلية - {formatDate(discussion.date)}</h3>
-                          <button
-                            onClick={() => handleDeleteDiscussion(discussion.id)}
-                            className="delete-btn"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>اسم المجموعة</th>
-                                <th>وقت المناقشة</th>
-                                <th>القاعة</th>
-                                <th>ملاحظات</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {discussion.groups.map((group, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="table-input"
-                                      placeholder="اسم المجموعة"
-                                      value={group.name}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'name', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="time"
-                                      className="table-input"
-                                      value={group.time}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'time', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="table-input"
-                                      value={group.hall}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'hall', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <textarea
-                                      className="table-textarea"
-                                      rows="1"
-                                      placeholder="ملاحظات"
-                                      value={group.notes}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'notes', e.target.value)
-                                      }
-                                    ></textarea>
-                                  </td>
-                                 
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="table-footer">
-                          <button
-                            onClick={() => handleAddPhaseRow(discussion.id)}
-                            className="btn-add-row"
-                          >
-                            <i className="fas fa-plus"></i> إضافة صف
-                          </button>
-                          <button
-                            onClick={() => handleSaveDiscussion(discussion.id)}
-                            className="btn-save"
-                          >
-                            <i className="fas fa-save"></i> حفظ
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Graduation Discussions Section */}
-          {activeTab === 'graduation' && (
-            <div className="fade-in">
-              {/* Date Selection */}
-              <div className="section">
-                <h2>تحديد تاريخ المناقشة النهائية</h2>
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="graduationDate">التاريخ</label>
-                    <input
-                      type="date"
-                      id="graduationDate"
-                      value={graduationDate}
-                      onChange={(e) => setGraduationDate(e.target.value)}
-                    />
-                  </div>
-                  <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end' }}>
-                    <button className="btn btn-green" onClick={handleAddGraduationDiscussion}>
-                      <i className="fas fa-plus"></i> إضافة مناقشة
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Graduation Discussions Table */}
-              <div className="section">
-                <h2>جدول المناقشات النهائية</h2>
-                <div id="graduationDiscussionsContainer">
-                  {graduationDiscussions.length === 0 ? (
-                    <div className="empty-state">
-                      <i className="fas fa-graduation-cap"></i>
-                      <p>لا توجد مناقشات نهائية مضافة بعد</p>
-                    </div>
-                  ) : (
-                    graduationDiscussions.map((discussion) => (
-                      <div key={discussion.id} className="discussion-table">
-                        <div className="table-header graduation-header">
-                          <h3>مناقشة نهائية - {formatDate(discussion.date)}</h3>
-                          <button
-                            onClick={() => handleDeleteDiscussion(discussion.id)}
-                            className="delete-btn"
-                          >
-                            <i className="fas fa-trash-alt"></i>
-                          </button>
-                        </div>
-                        <div style={{ overflowX: 'auto' }}>
-                          <table>
-                            <thead>
-                              <tr>
-                                <th>اسم المجموعة</th>
-                                <th>وقت المناقشة</th>
-                                <th>القاعة</th>
-                                <th>ملاحظات</th>
-                                <th>النوع</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {discussion.groups.map((group, index) => (
-                                <tr key={index}>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="table-input"
-                                      placeholder="اسم المجموعة"
-                                      value={group.name}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'name', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="time"
-                                      className="table-input"
-                                      value={group.time}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'time', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="table-input"
-                                      value={group.hall}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'hall', e.target.value)
-                                      }
-                                    />
-                                  </td>
-                                  <td>
-                                    <textarea
-                                      className="table-textarea"
-                                      rows="1"
-                                      placeholder="ملاحظات"
-                                      value={group.notes}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'notes', e.target.value)
-                                      }
-                                    ></textarea>
-                                  </td>
-                                  <td>
-                                    <select
-                                      className="table-select"
-                                      value={group.type}
-                                      onChange={(e) =>
-                                        handleGroupChange(discussion.id, index, 'type', e.target.value)
-                                      }
-                                    >
-                                      <option value="normal">عادية</option>
-                                      <option value="urgent">عاجلة</option>
-                                    </select>
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="table-footer">
-                          <button
-                            onClick={() => handleAddGraduationRow(discussion.id)}
-                            className="btn-add-row"
-                          >
-                            <i className="fas fa-plus"></i> إضافة صف
-                          </button>
-                          <button
-                            onClick={() => handleSaveDiscussion(discussion.id)}
-                            className="btn-save"
-                          >
-                            <i className="fas fa-save"></i> حفظ
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -15,57 +15,41 @@ class DiscussionScheduleController extends Controller
     /**
      * حفظ موعد مناقشة جديد
      */
-    public function store(Request $request)
-    {
-        try {
-            // التحقق من صلاحية المستخدم
-            if (auth()->user()->role !== 'coordinator') {
-                return response()->json(['error' => 'Unauthorized'], 403);
-            }
+  public function store(Request $request)
+{
+    $data = $request->all();
 
-            // تحقق من صحة البيانات
-            $validated = $request->validate([
-                'date' => 'required|date|after_or_equal:today',
-                'type' => 'required|in:مرحلية,تحليلية,نهائية',
-                'group_id' => 'required|exists:groups,groupid',
-                'time' => [
-                    'required',
-                    'regex:/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/'
-                ],
-                'location' => 'required|string|max:255',
-                'notes' => 'nullable|string|max:500'
-            ]);
-
-            // توحيد تنسيق الوقت
-            $validated['time'] = date('H:i', strtotime($validated['time']));
-
-            // إنشاء الموعد
-            $schedule = DiscussionSchedule::create($validated);
-
-            // إرسال الإشعارات
-            $this->sendNotifications($schedule);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تحديد موعد المناقشة بنجاح',
-                'data' => $schedule
-            ], 201);
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'خطأ في التحقق من البيانات',
-                'errors' => $e->errors()
-            ], 422);
-        } catch (\Exception $e) {
-            Log::error('Error in schedule creation: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء حفظ الموعد',
-                'error_details' => env('APP_DEBUG') ? $e->getMessage() : null
-            ], 500);
-        }
+    // تحقق إذا الريكوست عبارة عن مصفوفة من العناصر
+    if (!is_array($data)) {
+        return response()->json([
+            'success' => false,
+            'message' => 'صيغة البيانات غير صحيحة، يجب إرسال مصفوفة من المناقشات'
+        ], 400);
     }
+
+    $createdDiscussions = [];
+
+    foreach ($data as $item) {
+        $validated = validator($item, [
+            'date' => 'required|date',
+            'type' => 'required|string',
+            'group_id' => 'required|integer',
+            'time' => 'required',
+            'location' => 'required|string',
+            'notes' => 'nullable|string',
+        ])->validate();
+
+        $discussion = \App\Models\DiscussionSchedule::create($validated);
+        $createdDiscussions[] = $discussion;
+    }
+
+    return response()->json([
+        'success' => true,
+        'message' => 'تمت إضافة جميع المناقشات بنجاح',
+        'data' => $createdDiscussions
+    ]);
+}
+
 
     /**
      * إرسال إشعارات للطلاب والمشرفين
@@ -136,26 +120,77 @@ class DiscussionScheduleController extends Controller
      * عرض جميع مواعيد المناقشات
      */
     public function index()
-    {
-        try {
-            $schedules = DiscussionSchedule::with([
-                'group.students.student.user',
-                'group.supervisors.supervisor.user'
-            ])->orderBy('date', 'asc')->get();
+{
+    try {
+        $schedules = DiscussionSchedule::with([
+            'group:groupid,name,projectid', // جلب الحقول الأساسية للمجموعة مع projectid
+            'group.students.user:id,userId,name,email',
+            'group.supervisors.user:id,userId,name,email',
+            'group.project:projectid,type' // جلب نوع المشروع من جدول المشاريع
+        ])
+        ->select([
+            'scheduledId', // استخدام scheduledId بدلاً من id أو scheduleid
+            'date',
+            'time',
+            'type',
+            'location',
+            'notes',
+            'created_at',
+            'updated_at',
+            'group_id'
+        ])
+        ->orderBy('date', 'asc')
+        ->get();
 
-            return response()->json([
-                'success' => true,
-                'data' => $schedules
-            ]);
+        $formattedSchedules = $schedules->map(function ($schedule) {
+            return [
+                'schedule_info' => [
+                    'id' => $schedule->scheduledId,
+                    'date' => $schedule->date,
+                    'time' => $schedule->time,
+                    'type' => $schedule->type,
+                    'location' => $schedule->location,
+                    'notes' => $schedule->notes,
+                ],
+                'group_info' => $schedule->group ? [
+                    'group_id' => $schedule->group->groupid,
+                    'group_name' => $schedule->group->name,
+                    'students' => $schedule->group->students->map(function($student) {
+                        return [
+                            'student_id' => $student->studentId, // استخدام studentId
+                            'name' => $student->user->name,
+                            'email' => $student->user->email
+                        ];
+                    }),
+                    'supervisors' => $schedule->group->supervisors->map(function($supervisor) {
+                        return [
+                            'supervisor_id' => $supervisor->supervisorId, // استخدام supervisorId
+                            'name' => $supervisor->user->name,
+                            'email' => $supervisor->user->email
+                        ];
+                    })
+                ] : null,
+                'project_info' => $schedule->group && $schedule->group->project ? [
+                    'project_id' => $schedule->group->project->projectid,
+                    'project_type' => $schedule->group->project->type
+                ] : null
+            ];
+        });
 
-        } catch (\Exception $e) {
-            Log::error('Error fetching schedules: ' . $e->getMessage());
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء جلب المواعيد'
-            ], 500);
-        }
+        return response()->json([
+            'success' => true,
+            'data' => $formattedSchedules
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error fetching schedules: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب المواعيد',
+            'error' => env('APP_DEBUG') ? $e->getMessage() : null
+        ], 500);
     }
+}
 
     /**
      * عرض مواعيد مجموعة محددة
@@ -292,6 +327,35 @@ public function getCurrentMonthDiscussionsCount()
         return response()->json([
             'success' => false,
             'message' => 'حدث خطأ أثناء جلب عدد المناقشات'
+        ], 500);
+    }
+}
+/**
+ * الحصول على جميع أنواع المناقشات المتاحة
+ */
+public function getDiscussionTypes()
+{
+    try {
+        // جلب الأنواع الفريدة من قاعدة البيانات
+        $types = DiscussionSchedule::distinct()
+            ->whereNotNull('type')
+            ->pluck('type')
+            ->toArray();
+
+        // يمكن إضافة أنواع افتراضية إذا لم تكن موجودة في قاعدة البيانات
+        $defaultTypes = ['مرحلية', 'تحليلية', 'نهائية'];
+        $allTypes = array_unique(array_merge($defaultTypes, $types));
+
+        return response()->json([
+            'success' => true,
+            'data' => $allTypes
+        ]);
+
+    } catch (\Exception $e) {
+        Log::error('Error fetching discussion types: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب أنواع المناقشات'
         ], 500);
     }
 }
