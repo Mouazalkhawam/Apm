@@ -146,6 +146,8 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/meetings/{meeting}/confirm', [MeetingController::class, 'confirm']);
         Route::post('/meetings/{meeting}/reject', [MeetingController::class, 'reject']);
     });
+    Route::get('/meetings/confirmed', [MeetingController::class, 'getConfirmedMeetings']);
+    Route::get('/meetings/proposed', [MeetingController::class, 'getProposedMeetings']);
 
     Route::prefix('students/{leader}')->group(function () {
         Route::get('/meetings', [MeetingController::class, 'leaderIndex']);
