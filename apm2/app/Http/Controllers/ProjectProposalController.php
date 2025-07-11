@@ -489,4 +489,53 @@ public function markProposalAsNeedsRevisionByGroup($groupId)
         'status_name' => $proposal->status_name
     ], 200);
 }
+/**
+ * استعراض جميع المقترحات عدا المقترحات المقبولة (للمنسق)
+ */
+public function getAllProposalsExceptApproved()
+{
+    // التحقق من أن المستخدم منسق
+    $user = Auth::user();
+    if (!$user->isCoordinator()) {
+        return response()->json([
+            'message' => 'ليست لديك صلاحية الوصول إلى هذه البيانات',
+            'success' => false
+        ], 403);
+    }
+
+    // جلب جميع المقترحات مع استثناء المقترحات المقبولة
+    $proposals = ProjectProposal::with(['group.students', 'group.supervisors', 'experts'])
+        ->where('status', '!=', 'approved')
+        ->whereHas('group') // التأكد من وجود مجموعة مرتبطة
+        ->orderBy('created_at', 'desc')
+        ->get();
+
+    // تنسيق الاستجابة مع التحقق من وجود المجموعة
+    $formattedProposals = $proposals->map(function ($proposal) {
+        return [
+            'id' => $proposal->proposalId,
+            'title' => $proposal->title,
+            'status' => $proposal->status,
+            'status_name' => $proposal->status_name,
+            'project_type' => $proposal->project_type,
+            'project_type_name' => $proposal->project_type_name,
+            'created_at' => $proposal->created_at->format('Y-m-d H:i'),
+            'updated_at' => $proposal->updated_at->format('Y-m-d H:i'),
+            'group' => $proposal->group ? [
+                'id' => $proposal->group->groupid,
+                'name' => $proposal->group->name,
+                'students_count' => $proposal->group->students->count(),
+                'supervisors_count' => $proposal->group->supervisors->count()
+            ] : null,
+            'mindmap_url' => $proposal->problem_mindmap_path ? 
+                url('storage/' . $proposal->problem_mindmap_path) : null
+        ];
+    });
+
+    return response()->json([
+        'success' => true,
+        'count' => $proposals->count(),
+        'data' => $formattedProposals
+    ], 200, [], JSON_UNESCAPED_UNICODE);
+}
 }

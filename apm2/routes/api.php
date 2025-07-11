@@ -217,4 +217,6 @@ Route::middleware('auth:api')->group(function () {
 
 
     Route::get('/projects/current-semester-with-progress', [ProjectController::class, 'getCurrentSemesterProjectsWithProgress']);
+    Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
+
 });
