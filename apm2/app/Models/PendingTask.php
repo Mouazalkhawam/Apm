@@ -12,11 +12,14 @@ class PendingTask extends Model
         'related_id',
         'related_type',
         'supervisor_id',
+        'coordinator_id',
         'status',
         'notes',
         'group_id',
         'task_id',
-        'stage_id'
+        'stage_id',
+        'resource_id',
+        'proposal_id'
     ];
 
     public function supervisor()
@@ -24,12 +27,16 @@ class PendingTask extends Model
         return $this->belongsTo(Supervisor::class, 'supervisor_id', 'supervisorId');
     }
 
+    public function coordinator()
+    {
+        return $this->belongsTo(ProjectCoordinator::class, 'coordinator_id', 'coordinatorId');
+    }
+
     public function related()
     {
         return $this->morphTo();
     }
 
-    // في App\Models\PendingTask
     public function group()
     {
         return $this->belongsTo(Group::class, 'group_id', 'groupId');
@@ -45,6 +52,16 @@ class PendingTask extends Model
         return $this->belongsTo(Stage::class, 'stage_id');
     }
 
+    public function resource()
+    {
+        return $this->belongsTo(Resource::class, 'resource_id', 'resourceId');
+    }
+
+    public function proposal()
+    {
+        return $this->belongsTo(ProjectProposal::class, 'proposal_id', 'proposalId');
+    }
+
     // Scopes
     public function scopePending(Builder $query)
     {
@@ -54,6 +71,11 @@ class PendingTask extends Model
     public function scopeForSupervisor(Builder $query, $supervisorId)
     {
         return $query->where('supervisor_id', $supervisorId);
+    }
+
+    public function scopeForCoordinator(Builder $query, $coordinatorId)
+    {
+        return $query->where('coordinator_id', $coordinatorId);
     }
 
     public function scopeOfType($query, $type)

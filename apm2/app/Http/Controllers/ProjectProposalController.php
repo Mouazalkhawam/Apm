@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\ProjectProposal;
 use App\Models\Group;
 use App\Models\GroupStudent;
+use App\Models\PendingTask;
+use App\Models\ProjectCoordinator;
 use App\Models\GroupSupervisor;
 use App\Models\Student;
 use App\Models\Supervisor;
@@ -41,147 +43,169 @@ class ProjectProposalController extends Controller
     }
 
     // حفظ المقترح الجديد
-    public function store(Request $request, $group_id)
-    {
-        $user = Auth::user();
-        
-        // التحقق من أن المستخدم طالب
-        if (!$user->student) {
-            return response()->json(['message' => 'يجب أن تكون طالباً لإنشاء مقترح'], 403);
-        }
+   // حفظ المقترح الجديد
+public function store(Request $request, $group_id)
+{
+    $user = Auth::user();
     
-        // التحقق من أن المجموعة تخص الطالب وتكون معتمدة
-        $group = $user->student->groups()
-            ->where('groups.groupId', $group_id)
-            ->where('status', 'approved')
-            ->first();
-    
-        if (!$group) {
-            return response()->json(['message' => 'غير مصرح لك بإضافة مقترح لهذه المجموعة أو المجموعة غير معتمدة'], 403);
-        }
-    
-        // تحقق من صحة البيانات المدخلة
-        $validator = Validator::make($request->all(), [
-            'project_type' => 'required|in:term-project,grad-project',
-            'title' => 'required|string|max:255',
-            'problem_description' => 'required|string',
-            'problem_studies' => 'required|string',
-            'problem_background' => 'required|string',
-            'solution_studies' => 'required|string',
-            'proposed_solution' => 'required|string',
-            'platform' => 'nullable|string|max:255',
-            'tools' => 'required|json',
-            'programming_languages' => 'required|json',
-            'database' => 'nullable|string|max:255',
-            'packages' => 'nullable|string',
-            'management_plan' => 'required|string',
-            'team_roles' => 'required|string',
-            'functional_requirements' => 'required|json',
-            'non_functional_requirements' => 'required|json',
-            'technology_stack' => 'nullable|json',
-            'problem_mindmap' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
-            'experts' => 'nullable|array',
-            'experts.*.name' => 'required|string',
-            'experts.*.phone' => 'nullable|string',
-            'experts.*.specialization' => 'nullable|string'
-        ], [
-            'required' => 'حقل :attribute مطلوب',
-            'json' => 'حقل :attribute يجب أن يكون بصيغة JSON صالحة'
-        ]);
-    
-        if ($validator->fails()) {
-            return response()->json([
-                'message' => 'خطأ في التحقق من البيانات',
-                'errors' => $validator->errors()
-            ], 422);
-        }
-    
-        // تحضير البيانات
-        $data = $request->except(['problem_mindmap', 'experts']);
-    
-        // تحويل الحقول JSON إلى مصفوفات مع الحفاظ على الترميز العربي
-        $arrayFields = [
-            'tools',
-            'programming_languages',
-            'functional_requirements',
-            'non_functional_requirements',
-            'technology_stack'
-        ];
-    
-        foreach ($arrayFields as $field) {
-            if (!empty($data[$field])) {
-                $data[$field] = json_decode($data[$field], true, 512, JSON_UNESCAPED_UNICODE);
-                if (json_last_error() !== JSON_ERROR_NONE) {
-                    return response()->json([
-                        'message' => 'صيغة JSON غير صالحة لحقل ' . $field,
-                        'error' => json_last_error_msg()
-                    ], 422);
-                }
+    // التحقق من أن المستخدم طالب
+    if (!$user->student) {
+        return response()->json(['message' => 'يجب أن تكون طالباً لإنشاء مقترح'], 403);
+    }
+
+    // التحقق من أن المجموعة تخص الطالب وتكون معتمدة
+    $group = $user->student->groups()
+        ->where('groups.groupId', $group_id)
+        ->where('status', 'approved')
+        ->first();
+
+    if (!$group) {
+        return response()->json(['message' => 'غير مصرح لك بإضافة مقترح لهذه المجموعة أو المجموعة غير معتمدة'], 403);
+    }
+
+    // تحقق من صحة البيانات المدخلة
+    $validator = Validator::make($request->all(), [
+        'project_type' => 'required|in:term-project,grad-project',
+        'title' => 'required|string|max:255',
+        'problem_description' => 'required|string',
+        'problem_studies' => 'required|string',
+        'problem_background' => 'required|string',
+        'solution_studies' => 'required|string',
+        'proposed_solution' => 'required|string',
+        'platform' => 'nullable|string|max:255',
+        'tools' => 'required|json',
+        'programming_languages' => 'required|json',
+        'database' => 'nullable|string|max:255',
+        'packages' => 'nullable|string',
+        'management_plan' => 'required|string',
+        'team_roles' => 'required|string',
+        'functional_requirements' => 'required|json',
+        'non_functional_requirements' => 'required|json',
+        'technology_stack' => 'nullable|json',
+        'problem_mindmap' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+        'experts' => 'nullable|array',
+        'experts.*.name' => 'required|string',
+        'experts.*.phone' => 'nullable|string',
+        'experts.*.specialization' => 'nullable|string'
+    ], [
+        'required' => 'حقل :attribute مطلوب',
+        'json' => 'حقل :attribute يجب أن يكون بصيغة JSON صالحة'
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json([
+            'message' => 'خطأ في التحقق من البيانات',
+            'errors' => $validator->errors()
+        ], 422);
+    }
+
+    // تحضير البيانات
+    $data = $request->except(['problem_mindmap', 'experts']);
+
+    // تحويل الحقول JSON إلى مصفوفات مع الحفاظ على الترميز العربي
+    $arrayFields = [
+        'tools',
+        'programming_languages',
+        'functional_requirements',
+        'non_functional_requirements',
+        'technology_stack'
+    ];
+
+    foreach ($arrayFields as $field) {
+        if (!empty($data[$field])) {
+            $data[$field] = json_decode($data[$field], true, 512, JSON_UNESCAPED_UNICODE);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                return response()->json([
+                    'message' => 'صيغة JSON غير صالحة لحقل ' . $field,
+                    'error' => json_last_error_msg()
+                ], 422);
             }
-        }
-    
-        DB::beginTransaction();
-        try {
-            // رفع ملف الخريطة الذهنية إذا وجد
-            $mindmapPath = null;
-            if ($request->hasFile('problem_mindmap')) {
-                $file = $request->file('problem_mindmap');
-                $filename = 'mindmap_' . time() . '.' . $file->getClientOriginalExtension();
-                $mindmapPath = $file->storeAs('mindmaps', $filename, 'public');
-            }
-    
-            // إنشاء المقترح
-            $proposal = ProjectProposal::create([
-                'group_id' => $group_id,
-                'project_type' => $data['project_type'],
-                'title' => $data['title'],
-                'problem_description' => $data['problem_description'],
-                'problem_studies' => $data['problem_studies'],
-                'problem_background' => $data['problem_background'],
-                'solution_studies' => $data['solution_studies'],
-                'proposed_solution' => $data['proposed_solution'],
-                'platform' => $data['platform'] ?? null,
-                'tools' => $data['tools'],
-                'programming_languages' => $data['programming_languages'],
-                'database' => $data['database'] ?? null,
-                'packages' => $data['packages'] ?? null,
-                'management_plan' => $data['management_plan'],
-                'team_roles' => $data['team_roles'],
-                'functional_requirements' => $data['functional_requirements'],
-                'non_functional_requirements' => $data['non_functional_requirements'],
-                'technology_stack' => $data['technology_stack'] ?? null,
-                'problem_mindmap_path' => $mindmapPath,
-                'methodology' => 'Agile'
-            ]);
-    
-            // إضافة الخبراء إذا وجدوا
-            if ($request->has('experts') && is_array($request->experts)) {
-                foreach ($request->experts as $expert) {
-                    $proposal->experts()->create([
-                        'name' => $expert['name'],
-                        'phone' => $expert['phone'] ?? null,
-                        'specialization' => $expert['specialization'] ?? null,
-                    ]);
-                }
-            }
-    
-            DB::commit();
-    
-            return response()->json([
-                'message' => 'تم إنشاء المقترح بنجاح',
-                'data' => $this->formatProposalResponse($proposal)
-            ], 201, [], JSON_UNESCAPED_UNICODE);
-    
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('فشل إنشاء المقترح: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'حدث خطأ أثناء إنشاء المقترح',
-                'error' => $e->getMessage(),
-                'trace' => $e->getTrace()
-            ], 500);
         }
     }
+
+    DB::beginTransaction();
+    try {
+        // رفع ملف الخريطة الذهنية إذا وجد
+        $mindmapPath = null;
+        if ($request->hasFile('problem_mindmap')) {
+            $file = $request->file('problem_mindmap');
+            $filename = 'mindmap_' . time() . '.' . $file->getClientOriginalExtension();
+            $mindmapPath = $file->storeAs('mindmaps', $filename, 'public');
+        }
+
+        // إنشاء المقترح
+        $proposal = ProjectProposal::create([
+            'group_id' => $group_id,
+            'project_type' => $data['project_type'],
+            'title' => $data['title'],
+            'problem_description' => $data['problem_description'],
+            'problem_studies' => $data['problem_studies'],
+            'problem_background' => $data['problem_background'],
+            'solution_studies' => $data['solution_studies'],
+            'proposed_solution' => $data['proposed_solution'],
+            'platform' => $data['platform'] ?? null,
+            'tools' => $data['tools'],
+            'programming_languages' => $data['programming_languages'],
+            'database' => $data['database'] ?? null,
+            'packages' => $data['packages'] ?? null,
+            'management_plan' => $data['management_plan'],
+            'team_roles' => $data['team_roles'],
+            'functional_requirements' => $data['functional_requirements'],
+            'non_functional_requirements' => $data['non_functional_requirements'],
+            'technology_stack' => $data['technology_stack'] ?? null,
+            'problem_mindmap_path' => $mindmapPath,
+            'methodology' => 'Agile'
+        ]);
+
+        // إضافة الخبراء إذا وجدوا
+        if ($request->has('experts') && is_array($request->experts)) {
+            foreach ($request->experts as $expert) {
+                $proposal->experts()->create([
+                    'name' => $expert['name'],
+                    'phone' => $expert['phone'] ?? null,
+                    'specialization' => $expert['specialization'] ?? null,
+                ]);
+            }
+        }
+
+        // إنشاء مهمة معلقة للمنسق لمراجعة المقترح
+        PendingTask::create([
+            'type' => 'proposal_approval',
+            'proposal_id' => $proposal->proposalId,
+            'group_id' => $group_id,
+            'coordinator_id' => $this->getCoordinatorId(), // دالة مساعدة للحصول على أي دي المنسق
+            'status' => 'pending',
+            'notes' => 'مقترح جديد يحتاج إلى مراجعة: ' . $proposal->title . ' - المجموعة: ' . $group->name,
+            'related_type' => 'App\Models\ProjectProposal', // أضف هذا السطر
+            'related_id' => $proposal->proposalId 
+        ]);
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'تم إنشاء المقترح بنجاح وهو بانتظار الموافقة',
+            'data' => $this->formatProposalResponse($proposal)
+        ], 201, [], JSON_UNESCAPED_UNICODE);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('فشل إنشاء المقترح: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'حدث خطأ أثناء إنشاء المقترح',
+            'error' => $e->getMessage(),
+            'trace' => $e->getTrace()
+        ], 500);
+    }
+}
+
+// دالة مساعدة للحصول على أي دي المنسق
+protected function getCoordinatorId()
+{
+    // يمكنك تعديل هذا الجزء حسب هيكل قاعدة البيانات الخاص بك
+    // هذا مثال افتراضي
+    $coordinator = ProjectCoordinator::first();
+    return $coordinator ? $coordinator->coordinatorId : null;
+}
     public function showByGroup($groupid)
     {
         $user = Auth::user();
@@ -449,6 +473,9 @@ class ProjectProposalController extends Controller
 /**
  * تغيير حالة مقترح المجموعة إلى مقبول
  */
+/**
+ * تغيير حالة مقترح المجموعة إلى مقبول
+ */
 public function approveProposalByGroup($groupId)
 {
     $user = Auth::user();
@@ -457,22 +484,36 @@ public function approveProposalByGroup($groupId)
         return response()->json(['message' => 'ليست لديك صلاحية الموافقة على المقترحات'], 403);
     }
 
-    // البحث عن المقترح باستخدام group_id
-    $proposal = ProjectProposal::where('group_id', $groupId)->firstOrFail();
-    
-    $proposal->status = 'approved';
-    $proposal->save();
+    DB::beginTransaction();
+    try {
+        // البحث عن المقترح باستخدام group_id
+        $proposal = ProjectProposal::where('group_id', $groupId)->firstOrFail();
+        
+        $proposal->status = 'approved';
+        $proposal->save();
 
-    return response()->json([
-        'message' => 'تم قبول مقترح المجموعة بنجاح',
-        'status' => $proposal->status,
-        'status_name' => $proposal->status_name
-    ], 200);
+        // حذف المهمة المعلقة المرتبطة بهذا المقترح إن وجدت
+        PendingTask::where('proposal_id', $proposal->proposalId)
+            ->where('type', 'proposal_approval')
+            ->delete();
+
+        DB::commit();
+
+        return response()->json([
+            'message' => 'تم قبول مقترح المجموعة بنجاح',
+            'status' => $proposal->status,
+            'status_name' => $proposal->status_name
+        ], 200);
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+        Log::error('Error approving proposal: ' . $e->getMessage());
+        return response()->json([
+            'message' => 'حدث خطأ أثناء الموافقة على المقترح',
+            'error' => $e->getMessage()
+        ], 500);
+    }
 }
-
-/**
- * تغيير حالة مقترح المجموعة إلى بحاجة لإصلاح
- */
 public function markProposalAsNeedsRevisionByGroup($groupId)
 {
     $user = Auth::user();

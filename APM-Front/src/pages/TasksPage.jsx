@@ -10,7 +10,7 @@ import {
   faTasks, faChevronDown, faTachometerAlt,
   faProjectDiagram, faUsers, faCalendarCheck,
   faFileAlt, faComments, faSyncAlt,
-  faExclamationTriangle
+  faExclamationTriangle, faCheckCircle
 } from '@fortawesome/free-solid-svg-icons';
 import './AcademicDashboard.css';
 
@@ -25,6 +25,58 @@ const TasksPage = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
+  const [pendingTasks, setPendingTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [accessToken, setAccessToken] = useState('');
+
+  // Get access token from localStorage when component mounts
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      setAccessToken(token);
+    } else {
+      setError('لم يتم العثور على رمز الوصول. يرجى تسجيل الدخول مرة أخرى.');
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch coordinator tasks
+  useEffect(() => {
+    if (!accessToken) return;
+
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch('http://127.0.0.1:8000/api/pending-tasks/coordinator', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${accessToken}`
+          }
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
+          }
+          throw new Error('فشل في جلب البيانات من الخادم');
+        }
+
+        const data = await response.json();
+        if (data.success) {
+          setPendingTasks(data.data);
+        } else {
+          setError(data.message || 'حدث خطأ غير متوقع');
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTasks();
+  }, [accessToken]);
 
   // Handle window resize and remove content-effect when mobile
   useEffect(() => {
@@ -45,7 +97,6 @@ const TasksPage = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  // Toggle content effect - only if not mobile
   const toggleContentEffect = () => {
     if (!isMobile) {
       setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
@@ -63,6 +114,78 @@ const TasksPage = () => {
     if (sidebarRef.current && overlayRef.current) {
       sidebarRef.current.classList.remove('sidebar-open');
       overlayRef.current.classList.remove('overlay-open');
+    }
+  };
+
+  // Function to get task icon based on type
+  const getTaskIcon = (type) => {
+    switch (type) {
+      case 'proposal_approval':
+        return <FontAwesomeIcon icon={faFileAlt} className="task-type-icon proposal" />;
+      case 'resource_approval':
+        return <FontAwesomeIcon icon={faProjectDiagram} className="task-type-icon resource" />;
+      default:
+        return <FontAwesomeIcon icon={faTasks} className="task-type-icon default" />;
+    }
+  };
+
+  // Function to get task color based on type
+  const getTaskColor = (type) => {
+    switch (type) {
+      case 'proposal_approval':
+        return 'blue';
+      case 'resource_approval':
+        return 'green';
+      default:
+        return 'yellow';
+    }
+  };
+
+  // Function to format task type for display
+  const formatTaskType = (type) => {
+    switch (type) {
+      case 'proposal_approval':
+        return 'موافقة على مقترح مشروع';
+      case 'resource_approval':
+        return 'موافقة على مورد';
+      default:
+        return type;
+    }
+  };
+
+  // Function to handle task approval
+  const handleTaskApproval = async (taskId, type) => {
+    if (!accessToken) {
+      setError('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
+      return;
+    }
+
+    try {
+      const endpoint = type === 'proposal_approval' 
+        ? 'approve-proposal' 
+        : 'approve-resource';
+      
+      const response = await fetch(`http://127.0.0.1:8000/api/${endpoint}/${taskId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('فشل في تنفيذ العملية');
+      }
+
+      const data = await response.json();
+      if (data.success) {
+        // Update the tasks list by removing the approved task
+        setPendingTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+      } else {
+        setError(data.message || 'حدث خطأ أثناء الموافقة على المهمة');
+      }
+    } catch (err) {
+      setError(err.message);
     }
   };
 
@@ -115,93 +238,119 @@ const TasksPage = () => {
               <p className="welcome-subtitle">إدارة المهام والمتابعات</p>
             </div>
             
-            <div className="tasks-students-grid">
-              <div className="tasks-card">
-                <div className="tasks-header">
-                  <h2 className="tasks-title">المهام القادمة</h2>
-                  <a href="#" className="tasks-link">عرض الكل</a>
-                </div>
-                <div className="tasks-list">
-                  <div className="task-item red">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">مراجعة مشروع الذكاء الاصطناعي</h4>
-                        <p className="task-date">غداً 10:00 ص</p>
-                      </div>
-                     
-                    </div>
-                  </div>
-                  
-                  <div className="task-item yellow">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">اجتماع مع فريق البحث</h4>
-                        <p className="task-date">بعد غد 2:00 م</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="task-item green">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">تسليم الدرجات النهائية</h4>
-                        <p className="task-date">الخميس 4:00 م</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  <div className="task-item blue">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">تقديم ورشة عمل</h4>
-                        <p className="task-date">السبت 11:00 ص</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+            {loading ? (
+              <div className="loading-container">
+                <FontAwesomeIcon icon={faSyncAlt} spin className="loading-icon" />
+                <p>جاري تحميل المهام...</p>
               </div>
+            ) : error ? (
+              <div className="error-container">
+                <FontAwesomeIcon icon={faExclamationTriangle} className="error-icon" />
+                <p className="error-message">{error}</p>
+                {error.includes('انتهت صلاحية الجلسة') && (
+                  <button 
+                    className="login-redirect-button"
+                    onClick={() => window.location.href = '/login'}
+                  >
+                    العودة إلى صفحة تسجيل الدخول
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="tasks-students-grid">
+                <div className="tasks-card">
+                  <div className="tasks-header">
+                    <h2 className="tasks-title">المهام المعلقة</h2>
+                    <span className="tasks-count">{pendingTasks.length}</span>
+                  </div>
+                  <div className="tasks-list">
+                    {pendingTasks.length > 0 ? (
+                      pendingTasks.map((task) => (
+                        <div key={task.id} className={`task-item ${getTaskColor(task.type)}`}>
+                          <div className="task-header">
+                            <div className="task-icon-container">
+                              {getTaskIcon(task.type)}
+                            </div>
+                            <div className="task-details">
+                              <h4 className="task-title">{formatTaskType(task.type)}</h4>
+                              <p className="task-date">
+                                {new Date(task.created_at).toLocaleDateString('ar-SA')}
+                              </p>
+                              {task.type === 'proposal_approval' && task.proposal && (
+                                <div className="task-extra-info">
+                                  <span>المقترح: {task.proposal.title}</span>
+                                  <span>المجموعة: {task.proposal.group.name}</span>
+                                </div>
+                              )}
+                              {task.type === 'resource_approval' && task.resource && (
+                                <div className="task-extra-info">
+                                  <span>المورد: {task.resource.title}</span>
+                                  <span>النوع: {task.resource.type}</span>
+                                </div>
+                              )}
+                            </div>
+                            <div className="task-actions">
+                              <button 
+                                className="task-approve-button"
+                                onClick={() => handleTaskApproval(task.id, task.type)}
+                              >
+                                موافقة
+                              </button>
+                              <button className="task-more">
+                                <FontAwesomeIcon icon={faEllipsisV} />
+                              </button>
+                            </div>
+                          </div>
+                          {task.notes && (
+                            <div className="task-notes">
+                              <FontAwesomeIcon icon={faCommentAlt} />
+                              <span>{task.notes}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))
+                    ) : (
+                      <div className="no-tasks">
+                        <FontAwesomeIcon icon={faCheckCircle} className="no-tasks-icon" />
+                        <p>لا توجد مهام معلقة حالياً</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
 
-              <div className="completed-tasks-card">
-                <div className="tasks-header">
-                  <h2 className="tasks-title">المهام المكتملة</h2>
-                  <a href="#" className="tasks-link">عرض الكل</a>
-                </div>
-                <div className="tasks-list">
-                  <div className="task-item completed">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">مراجعة مقترحات المشاريع</h4>
-                        <p className="task-date">تمت 12 يونيو</p>
-                      </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
-                    </div>
+                <div className="completed-tasks-card">
+                  <div className="tasks-header">
+                    <h2 className="tasks-title">المهام المكتملة</h2>
+                    <a href="#" className="tasks-link">عرض الكل</a>
                   </div>
-                  
-                  <div className="task-item completed">
-                    <div className="task-header">
-                      <div>
-                        <h4 className="task-title">اجتماع مع لجنة المناقشة</h4>
-                        <p className="task-date">تم 8 يونيو</p>
+                  <div className="tasks-list">
+                    <div className="task-item completed">
+                      <div className="task-header">
+                        <div>
+                          <h4 className="task-title">مراجعة مقترحات المشاريع</h4>
+                          <p className="task-date">تمت 12 يونيو</p>
+                        </div>
+                        <button className="task-more">
+                          <FontAwesomeIcon icon={faEllipsisV} />
+                        </button>
                       </div>
-                      <button className="task-more">
-                        <FontAwesomeIcon icon={faEllipsisV} />
-                      </button>
+                    </div>
+                    
+                    <div className="task-item completed">
+                      <div className="task-header">
+                        <div>
+                          <h4 className="task-title">اجتماع مع لجنة المناقشة</h4>
+                          <p className="task-date">تم 8 يونيو</p>
+                        </div>
+                        <button className="task-more">
+                          <FontAwesomeIcon icon={faEllipsisV} />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         </main>
       </div>

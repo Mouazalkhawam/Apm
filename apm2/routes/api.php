@@ -9,7 +9,7 @@ use App\Http\Controllers\StudentProfileController;
 use App\Http\Controllers\API\ProjectStageController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\AcademicPeriodController;
-use App\Http\Controllers\API\ResourceController;
+use App\Http\Controllers\ResourceController;
 use App\Http\Controllers\API\EvaluationController;
 use App\Http\Controllers\API\PendingTaskController;
 use App\Http\Controllers\Admin\HonorBoardController;
@@ -205,6 +205,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('pending-tasks/{task}/process', [PendingTaskController::class, 'processTask']);
     Route::get('/projects/latest', [ProjectController::class, 'getLatestProjects']);
     Route::post('/coordinator/create-supervisor', [AuthController::class, 'createSupervisor']);
+    Route::get('pending-tasks/coordinator', [PendingTaskController::class, 'getCoordinatorTasks']);
 
     Route::get('/discussions/current-month-count', [DiscussionScheduleController::class, 'getCurrentMonthDiscussionsCount']);
     Route::get('/discussion-types', [DiscussionScheduleController::class, 'getDiscussionTypes']);
@@ -232,6 +233,8 @@ Route::middleware('auth:api')->group(function () {
       
       // تحديث حالة المورد (المنسق فقط - الصلاحية داخل الكونترولر)
       Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
+
+      Route::get('/user/resources', [ResourceController::class, 'getUserResources']);
 
 
 });

@@ -1,13 +1,16 @@
 <?php
 
-namespace App\Http\Controllers\API;
+namespace App\Http\Controllers;
 
 use App\Http\Controllers\Controller;
 use App\Models\Resource;
+use App\Models\PendingTask;
+use App\Models\ProjectCoordinator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class ResourceController extends Controller
 {
@@ -67,33 +70,62 @@ class ResourceController extends Controller
             'file' => 'nullable|file|max:10240',
             'link' => 'nullable|url'
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-
-        $filePath = $request->hasFile('file') ? 
-            $request->file('file')->store('resources', 'public') : 
-            null;
-
-        // تحديد حالة المورد حسب دور المستخدم
-        $status = in_array(Auth::user()->role, ['supervisor', 'coordinator']) 
-            ? 'approved' 
-            : 'pending';
-
-        $resource = Resource::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'type' => $request->type,
-            'filePath' => $filePath,
-            'link' => $request->link,
-            'status' => $status,
-            'created_by' => Auth::id()
-        ]);
-
-        return response()->json($resource, 201);
+    
+        DB::beginTransaction();
+        try {
+            $filePath = $request->hasFile('file') ? 
+                $request->file('file')->store('resources', 'public') : 
+                null;
+    
+            $status = in_array(Auth::user()->role, ['supervisor', 'coordinator']) 
+                ? 'approved' 
+                : 'pending';
+    
+            $resource = Resource::create([
+                'title' => $request->title,
+                'description' => $request->description,
+                'type' => $request->type,
+                'filePath' => $filePath,
+                'link' => $request->link,
+                'status' => $status,
+                'created_by' => Auth::id()
+            ]);
+    
+            // إنشاء مهمة معلقة للمنسق إذا كان المورد غير معتمد
+            if ($status === 'pending') {
+                PendingTask::create([
+                    'type' => 'resource_approval',
+                    'resource_id' => $resource->resourceId,
+                    'coordinator_id' => $this->getCoordinatorId(),
+                    'status' => 'pending',
+                    'notes' => 'مورد جديد يحتاج إلى مراجعة: ' . $resource->title,
+                    'related_type' => 'App\Models\Resource',
+                    'related_id' => $resource->resourceId
+                ]);
+            }
+    
+            DB::commit();
+            return response()->json($resource, 201);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'حدث خطأ أثناء إنشاء المورد',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-
+    
+    // دالة مساعدة للحصول على أي دي المنسق
+    protected function getCoordinatorId()
+    {
+        $coordinator = ProjectCoordinator::first();
+        return $coordinator ? $coordinator->coordinatorId : null;
+    }
     // تحديث المورد (المنشئ أو المنسق فقط)
     public function update(Request $request, $resourceId)
     {
@@ -137,26 +169,44 @@ class ResourceController extends Controller
         if (Auth::user()->role !== 'coordinator') {
             return response()->json(['message' => 'غير مصرح'], 403);
         }
-
-        $resource = Resource::where('resourceId', $resourceId)->firstOrFail();
-
+    
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:approved,rejected',
             'notes' => 'nullable|string'
         ]);
-
+    
         if ($validator->fails()) {
             return response()->json($validator->errors(), 422);
         }
-
-        $resource->update([
-            'status' => $request->status,
-            'reviewed_by' => Auth::id(),
-            'reviewed_at' => now(),
-            'notes' => $request->notes
-        ]);
-
-        return response()->json($resource);
+    
+        DB::beginTransaction();
+        try {
+            $resource = Resource::where('resourceId', $resourceId)->firstOrFail();
+            
+            $resource->update([
+                'status' => $request->status,
+                'reviewed_by' => Auth::id(),
+                'reviewed_at' => now(),
+                'notes' => $request->notes
+            ]);
+    
+            // حذف المهمة المعلقة إذا تمت الموافقة
+            if ($request->status === 'approved') {
+                PendingTask::where('resource_id', $resourceId)
+                    ->where('type', 'resource_approval')
+                    ->delete();
+            }
+    
+            DB::commit();
+            return response()->json($resource);
+    
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'message' => 'حدث خطأ أثناء تحديث حالة المورد',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     // حذف المورد (المنسق فقط)
@@ -176,4 +226,45 @@ class ResourceController extends Controller
 
         return response()->json(['message' => 'تم الحذف بنجاح']);
     }
+
+    public function getUserResources(Request $request)
+{
+    try {
+        $query = Resource::with(['creator', 'reviewer'])
+            ->where('created_by', Auth::id())
+            ->orderBy('created_at', 'desc');
+
+        // نظام البحث
+        if ($request->has('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+
+        // التصفية حسب النوع
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // التصفية حسب الحالة
+        if ($request->has('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $resources = $query->paginate(15);
+
+        return response()->json([
+            'success' => true,
+            'data' => $resources
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب الموارد',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

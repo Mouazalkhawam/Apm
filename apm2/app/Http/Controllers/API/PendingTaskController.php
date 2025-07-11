@@ -217,5 +217,82 @@ class PendingTaskController extends Controller
             $stageSubmission->update(['status' => 'approved']);
         }
     }
+
+    /**
+ * الحصول على المهام المعلقة للمنسق الحالي
+ */
+/**
+ * الحصول على المهام المعلقة للمنسق الحالي
+ */
+public function getCoordinatorTasks()
+{
+    $user = Auth::user();
+    
+    if (!$user->isCoordinator()) {
+        return response()->json(['message' => 'غير مصرح - فقط منسقو المشاريع يمكنهم عرض هذه المهام'], 403);
+    }
+
+    try {
+        $tasks = PendingTask::with([
+                'coordinator.user',
+                'group',
+                'resource',
+                'proposal.group'
+            ])
+            ->forCoordinator($user->coordinator->coordinatorId)
+            ->whereIn('type', ['proposal_approval', 'resource_approval']) // فقط هذه الأنواع
+            ->pending()
+            ->latest()
+            ->get();
+
+        $formattedTasks = $tasks->map(function ($task) {
+            $taskDetails = [
+                'id' => $task->id,
+                'type' => $task->type,
+                'status' => $task->status,
+                'created_at' => $task->created_at->format('Y-m-d H:i'),
+                'notes' => $task->notes,
+                'coordinator' => $task->coordinator->user->only(['name', 'email']),
+            ];
+
+            // إضافة تفاصيل حسب نوع المهمة
+            switch ($task->type) {
+                case 'proposal_approval':
+                    $taskDetails['proposal'] = $task->proposal ? [
+                        'id' => $task->proposal->proposalId,
+                        'title' => $task->proposal->title,
+                        'group' => $task->proposal->group->only(['groupId', 'name'])
+                    ] : null;
+                    break;
+
+                case 'resource_approval':
+                    $taskDetails['resource'] = $task->resource ? [
+                        'id' => $task->resource->resourceId,
+                        'title' => $task->resource->title,
+                        'type' => $task->resource->type
+                    ] : null;
+                    break;
+            }
+
+            return $taskDetails;
+        });
+
+        return response()->json([
+            'success' => true,
+            'count' => $tasks->count(),
+            'data' => $formattedTasks,
+            'message' => 'تم جلب مهام المنسق المعلقة بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Error getting coordinator tasks: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب المهام المعلقة',
+            'error' => env('APP_DEBUG') ? $e->getMessage() : null
+        ], 500);
+    }
+}
     
 }
