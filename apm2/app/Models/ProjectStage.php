@@ -17,4 +17,41 @@ class ProjectStage extends Model
     {
         return $this->hasMany(StageSubmission::class);
     }
+
+    
+    public function isSubmitted()
+    {
+        return $this->submissions()->exists();
+    }
+
+    /**
+     * هل المرحلة مقيمة؟ (لديها submission مع status = reviewed)
+     */
+    public function isReviewed()
+    {
+        return $this->submissions()
+            ->where('status', 'reviewed')
+            ->exists();
+    }
+
+    /**
+     * هل المرحلة مكتملة؟ (لديها submission مع status = reviewed و grade)
+     */
+    public function isCompleted()
+    {
+        return $this->submissions()
+            ->where('status', 'reviewed')
+            ->whereNotNull('grade')
+            ->exists();
+    }
+
+    /**
+     * الحصول على درجة المرحلة (إذا كانت مقيمة)
+     */
+    public function getGrade()
+    {
+        return $this->submissions()
+            ->where('status', 'reviewed')
+            ->value('grade');
+    }   
 }

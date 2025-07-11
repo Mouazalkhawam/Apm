@@ -1493,4 +1493,245 @@ public function rejectMembership(Request $request)
 
     return response()->json(['success' => true]);
 }
+
+public function showProgress($projectId)
+{
+    try {
+        $project = Project::with(['stages' => function($query) {
+            $query->with(['submissions' => function($q) {
+                $q->where('status', 'reviewed')
+                  ->whereNotNull('grade');
+            }])->orderBy('due_date');
+        }])->findOrFail($projectId);
+
+        // احسب التقدم أولاً
+        $project->calculateProgress();
+        $project->save();
+
+        $weekStart = now()->startOfWeek();
+        $weekEnd = now()->endOfWeek();
+        $monthStart = now()->startOfMonth();
+        $monthEnd = now()->endOfMonth();
+
+        $progressData = [
+            'total' => [
+                'percentage' => $project->progress,
+                'formatted' => $project->formatted_progress,
+                'completed_stages' => $project->stages->filter(fn($s) => $s->isCompleted())->count(),
+                'total_stages' => $project->stages->count()
+            ],
+            'weekly' => [
+                'planned' => $project->getWeeklyPlannedProgress(),
+                'actual' => $project->getWeeklyActualProgress(),
+                'planned_stages' => $project->stages->filter(function($stage) use ($weekStart, $weekEnd) {
+                    return $stage->due_date && Carbon::parse($stage->due_date)->between($weekStart, $weekEnd);
+                })->count(),
+                'completed_stages' => $project->stages->filter(function($stage) {
+                    return $stage->isCompleted() && 
+                           $stage->submissions->first() && 
+                           Carbon::parse($stage->submissions->first()->submitted_at)->between(now()->startOfWeek(), now()->endOfWeek());
+                })->count()
+            ],
+            'monthly' => [
+                'planned' => $project->getMonthlyPlannedProgress(),
+                'actual' => $project->getMonthlyActualProgress(),
+                'planned_stages' => $project->stages->filter(function($stage) use ($monthStart, $monthEnd) {
+                    return $stage->due_date && Carbon::parse($stage->due_date)->between($monthStart, $monthEnd);
+                })->count(),
+                'completed_stages' => $project->stages->filter(function($stage) {
+                    return $stage->isCompleted() && 
+                           $stage->submissions->first() && 
+                           Carbon::parse($stage->submissions->first()->submitted_at)->between(now()->startOfMonth(), now()->endOfMonth());
+                })->count()
+            ]
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'project' => [
+                    'id' => $project->projectid,
+                    'title' => $project->title,
+                    'start_date' => $project->startdate,
+                    'end_date' => $project->enddate
+                ],
+                'progress' => $progressData,
+                'time_periods' => [
+                    'current_week' => [
+                        'start' => $weekStart->toDateString(),
+                        'end' => $weekEnd->toDateString()
+                    ],
+                    'current_month' => [
+                        'start' => $monthStart->toDateString(),
+                        'end' => $monthEnd->toDateString()
+                    ]
+                ]
+            ]
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ: ' . $e->getMessage()
+        ], 500);
+    }
+}
+protected function getStageStatus($stage)
+{
+    if ($stage->isCompleted()) {
+        return 'completed';
+    }
+    if ($stage->isReviewed()) {
+        return 'reviewed';
+    }
+    if ($stage->isSubmitted()) {
+        return 'submitted';
+    }
+    return 'pending';
+}
+
+public function getCurrentSemesterProjectsWithProgress()
+{
+    try {
+        // 1. الحصول على الفصل الحالي
+        $currentPeriod = AcademicPeriod::where('is_current', true)->first();
+        
+        if (!$currentPeriod) {
+            return response()->json([
+                'success' => false,
+                'message' => 'لا يوجد فصل دراسي فعال حالياً'
+            ], 400);
+        }
+
+        // 2. جلب المشاريع المرتبطة بهذا الفصل مع مراحلها
+        $projects = Project::with([
+                'group.approvedStudents.user',
+                'group.approvedSupervisors.user',
+                'academicPeriods',
+                'stages' => function($query) {
+                    $query->with(['submissions' => function($q) {
+                        $q->where('status', 'reviewed')
+                          ->whereNotNull('grade');
+                    }])->orderBy('due_date');
+                }
+            ])
+            ->whereHas('academicPeriods', function($query) use ($currentPeriod) {
+                $query->where('academic_periods.id', $currentPeriod->id);
+            })
+            ->where('type', 'semester')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // 3. حساب التقدم لكل مشروع
+        $projects->each(function ($project) {
+            $project->calculateProgress();
+            
+            $weekStart = now()->startOfWeek();
+            $weekEnd = now()->endOfWeek();
+            $monthStart = now()->startOfMonth();
+            $monthEnd = now()->endOfMonth();
+
+            $project->progress_details = [
+                'total' => [
+                    'percentage' => $project->progress,
+                    'formatted' => $project->formatted_progress,
+                    'completed_stages' => $project->stages->filter(fn($s) => $s->isCompleted())->count(),
+                    'total_stages' => $project->stages->count()
+                ],
+                'weekly' => [
+                    'planned' => $project->getWeeklyPlannedProgress(),
+                    'actual' => $project->getWeeklyActualProgress(),
+                    'planned_stages' => $project->stages->filter(function($stage) use ($weekStart, $weekEnd) {
+                        return $stage->due_date && Carbon::parse($stage->due_date)->between($weekStart, $weekEnd);
+                    })->count(),
+                    'completed_stages' => $project->stages->filter(function($stage) {
+                        return $stage->isCompleted() && 
+                               $stage->submissions->first() && 
+                               Carbon::parse($stage->submissions->first()->submitted_at)->between(now()->startOfWeek(), now()->endOfWeek());
+                    })->count()
+                ],
+                'monthly' => [
+                    'planned' => $project->getMonthlyPlannedProgress(),
+                    'actual' => $project->getMonthlyActualProgress(),
+                    'planned_stages' => $project->stages->filter(function($stage) use ($monthStart, $monthEnd) {
+                        return $stage->due_date && Carbon::parse($stage->due_date)->between($monthStart, $monthEnd);
+                    })->count(),
+                    'completed_stages' => $project->stages->filter(function($stage) {
+                        return $stage->isCompleted() && 
+                               $stage->submissions->first() && 
+                               Carbon::parse($stage->submissions->first()->submitted_at)->between(now()->startOfMonth(), now()->endOfMonth());
+                    })->count()
+                ]
+            ];
+        });
+
+        // 4. تنسيق البيانات للإرجاع
+        $formattedProjects = $projects->map(function ($project) {
+            return [
+                'project_id' => $project->projectid,
+                'title' => $project->title,
+                'description' => $project->description,
+                'start_date' => $project->startdate,
+                'end_date' => $project->enddate,
+                'status' => $project->status,
+                'progress' => $project->progress_details,
+                'group' => [
+                    'id' => $project->group->groupid,
+                    'name' => $project->group->name,
+                    'students_count' => $project->group->approvedStudents->count(),
+                    'students' => $project->group->approvedStudents->map(function($student) {
+                        return [
+                            'name' => $student->user->name,
+                            'university_number' => $student->university_number,
+                            'is_leader' => $student->pivot->is_leader
+                        ];
+                    }),
+                    'supervisors' => $project->group->approvedSupervisors->map(function($supervisor) {
+                        return [
+                            'name' => $supervisor->user->name,
+                            'email' => $supervisor->user->email
+                        ];
+                    })
+                ],
+                'periods' => $project->academicPeriods->map(function($period) {
+                    return [
+                        'name' => $period->name,
+                        'start_date' => $period->start_date,
+                        'end_date' => $period->end_date
+                    ];
+                })
+            ];
+        });
+
+        // 5. إضافة تواريخ الفترات الزمنية الحالية
+        $timePeriods = [
+            'current_week' => [
+                'start' => now()->startOfWeek()->toDateString(),
+                'end' => now()->endOfWeek()->toDateString()
+            ],
+            'current_month' => [
+                'start' => now()->startOfMonth()->toDateString(),
+                'end' => now()->endOfMonth()->toDateString()
+            ]
+        ];
+
+        return response()->json([
+            'success' => true,
+            'data' => [
+                'projects' => $formattedProjects,
+                'time_periods' => $timePeriods,
+                'current_period' => $currentPeriod->name,
+                'count' => $projects->count()
+            ],
+            'message' => 'تم جلب مشاريع الفصل الحالي مع تفاصيل التقدم بنجاح'
+        ]);
+
+    } catch (\Exception $e) {
+        \Log::error('Failed to fetch current semester projects with progress: ' . $e->getMessage());
+        return response()->json([
+            'success' => false,
+            'message' => 'فشل في جلب مشاريع الفصل الحالي مع تفاصيل التقدم: ' . $e->getMessage()
+        ], 500);
+    }
+}
 }

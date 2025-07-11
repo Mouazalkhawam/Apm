@@ -208,6 +208,11 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/discussion-types', [DiscussionScheduleController::class, 'getDiscussionTypes']);
 
       // روستس جديدة لتغيير حالة المقترح باستخدام group_id
-      Route::post('/groups/{group}/proposal/approve', [ProjectProposalController::class, 'approveProposalByGroup']);
-      Route::post('/groups/{group}/proposal/needs-revision', [ProjectProposalController::class, 'markProposalAsNeedsRevisionByGroup']);
+    Route::post('/groups/{group}/proposal/approve', [ProjectProposalController::class, 'approveProposalByGroup']);
+    Route::post('/groups/{group}/proposal/needs-revision', [ProjectProposalController::class, 'markProposalAsNeedsRevisionByGroup']);
+
+    Route::get('projects/{project}/progress', [ProjectController::class, 'showProgress']);
+
+
+    Route::get('/projects/current-semester-with-progress', [ProjectController::class, 'getCurrentSemesterProjectsWithProgress']);
 });
