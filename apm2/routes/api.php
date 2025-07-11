@@ -219,4 +219,19 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/projects/current-semester-with-progress', [ProjectController::class, 'getCurrentSemesterProjectsWithProgress']);
     Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
 
+    Route::get('/resources', [ResourceController::class, 'index']);
+    Route::get('/resources/{id}', [ResourceController::class, 'show']);
+      // إنشاء مورد جديد (مشرف أو منسق فقط - الصلاحية داخل الكونترولر)
+      Route::post('/resources', [ResourceController::class, 'store']);
+        
+      // تحديث المورد (المنشئ أو المنسق - الصلاحية داخل الكونترولر)
+      Route::put('/resources/{id}', [ResourceController::class, 'update']);
+      
+      // حذف المورد (المنسق فقط - الصلاحية داخل الكونترولر)
+      Route::delete('/resources/{id}', [ResourceController::class, 'destroy']);
+      
+      // تحديث حالة المورد (المنسق فقط - الصلاحية داخل الكونترولر)
+      Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
+
+
 });
