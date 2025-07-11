@@ -1,0 +1,83 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Arial', sans-serif;
+}
+
+.proposals-container-prop {
+    background-color: #f5f5f5;
+    padding: 20px;
+    min-height: 100vh;
+}
+
+.header-prop {
+    text-align: center;
+    margin-bottom: 30px;
+    color: #2c3e50;
+}
+
+.header-prop h1 {
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+.projects-container-prop {
+    width: 90%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.project-card-prop {
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.project-card-prop:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+}
+
+.project-title-prop {
+    font-size: 18px;
+    color: #34495e;
+    font-weight: 600;
+}
+
+.view-btn {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: background-color 0.3s;
+}
+
+.view-btn:hover {
+    background-color: #2980b9;
+}
+
+@media (max-width: 600px) {
+    .project-card-prop {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+    }
+    
+    .header h1 {
+        font-size: 24px;
+    }
+    
+    .project-title-prop {
+        font-size: 16px;
+    }
+}
