@@ -41,6 +41,9 @@ const ProposalForm = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isEditMode, setIsEditMode] = useState(false);
   const [formKey, setFormKey] = useState(Date.now());
+  const [userRole, setUserRole] = useState(null);
+  const [proposalStatus, setProposalStatus] = useState(null);
+  const [isCoordinator, setIsCoordinator] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -51,6 +54,7 @@ const ProposalForm = () => {
     } else {
       setIsAuthenticated(true);
       setGroupid(storedGroupid);
+      fetchUserData();
       
       if (storedGroupid) {
         checkProposalExists(storedGroupid);
@@ -59,6 +63,22 @@ const ProposalForm = () => {
       }
     }
   }, [navigate]);
+
+  const fetchUserData = async () => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://localhost:8000/api/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      setUserRole(response.data.role);
+      setIsCoordinator(response.data.role === 'coordinator');
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const checkProposalExists = async (groupid) => {
     try {
@@ -94,6 +114,7 @@ const ProposalForm = () => {
       if (response.data) {
         const proposalData = response.data;
         setProjectType(proposalData.project_type || 'term-project');
+        setProposalStatus(proposalData.status);
         setIsEditMode(true);
         
         setFormData({
@@ -130,6 +151,80 @@ const ProposalForm = () => {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleApproveProposal = async () => {
+    if (!window.confirm('هل أنت متأكد من قبول هذا المقترح؟')) return;
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const groupid = localStorage.getItem('selectedGroupId');
+      
+      if (!token || !groupid) {
+        setError('يجب تسجيل الدخول أولاً والتأكد من وجود معرف المجموعة');
+        return;
+      }
+
+      setIsSubmitting(true);
+      const response = await axios.post(
+        `http://localhost:8000/api/groups/${groupid}/proposal/approve`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.message) {
+        alert(response.data.message);
+        setProposalStatus('approved');
+      } else {
+        throw new Error('فشل في قبول المقترح');
+      }
+    } catch (error) {
+      console.error('Error approving proposal:', error);
+      setError(error.response?.data?.message || 'حدث خطأ أثناء قبول المقترح');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRejectProposal = async () => {
+    if (!window.confirm('هل أنت متأكد من رفض هذا المقترح؟')) return;
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      const groupid = localStorage.getItem('selectedGroupId');
+      
+      if (!token || !groupid) {
+        setError('يجب تسجيل الدخول أولاً والتأكد من وجود معرف المجموعة');
+        return;
+      }
+
+      setIsSubmitting(true);
+      const response = await axios.post(
+        `http://localhost:8000/api/groups/${groupid}/proposal/reject`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+
+      if (response.data.message) {
+        alert(response.data.message);
+        setProposalStatus('needs_revision');
+      } else {
+        throw new Error('فشل في رفض المقترح');
+      }
+    } catch (error) {
+      console.error('Error rejecting proposal:', error);
+      setError(error.response?.data?.message || 'حدث خطأ أثناء رفض المقترح');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -240,7 +335,6 @@ const ProposalForm = () => {
       return;
     }
 
-    // التحقق من الحقول المطلوبة
     const requiredFields = {
       title: 'عنوان المشروع',
       problem_description: 'وصف المشكلة',
@@ -265,7 +359,6 @@ const ProposalForm = () => {
     try {
       const formDataToSend = new FormData();
       
-      // إضافة البيانات الأساسية
       formDataToSend.append('project_type', projectType);
       formDataToSend.append('title', formData.title);
       formDataToSend.append('problem_description', formData.problem_description);
@@ -284,14 +377,12 @@ const ProposalForm = () => {
       formDataToSend.append('non_functional_requirements', JSON.stringify(formData.non_functional_requirements));
       formDataToSend.append('technology_stack', JSON.stringify(formData.technology_stack));
 
-      // إضافة الخبراء
       formData.experts.forEach((expert, index) => {
         formDataToSend.append(`experts[${index}][name]`, expert.name);
         formDataToSend.append(`experts[${index}][phone]`, expert.phone || '');
         formDataToSend.append(`experts[${index}][specialization]`, expert.specialization || '');
       });
 
-      // إضافة ملف الخريطة الذهنية إذا كان ملف جديد
       if (formData.problem_mindmap && formData.problem_mindmap instanceof File) {
         formDataToSend.append('problem_mindmap', formData.problem_mindmap);
       }
@@ -305,13 +396,13 @@ const ProposalForm = () => {
 
       let response;
       if (isEditMode) {
-  formDataToSend.append('_method', 'PUT'); // <== أضف هذه
-  response = await axios.post( // <== غيّر من PUT إلى POST
-    `http://localhost:8000/api/proposals/${groupid}`,
-    formDataToSend,
-    config
-  );
-}else {
+        formDataToSend.append('_method', 'PUT');
+        response = await axios.post(
+          `http://localhost:8000/api/proposals/${groupid}`,
+          formDataToSend,
+          config
+        );
+      } else {
         response = await axios.post(
           `http://localhost:8000/api/proposals/groups/${groupid}/proposals`,
           formDataToSend,
@@ -393,6 +484,43 @@ const ProposalForm = () => {
       />
       
       <main className="container-proposal">
+        {isCoordinator && isEditMode && (
+          <div className="coordinator-actions">
+            {proposalStatus !== 'approved' && (
+              <button 
+                className="approve-proposal-btn"
+                onClick={handleApproveProposal}
+                disabled={isSubmitting}
+              >
+                <i className="fas fa-check-circle"></i> قبول المقترح
+              </button>
+            )}
+            {proposalStatus !== 'needs_revision' && (
+              <button 
+                className="reject-proposal-btn"
+                onClick={handleRejectProposal}
+                disabled={isSubmitting}
+              >
+                <i className="fas fa-times-circle"></i> رفض المقترح
+              </button>
+            )}
+          </div>
+        )}
+
+        {proposalStatus === 'approved' && (
+          <div className="proposal-status-banner approved">
+            <i className="fas fa-check-circle"></i>
+            <span>هذا المقترح تم قبوله</span>
+          </div>
+        )}
+
+        {proposalStatus === 'needs_revision' && (
+          <div className="proposal-status-banner needs-revision">
+            <i className="fas fa-exclamation-circle"></i>
+            <span>هذا المقترح بحاجة إلى تعديلات</span>
+          </div>
+        )}
+
         <div className="project-type-card">
           <h2>نوع المشروع</h2>
           <div className="type-options">
@@ -418,7 +546,7 @@ const ProposalForm = () => {
         <form key={formKey} className="proposal-form" onSubmit={handleSubmit} encType="multipart/form-data">
           {isEditMode && (
             <div className="existing-proposal-notice">
-              <i className="fas fa-info-circle existing-proposal-notice-i"></i>
+              <i className="fas fa-info-circle"></i>
               <span>أنت تقوم بتعديل مقترح موجود مسبقاً</span>
             </div>
           )}
@@ -433,10 +561,10 @@ const ProposalForm = () => {
                   id="title" 
                   name="title"
                   placeholder="أدخل عنوان المشروع" 
-                  className='input-proposal'
                   value={formData.title}
                   onChange={handleInputChange}
                   required 
+                  disabled={isCoordinator}
                 />
               </div>
             </div>
@@ -454,6 +582,7 @@ const ProposalForm = () => {
                 value={formData.problem_description}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
             
@@ -466,6 +595,7 @@ const ProposalForm = () => {
                 value={formData.problem_background}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
             
@@ -478,6 +608,7 @@ const ProposalForm = () => {
                 value={formData.problem_studies}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
 
@@ -491,6 +622,7 @@ const ProposalForm = () => {
                   accept=".pdf,.jpg,.jpeg,.png,.xmind"
                   onChange={handleFileChange}
                   className="file-input"
+                  disabled={isCoordinator}
                 />
                 <label htmlFor="problem_mindmap" className="file-upload-label">
                   <i className="fas fa-upload"></i> اختر ملف
@@ -526,6 +658,7 @@ const ProposalForm = () => {
                 value={formData.solution_studies}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
             
@@ -538,6 +671,7 @@ const ProposalForm = () => {
                 value={formData.proposed_solution}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
           </div>
@@ -553,14 +687,16 @@ const ProposalForm = () => {
                 <div className="req-input-group">
                   <input 
                     type="text" 
-                    className="req-input input-proposal" 
+                    className="req-input" 
                     placeholder="أدخل متطلب وظيفي"
                     id="functional_requirements-input"
+                    disabled={isCoordinator}
                   />
                   <button 
                     type="button" 
                     className="req-btn" 
                     onClick={() => addRequirement('functional', document.getElementById('functional_requirements-input').value)}
+                    disabled={isCoordinator}
                   >
                     <i className="fas fa-plus"></i>
                   </button>
@@ -569,13 +705,15 @@ const ProposalForm = () => {
                   {formData.functional_requirements.map((req, index) => (
                     <li key={index}>
                       {req}
-                      <button 
-                        type="button" 
-                        className="remove-req-btn"
-                        onClick={() => removeRequirement('functional', index)}
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
+                      {!isCoordinator && (
+                        <button 
+                          type="button" 
+                          className="remove-req-btn"
+                          onClick={() => removeRequirement('functional', index)}
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -588,15 +726,17 @@ const ProposalForm = () => {
                 <div className="req-input-group">
                   <input 
                     type="text" 
-                    className="req-input input-proposal" 
+                    className="req-input" 
                     placeholder="أدخل متطلب غير وظيفي"
                     id="non_functional_requirements-input"
+                    disabled={isCoordinator}
                   />
                   <button 
                     type="button" 
                     className="req-btn" 
                     style={{backgroundColor: "#10b981"}} 
                     onClick={() => addRequirement('non-functional', document.getElementById('non_functional_requirements-input').value)}
+                    disabled={isCoordinator}
                   >
                     <i className="fas fa-plus"></i>
                   </button>
@@ -605,13 +745,15 @@ const ProposalForm = () => {
                   {formData.non_functional_requirements.map((req, index) => (
                     <li key={index}>
                       {req}
-                      <button 
-                        type="button" 
-                        className="remove-req-btn"
-                        onClick={() => removeRequirement('non-functional', index)}
-                      >
-                        <i className="fas fa-times"></i>
-                      </button>
+                      {!isCoordinator && (
+                        <button 
+                          type="button" 
+                          className="remove-req-btn"
+                          onClick={() => removeRequirement('non-functional', index)}
+                        >
+                          <i className="fas fa-times"></i>
+                        </button>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -629,10 +771,10 @@ const ProposalForm = () => {
                   type="text" 
                   id="platform" 
                   name="platform"
-                  className='input-proposal'
                   placeholder="مثل: ويب، موبايل، سطح مكتب"
                   value={formData.platform}
                   onChange={handleInputChange}
+                  disabled={isCoordinator}
                 />
               </div>
               
@@ -642,10 +784,10 @@ const ProposalForm = () => {
                   type="text" 
                   id="tools" 
                   name="tools"
-                  className='input-proposal'
                   placeholder="مثل: VS Code, Git, Figma (مفصولة بفواصل)"
                   value={formData.tools.join(', ')}
                   onChange={handleArrayInputChange}
+                  disabled={isCoordinator}
                 />
               </div>
               
@@ -655,10 +797,10 @@ const ProposalForm = () => {
                   type="text" 
                   id="programming_languages" 
                   name="programming_languages"
-                  className='input-proposal'
                   placeholder="مثل: JavaScript, Python, Java (مفصولة بفواصل)"
                   value={formData.programming_languages.join(', ')}
                   onChange={handleArrayInputChange}
+                  disabled={isCoordinator}
                 />
               </div>
               
@@ -667,11 +809,11 @@ const ProposalForm = () => {
                 <input 
                   type="text" 
                   id="database" 
-                  className='input-proposal'
                   name="database"
                   placeholder="مثل: MySQL, MongoDB"
                   value={formData.database}
                   onChange={handleInputChange}
+                  disabled={isCoordinator}
                 />
               </div>
             </div>
@@ -684,6 +826,7 @@ const ProposalForm = () => {
                 placeholder="أدخل الحزم والمكتبات المستخدمة في المشروع"
                 value={formData.packages}
                 onChange={handleInputChange}
+                disabled={isCoordinator}
               ></textarea>
             </div>
           </div>
@@ -700,6 +843,7 @@ const ProposalForm = () => {
                 value={formData.management_plan}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
             
@@ -712,6 +856,7 @@ const ProposalForm = () => {
                 value={formData.team_roles}
                 onChange={handleInputChange}
                 required
+                disabled={isCoordinator}
               ></textarea>
             </div>
           </div>
@@ -729,7 +874,7 @@ const ProposalForm = () => {
                     value={currentExpert.name}
                     onChange={(e) => setCurrentExpert({...currentExpert, name: e.target.value})}
                     placeholder="اسم الخبير"
-                    className='input-proposal'
+                    disabled={isCoordinator}
                   />
                 </div>
                 
@@ -741,7 +886,7 @@ const ProposalForm = () => {
                     value={currentExpert.phone}
                     onChange={(e) => setCurrentExpert({...currentExpert, phone: e.target.value})}
                     placeholder="رقم الهاتف (اختياري)"
-                    className='input-proposal'
+                    disabled={isCoordinator}
                   />
                 </div>
                 
@@ -753,19 +898,21 @@ const ProposalForm = () => {
                     value={currentExpert.specialization}
                     onChange={(e) => setCurrentExpert({...currentExpert, specialization: e.target.value})}
                     placeholder="التخصص (اختياري)"
-                    className='input-proposal'
+                    disabled={isCoordinator}
                   />
                 </div>
               </div>
               
-              <button 
-                type="button" 
-                className="add-expert-btn"
-                onClick={addExpert}
-                disabled={!currentExpert.name.trim()}
-              >
-                <i className="fas fa-plus"></i> إضافة خبير
-              </button>
+              {!isCoordinator && (
+                <button 
+                  type="button" 
+                  className="add-expert-btn"
+                  onClick={addExpert}
+                  disabled={!currentExpert.name.trim()}
+                >
+                  <i className="fas fa-plus"></i> إضافة خبير
+                </button>
+              )}
               
               <div className="experts-list">
                 {formData.experts.map((expert, index) => (
@@ -775,13 +922,15 @@ const ProposalForm = () => {
                       {expert.phone && <span className="expert-phone">{expert.phone}</span>}
                       {expert.specialization && <span className="expert-specialization">{expert.specialization}</span>}
                     </div>
-                    <button 
-                      type="button" 
-                      className="remove-expert-btn"
-                      onClick={() => removeExpert(index)}
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
+                    {!isCoordinator && (
+                      <button 
+                        type="button" 
+                        className="remove-expert-btn"
+                        onClick={() => removeExpert(index)}
+                      >
+                        <i className="fas fa-times"></i>
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
@@ -789,26 +938,29 @@ const ProposalForm = () => {
           </div>
 
           {error && (
-            <div className="error-message" style={{color: 'red', margin: '20px 0'}}>
+            <div className="error-message">
+              <i className="fas fa-exclamation-circle"></i>
               {error}
             </div>
           )}
 
-          <div className="submit-container">
-            <button 
-              type="submit" 
-              className="submit-btn"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <span>جاري الإرسال...</span>
-              ) : (
-                <>
-                  <i className="fas fa-paper-plane"></i> {isEditMode ? 'تحديث المقترح' : 'تقديم المقترح'}
-                </>
-              )}
-            </button>
-          </div>
+          {!isCoordinator && (
+            <div className="submit-container">
+              <button 
+                type="submit" 
+                className="submit-btn"
+                disabled={isSubmitting || proposalStatus === 'approved'}
+              >
+                {isSubmitting ? (
+                  <span>جاري الإرسال...</span>
+                ) : (
+                  <>
+                    <i className="fas fa-paper-plane"></i> {isEditMode ? 'تحديث المقترح' : 'تقديم المقترح'}
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </form>
       </main>
     </div>

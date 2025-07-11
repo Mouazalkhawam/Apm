@@ -182,40 +182,44 @@ class ProjectProposalController extends Controller
             ], 500);
         }
     }
-public function showByGroup($groupid)
-{
-    $proposal = ProjectProposal::with(['experts', 'group.students', 'group.supervisors'])
-        ->where('group_id', $groupid)
-        ->first();
-
-    if (!$proposal) {
-        return response()->json(['message' => 'No proposal found for this group'], 404);
+    public function showByGroup($groupid)
+    {
+        $user = Auth::user();
+        $proposal = ProjectProposal::with(['experts', 'group.students', 'group.supervisors'])
+            ->where('group_id', $groupid)
+            ->first();
+    
+        if (!$proposal) {
+            return response()->json(['message' => 'No proposal found for this group'], 404);
+        }
+    
+        // إذا كان المستخدم منسقًا، يسمح له بمشاهدة المقترح مباشرة
+        if ($user->isCoordinator()) {
+            return response()->json($this->formatProposalResponse($proposal));
+        }
+    
+        // التحقق من أن المستخدم عضو في المجموعة (لغير المنسقين)
+        $isMember = false;
+    
+        if ($user->student) {
+            $isMember = GroupStudent::where('studentId', $user->student->studentId)
+                ->where('groupid', $groupid)
+                ->where('status', 'approved')
+                ->exists();
+        } 
+        elseif ($user->supervisor) {
+            $isMember = GroupSupervisor::where('supervisorId', $user->supervisor->supervisorId)
+                ->where('groupid', $groupid)
+                ->where('status', 'approved')
+                ->exists();
+        }
+    
+        if (!$isMember) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+    
+        return response()->json($this->formatProposalResponse($proposal));
     }
-
-    // تحقق من أن المستخدم عضو في المجموعة
-    $user = Auth::user();
-    $isMember = false;
-
-    if ($user->student) {
-        $isMember = GroupStudent::where('studentId', $user->student->studentId)
-            ->where('groupid', $groupid)
-            ->where('status', 'approved')
-            ->exists();
-    } 
-    elseif ($user->supervisor) {
-        $isMember = GroupSupervisor::where('supervisorId', $user->supervisor->supervisorId)
-            ->where('groupid', $groupid)
-            ->where('status', 'approved')
-            ->exists();
-    }
-
-    if (!$isMember) {
-        return response()->json(['message' => 'Unauthorized'], 403);
-    }
-
-    return response()->json($this->formatProposalResponse($proposal));
-}
-
 
     public function update(Request $request, $group_id)
     {

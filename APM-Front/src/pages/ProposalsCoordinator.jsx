@@ -62,16 +62,22 @@ const ProposalsCoordinator = () => {
     fetchProposals();
   }, []);
 
-const handleViewProposal = (proposal) => {
-  // حفظ فقط group ID في localStorage (إذا كان موجودًا)
-  if (proposal.group?.id) {
-    localStorage.setItem('selectedGroupId', proposal.group.id);
-  }
-
-  // الانتقال إلى صفحة تفاصيل المقترح
-  navigate('/proposal');
-};
-
+  const handleViewProposal = (proposal) => {
+    // التحقق من وجود group و id قبل الحفظ
+    if (proposal.group && proposal.group.id) {
+      // حفظ group ID في localStorage
+      localStorage.setItem('selectedGroupId', proposal.group.id.toString());
+      
+      // حفظ بيانات المقترح كاملة إذا لزم الأمر
+      localStorage.setItem('selectedProposalData', JSON.stringify(proposal));
+      
+      // الانتقال إلى صفحة تفاصيل المقترح
+      navigate('/proposal');
+    } else {
+      console.error('Group ID is missing in the proposal data');
+      // يمكنك إضافة تنبيه للمستخدم هنا إذا لزم الأمر
+    }
+  };
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -96,6 +102,9 @@ const handleViewProposal = (proposal) => {
     return (
       <div className="error-container">
         <p>حدث خطأ أثناء جلب البيانات: {error}</p>
+        <button className="retry-btn" onClick={() => window.location.reload()}>
+          إعادة المحاولة
+        </button>
       </div>
     );
   }
@@ -149,19 +158,31 @@ const handleViewProposal = (proposal) => {
               {proposals.length > 0 ? (
                 proposals.map(proposal => (
                   <div key={proposal.id} className="project-card-prop">
-                    <div className="project-title-prop">{proposal.title}</div>
+                    <div className="project-info">
+                      <div className="project-title-prop">{proposal.title}</div>
+                      <div className="project-meta">
+                        <span className={`status-badge ${proposal.status}`}>
+                          {proposal.status_name}
+                        </span>
+                        <span className="project-type">
+                          {proposal.project_type_name}
+                        </span>
+                      </div>
+                    </div>
                     <button 
-                       className="view-btn"
-                       onClick={() => handleViewProposal(proposal)} // 👈 هون التعديل
-                        >
-                        عرض المقترح
+                      className="view-btn"
+                      onClick={() => handleViewProposal(proposal)}
+                    >
+                      عرض المقترح
                     </button>
-
                   </div>
                 ))
               ) : (
                 <div className="no-proposals">
-                  لا توجد مقترحات بحاجة للمراجعة حالياً
+                  <p>لا توجد مقترحات بحاجة للمراجعة حالياً</p>
+                  <button className="refresh-btn" onClick={() => window.location.reload()}>
+                    تحديث الصفحة
+                  </button>
                 </div>
               )}
             </div>
