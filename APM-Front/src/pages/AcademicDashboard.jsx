@@ -16,7 +16,6 @@ import Chart from 'chart.js/auto';
 import axios from 'axios';
 import './AcademicDashboard.css';
 
-// إنشاء مثيل مخصص لـ axios مع إعدادات افتراضية
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
   timeout: 10000,
@@ -26,7 +25,6 @@ const apiClient = axios.create({
   }
 });
 
-// Interceptor لإضافة التوكن تلقائياً إلى كل طلب
 apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -37,7 +35,6 @@ apiClient.interceptors.request.use(config => {
   return Promise.reject(error);
 });
 
-// Interceptor للتعامل مع الأخطاء العامة
 apiClient.interceptors.response.use(
   response => response,
   error => {
@@ -54,13 +51,11 @@ const SidebarWithRef = React.forwardRef((props, ref) => (
 ));
 
 const AcademicDashboard = () => {
-  // Refs
   const sidebarRef = useRef(null);
   const overlayRef = useRef(null);
   const chartRef = useRef(null);
   const mainContentRef = useRef(null);
   
-  // States
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
@@ -73,28 +68,25 @@ const AcademicDashboard = () => {
     newDiscussions: 0
   });
   
-  // States للمشاريع
   const [latestProjects, setLatestProjects] = useState([]);
   const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState(null);
+  const [projectsProgress, setProjectsProgress] = useState([]);
+  const [chartData, setChartData] = useState(null);
 
-  // داخل مكون AcademicDashboard
-const fetchCurrentMonthDiscussions = async () => {
-  try {
-    const response = await apiClient.get('/api/discussions/current-month-count');
-    if (response.data && response.data.success) {
-      return response.data.data.count;
+  const fetchCurrentMonthDiscussions = async () => {
+    try {
+      const response = await apiClient.get('/api/discussions/current-month-count');
+      if (response.data && response.data.success) {
+        return response.data.data.count;
+      }
+      throw new Error('Failed to fetch discussions count');
+    } catch (error) {
+      console.error('Error fetching discussions count:', error);
+      return 0;
     }
-    throw new Error('Failed to fetch discussions count');
-  } catch (error) {
-    console.error('Error fetching discussions count:', error);
-    return 0; // القيمة الافتراضية في حالة الخطأ
-  }
-};
-  // Chart instance
-  let progressChart = null;
+  };
 
-  // دالة لجلب أحدث المشاريع
   const fetchLatestProjects = async () => {
     try {
       setProjectsLoading(true);
@@ -115,25 +107,77 @@ const fetchCurrentMonthDiscussions = async () => {
     }
   };
 
-  // Initialize chart
+  const fetchProjectsProgress = async () => {
+    try {
+      const response = await apiClient.get('/api/projects/current-semester-with-progress');
+      
+      if (!response.data || !response.data.success) {
+        throw new Error('Failed to fetch projects progress');
+      }
+      
+      setProjectsProgress(response.data.data.projects);
+      prepareChartData(response.data.data.projects);
+    } catch (error) {
+      console.error('Error fetching projects progress:', error);
+    }
+  };
+
+  const prepareChartData = (projects) => {
+    // نأخذ أول 5 مشاريع للعرض في الرسم البياني
+    const displayedProjects = projects.slice(0, 5);
+    
+    const labels = displayedProjects.map(project => project.title);
+    const plannedData = displayedProjects.map(project => {
+      if (activeTimeRange === 'هذا الأسبوع') {
+        return project.progress.weekly.planned;
+      } else if (activeTimeRange === 'هذا الشهر') {
+        return project.progress.monthly.planned;
+      } else {
+        return 100; // التقدم المخطط الكلي هو 100%
+      }
+    });
+    
+    const actualData = displayedProjects.map(project => {
+      if (activeTimeRange === 'هذا الأسبوع') {
+        return project.progress.weekly.actual;
+      } else if (activeTimeRange === 'هذا الشهر') {
+        return project.progress.monthly.actual;
+      } else {
+        return project.progress.total.percentage;
+      }
+    });
+    
+    setChartData({
+      labels,
+      plannedData,
+      actualData
+    });
+  };
+
   useEffect(() => {
-    if (chartRef.current) {
+    if (chartRef.current && chartData) {
       const ctx = chartRef.current.getContext('2d');
-      progressChart = new Chart(ctx, {
+      
+      // تدمير الرسم البياني القديم إذا كان موجوداً
+      if (ctx.chart) {
+        ctx.chart.destroy();
+      }
+      
+      const newChart = new Chart(ctx, {
         type: 'bar',
         data: {
-          labels: ['مشروع الذكاء الاصطناعي', 'تطبيق حجز مواعيد', 'تحليل البيانات', 'نظام المخابر', 'نظام التوصية'],
+          labels: chartData.labels,
           datasets: [
             {
               label: 'التقدم المخطط',
-              data: [80, 60, 90, 70, 45],
+              data: chartData.plannedData,
               backgroundColor: 'rgba(99, 102, 241, 0.2)',
               borderColor: 'rgba(99, 102, 241, 1)',
               borderWidth: 1
             },
             {
               label: 'التقدم الفعلي',
-              data: [65, 40, 85, 50, 30],
+              data: chartData.actualData,
               backgroundColor: 'rgba(79, 70, 229, 0.7)',
               borderColor: 'rgba(79, 70, 229, 1)',
               borderWidth: 1
@@ -172,57 +216,55 @@ const fetchCurrentMonthDiscussions = async () => {
           }
         }
       });
+      
+      // حفظ المرجع للرسم البياني الجديد
+      ctx.chart = newChart;
     }
+  }, [chartData]);
 
-    return () => {
-      if (progressChart) {
-        progressChart.destroy();
+  useEffect(() => {
+    if (projectsProgress.length > 0) {
+      prepareChartData(projectsProgress);
+    }
+  }, [activeTimeRange]);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      setLoading(true);
+      try {
+        const gradResponse = await apiClient.get('/api/projects/current-graduation');
+        const gradCount = gradResponse.data.count;
+        
+        const semesterResponse = await apiClient.get('/api/projects/current-semester');
+        const semesterCount = semesterResponse.data.count;
+        
+        const tasksCount = 0;
+        
+        const discussionsCount = await fetchCurrentMonthDiscussions();
+        
+        setStats({
+          graduationProjects: gradCount,
+          semesterProjects: semesterCount,
+          pendingTasks: tasksCount,
+          newDiscussions: discussionsCount
+        });
+        
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+        if (error.response?.status === 401) {
+          localStorage.removeItem('access_token');
+          window.location.href = '/login';
+        }
+      } finally {
+        setLoading(false);
       }
     };
+    
+    fetchStats();
+    fetchLatestProjects();
+    fetchProjectsProgress();
   }, []);
 
-  // Fetch stats data
- useEffect(() => {
-  const fetchStats = async () => {
-    setLoading(true);
-    try {
-      // جلب مشاريع التخرج
-      const gradResponse = await apiClient.get('/api/projects/current-graduation');
-      const gradCount = gradResponse.data.count;
-      
-      // جلب المشاريع الفصلية
-      const semesterResponse = await apiClient.get('/api/projects/current-semester');
-      const semesterCount = semesterResponse.data.count;
-      
-      // جلب المهام المعلقة (تستبدل بAPI الخاص بك)
-      const tasksCount = 0;
-      
-      // جلب عدد المناقشات في الشهر الجاري
-      const discussionsCount = await fetchCurrentMonthDiscussions();
-      
-      setStats({
-        graduationProjects: gradCount,
-        semesterProjects: semesterCount,
-        pendingTasks: tasksCount,
-        newDiscussions: discussionsCount
-      });
-      
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-      if (error.response?.status === 401) {
-        localStorage.removeItem('access_token');
-        window.location.href = '/login';
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  fetchStats();
-  fetchLatestProjects();
-}, []);
-
-  // Handle window resize and remove content-effect when mobile
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 769;
@@ -237,19 +279,16 @@ const fetchCurrentMonthDiscussions = async () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [contentEffectClass]);
 
-  // Toggle sidebar collapse
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
-  // Toggle content effect - only if not mobile
   const toggleContentEffect = () => {
     if (!isMobile) {
       setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
     }
   };
 
-  // Mobile sidebar handlers
   const toggleMobileSidebar = () => {
     sidebarRef.current?.classList.add('sidebar-open');
     overlayRef.current?.classList.add('overlay-open');
@@ -260,12 +299,10 @@ const fetchCurrentMonthDiscussions = async () => {
     overlayRef.current?.classList.remove('overlay-open');
   };
 
-  // Handle time range change
   const handleTimeRangeChange = (e) => {
     setActiveTimeRange(e.target.value);
   };
 
-  // دالة مساعدة لتحويل حالة المشروع لنص مقروء
   const getStatusText = (status) => {
     const statusMap = {
       'pending': 'قيد الانتظار',
@@ -279,7 +316,6 @@ const fetchCurrentMonthDiscussions = async () => {
 
   return (
     <div className="dashboard-container-dash">
-      {/* Sidebar Component */}
       <SidebarWithRef 
         ref={sidebarRef}
         user={{
@@ -300,12 +336,9 @@ const fetchCurrentMonthDiscussions = async () => {
         ]}
       />
       
-      {/* Overlay for mobile sidebar */}
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-      {/* Main Content Area */}
       <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`} ref={mainContentRef}>
-        {/* Top Navigation */}
         <div className='nav-top-dash'>
           <TopNav 
             user={{
@@ -323,16 +356,13 @@ const fetchCurrentMonthDiscussions = async () => {
           </button>
         </div>
         
-        {/* Dashboard Content */}
         <main className="content-area">
           <div className="container-dash">
-            {/* Welcome Header */}
             <div className="welcome-header">
               <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             
-            {/* Stats Cards Grid */}
             {loading ? (
               <div className="loading-stats">
                 <FontAwesomeIcon icon={faSyncAlt} spin />
@@ -394,9 +424,7 @@ const fetchCurrentMonthDiscussions = async () => {
               </div>
             )}
             
-            {/* Main Content Grid */}
             <div className="main-grid">
-              {/* Progress Chart Card */}
               <div className="chart-card">
                 <div className="chart-header">
                   <h2 className="chart-title">تقدم المشاريع</h2>
@@ -411,11 +439,17 @@ const fetchCurrentMonthDiscussions = async () => {
                   </select>
                 </div>
                 <div className="chart-container">
-                  <canvas id="progressChart" ref={chartRef}></canvas>
+                  {projectsProgress.length > 0 ? (
+                    <canvas id="progressChart" ref={chartRef}></canvas>
+                  ) : (
+                    <div className="chart-loading">
+                      <FontAwesomeIcon icon={faSyncAlt} spin />
+                      جاري تحميل بيانات التقدم...
+                    </div>
+                  )}
                 </div>
               </div>
               
-              {/* Projects List Card */}
               <div className="projects-card">
                 <div className="projects-header">
                   <h2 className="projects-title">أحدث المشاريع</h2>
@@ -442,11 +476,9 @@ const fetchCurrentMonthDiscussions = async () => {
                 ) : (
                   <div className="projects-list-dash">
                     {latestProjects.map((project, index) => {
-                      // تحديد لون البطاقة حسب الترتيب
                       const colors = ['', 'green', 'purple', 'yellow'];
                       const colorClass = colors[index % colors.length];
                       
-                      // تحديد الأيقونة حسب نوع المشروع
                       let projectIcon = faLaptopCode;
                       if (project.type === 'graduation') {
                         projectIcon = faProjectDiagram;
