@@ -106,46 +106,73 @@ const DiscussionsCoordinator = () => {
     }
   };
 
-  const fetchPreviousDiscussions = async () => {
-    try {
-      setLoading(prev => ({ ...prev, discussions: true }));
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get('http://localhost:8000/api/schedules', {
-        headers: { 'Authorization': `Bearer ${token}` }
+const fetchPreviousDiscussions = async () => {
+  try {
+    setLoading(prev => ({ ...prev, discussions: true }));
+    const token = localStorage.getItem('access_token');
+    const response = await axios.get('http://localhost:8000/api/schedules', {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (response.data.success) {
+      const rawData = response.data.data;
+
+      // 🟢 تجميع المناقشات حسب النوع والتاريخ
+      const grouped = {};
+
+      rawData.forEach(item => {
+        const type = item.schedule_info?.type;
+        const date = item.schedule_info?.date;
+        const projectType = item.project_info?.project_type;
+
+        const key = `${projectType}_${type}_${date}`;
+        if (!grouped[key]) {
+          grouped[key] = {
+            id: item.schedule_info?.id, // أول ID نصادفه
+            type,
+            date,
+            hall: item.schedule_info?.location,
+            groups: []
+          };
+        }
+
+        grouped[key].groups.push({
+          id: item.group_info?.group_id,
+          name: item.group_info?.group_name,
+          title: item.project_info?.title || 'بدون عنوان',
+          time: item.schedule_info?.time,
+          hall: item.schedule_info?.location,
+          notes: item.schedule_info?.notes || '',
+          type
+        });
       });
 
-      if (response.data.success) {
-        const processData = (type) => response.data.data
-          .filter(d => d.project_info?.project_type === type)
-          .map(d => ({
-            id: d.schedule_info.id,
-            type: d.schedule_info.type,
-            date: d.schedule_info.date,
-            time: d.schedule_info.time,
-            hall: d.schedule_info.location,
-            groups: [{
-              id: d.group_info?.group_id,
-              name: d.group_info?.group_name,
-              title: d.project_info?.title || 'بدون عنوان',
-              time: d.schedule_info.time,
-              hall: d.schedule_info.location,
-              notes: d.schedule_info.notes || '',
-              type: d.schedule_info.type
-            }]
-          }));
+      // 🟢 فصلهم حسب النوع
+      const phase = [];
+      const graduation = [];
 
-        setPhaseDiscussions(processData('semester'));
-        setGraduationDiscussions(processData('graduation'));
-      }
-    } catch (error) {
-      console.error('Error fetching previous discussions:', error);
-      if (error.response?.status === 401) {
-        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
-      }
-    } finally {
-      setLoading(prev => ({ ...prev, discussions: false }));
+      Object.entries(grouped).forEach(([key, value]) => {
+        if (key.startsWith('semester_')) {
+          phase.push(value);
+        } else if (key.startsWith('graduation_')) {
+          graduation.push(value);
+        }
+      });
+
+      setPhaseDiscussions(phase);
+      setGraduationDiscussions(graduation);
     }
-  };
+  } catch (error) {
+    console.error('Error fetching previous discussions:', error);
+    if (error.response?.status === 401) {
+      alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+    }
+  } finally {
+    setLoading(prev => ({ ...prev, discussions: false }));
+  }
+};
+
+
 
   // Initialize data
   useEffect(() => {
