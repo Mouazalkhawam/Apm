@@ -4,12 +4,13 @@ import {
   faPlus, faEdit, faTrash, faLink, 
   faFilePdf, faTimes, faCloudUploadAlt,
   faFolderOpen, faSpinner, faExclamationCircle,
-  faCheckCircle
+  faCheckCircle, faUser, faClock, faCheck, faTimesCircle
 } from '@fortawesome/free-solid-svg-icons';
 import './ResourcesLibrary.css';
 
 const ResourcesLibrary = () => {
   const [resources, setResources] = useState([]);
+  const [myResources, setMyResources] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('إضافة مورد جديد');
   const [currentResource, setCurrentResource] = useState({
@@ -23,11 +24,13 @@ const ResourcesLibrary = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredResources, setFilteredResources] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [myResourcesLoading, setMyResourcesLoading] = useState(true);
   const [error, setError] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [successMessage, setSuccessMessage] = useState('');
+  const [activeTab, setActiveTab] = useState('all'); // 'all' or 'my'
 
-  // Fetch resources from API
+  // Fetch all resources from API
   useEffect(() => {
     const fetchResources = async () => {
       try {
@@ -60,18 +63,51 @@ const ResourcesLibrary = () => {
     fetchResources();
   }, []);
 
+  // Fetch user's resources from API
+  useEffect(() => {
+    const fetchMyResources = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        if (!token) {
+          throw new Error('لم يتم العثور على رمز الوصول. يرجى تسجيل الدخول مرة أخرى.');
+        }
+
+        const response = await fetch('http://127.0.0.1:8000/api/user/resources', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('فشل في جلب مواردك من الخادم');
+        }
+
+        const data = await response.json();
+        setMyResources(data.data.data);
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setMyResourcesLoading(false);
+      }
+    };
+
+    fetchMyResources();
+  }, []);
+
   // Handle search
   useEffect(() => {
     if (searchTerm.trim() === '') {
-      setFilteredResources(resources);
+      setFilteredResources(activeTab === 'all' ? resources : myResources);
     } else {
-      const filtered = resources.filter(resource =>
+      const source = activeTab === 'all' ? resources : myResources;
+      const filtered = source.filter(resource =>
         resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         resource.description.toLowerCase().includes(searchTerm.toLowerCase())
       );
       setFilteredResources(filtered);
     }
-  }, [searchTerm, resources]);
+  }, [searchTerm, resources, myResources, activeTab]);
 
   // Open modal for adding new resource
   const openAddModal = () => {
@@ -166,10 +202,10 @@ const ResourcesLibrary = () => {
       let url = 'http://127.0.0.1:8000/api/resources';
       let method = 'POST';
 
-      
       if (currentResource.id) {
         url = `http://127.0.0.1:8000/api/resources/${currentResource.id}`;
-        method = 'PUT';
+        method = 'POST'; // Using POST for update with _method=PUT
+        formData.append('_method', 'PUT');
       }
 
       const xhr = new XMLHttpRequest();
@@ -187,14 +223,18 @@ const ResourcesLibrary = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           const response = JSON.parse(xhr.responseText);
           if (currentResource.id) {
-            // Update existing resource
+            // Update existing resource in both all and my resources
             setResources(resources.map(resource => 
+              resource.resourceId === currentResource.id ? response : resource
+            ));
+            setMyResources(myResources.map(resource => 
               resource.resourceId === currentResource.id ? response : resource
             ));
             setSuccessMessage('تم تحديث المورد بنجاح');
           } else {
-            // Add new resource
+            // Add new resource to both lists
             setResources([response, ...resources]);
+            setMyResources([response, ...myResources]);
             setSuccessMessage('تم إضافة المورد بنجاح');
           }
           setTimeout(() => {
@@ -217,37 +257,6 @@ const ResourcesLibrary = () => {
     }
   };
 
-  // Handle resource deletion
-  const handleDelete = async (resourceId) => {
-    if (!window.confirm('هل أنت متأكد أنك تريد حذف هذا المورد؟')) {
-      return;
-    }
-
-    try {
-      const token = localStorage.getItem('access_token');
-      if (!token) {
-        throw new Error('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
-      }
-
-      const response = await fetch(`http://127.0.0.1:8000/api/resources/${resourceId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('فشل في حذف المورد');
-      }
-
-      setResources(resources.filter(resource => resource.resourceId !== resourceId));
-      setSuccessMessage('تم حذف المورد بنجاح');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   // Get type display text and class
   const getTypeInfo = (type) => {
     switch (type) {
@@ -262,6 +271,20 @@ const ResourcesLibrary = () => {
     }
   };
 
+  // Get status icon and class
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'approved':
+        return { icon: faCheck, class: 'status-approved', text: 'مقبول' };
+      case 'pending':
+        return { icon: faClock, class: 'status-pending', text: 'قيد المراجعة' };
+      case 'rejected':
+        return { icon: faTimesCircle, class: 'status-rejected', text: 'مرفوض' };
+      default:
+        return { icon: faClock, class: '', text: status };
+    }
+  };
+
   // Get file icon based on extension
   const getFileIcon = (fileName) => {
     if (!fileName) return null;
@@ -270,17 +293,8 @@ const ResourcesLibrary = () => {
     switch (extension) {
       case 'pdf':
         return <FontAwesomeIcon icon={faFilePdf} className="file-icon pdf" />;
-      case 'doc':
-      case 'docx':
-        return <FontAwesomeIcon icon={faFileWord} className="file-icon word" />;
-      case 'xls':
-      case 'xlsx':
-        return <FontAwesomeIcon icon={faFileExcel} className="file-icon excel" />;
-      case 'zip':
-      case 'rar':
-        return <FontAwesomeIcon icon={faFileArchive} className="file-icon archive" />;
       default:
-        return <FontAwesomeIcon icon={faFile} className="file-icon default" />;
+        return <FontAwesomeIcon icon={faFilePdf} className="file-icon default" />;
     }
   };
 
@@ -320,6 +334,22 @@ const ResourcesLibrary = () => {
       
       {/* Main Container */}
       <div className="resources-library-container resources-library-main-content">
+        {/* Tabs */}
+        <div className="resources-library-tabs">
+          <button 
+            className={`resources-library-tab ${activeTab === 'all' ? 'active' : ''}`}
+            onClick={() => setActiveTab('all')}
+          >
+            جميع الموارد
+          </button>
+          <button 
+            className={`resources-library-tab ${activeTab === 'my' ? 'active' : ''}`}
+            onClick={() => setActiveTab('my')}
+          >
+            مواردي المنشورة
+          </button>
+        </div>
+        
         {/* Search Section */}
         <section className="resources-library-search-section">
           <form 
@@ -345,13 +375,15 @@ const ResourcesLibrary = () => {
         {/* Resources Section */}
         <section className="resources-library-resources-section">
           <div className="resources-library-section-header">
-            <h2 className="resources-library-section-title">جميع الموارد</h2>
+            <h2 className="resources-library-section-title">
+              {activeTab === 'all' ? 'جميع الموارد' : 'مواردي المنشورة'}
+            </h2>
             <button 
               className="resources-library-add-resource-btn"
               onClick={openAddModal}
-              disabled={loading}
+              disabled={loading || myResourcesLoading}
             >
-              {loading ? (
+              {loading || myResourcesLoading ? (
                 <FontAwesomeIcon icon={faSpinner} spin />
               ) : (
                 <>
@@ -362,15 +394,12 @@ const ResourcesLibrary = () => {
           </div>
           
           {/* Loading State */}
-          {loading && (
+          {(loading && activeTab === 'all') || (myResourcesLoading && activeTab === 'my') ? (
             <div className="resources-library-loading-state">
               <FontAwesomeIcon icon={faSpinner} spin size="2x" />
               <p>جاري تحميل الموارد...</p>
             </div>
-          )}
-          
-          {/* Resources Grid */}
-          {!loading && (
+          ) : (
             <div className="resources-library-resources-grid">
               {filteredResources.length > 0 ? (
                 filteredResources.map(resource => (
@@ -380,9 +409,17 @@ const ResourcesLibrary = () => {
                   >
                     <div className="resources-library-card-header">
                       <h3 className="resources-library-resource-title">{resource.title}</h3>
-                      <span className={`resources-library-resource-type ${getTypeInfo(resource.type).class}`}>
-                        {getTypeInfo(resource.type).text}
-                      </span>
+                      <div className="resources-library-resource-meta">
+                        <span className={`resources-library-resource-type ${getTypeInfo(resource.type).class}`}>
+                          {getTypeInfo(resource.type).text}
+                        </span>
+                        {activeTab === 'my' && (
+                          <span className={`resources-library-resource-status ${getStatusInfo(resource.status).class}`}>
+                            <FontAwesomeIcon icon={getStatusInfo(resource.status).icon} />
+                            {getStatusInfo(resource.status).text}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     <div className="resources-library-card-body">
                       <p className="resources-library-resource-description">
@@ -410,27 +447,33 @@ const ResourcesLibrary = () => {
                           </a>
                         </div>
                       )}
+                      {activeTab === 'my' && resource.status === 'rejected' && resource.notes && (
+                        <div className="resources-library-rejection-notes">
+                          <FontAwesomeIcon icon={faExclamationCircle} />
+                          <span>ملاحظات الرفض: {resource.notes}</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="resources-library-card-footer">
-                      <button 
-                        className="resources-library-edit-btn"
-                        onClick={() => openEditModal(resource)}
-                      >
-                        <FontAwesomeIcon icon={faEdit} /> تعديل
-                      </button>
-                      <button 
-                        className="resources-library-delete-btn"
-                        onClick={() => handleDelete(resource.resourceId)}
-                      >
-                        <FontAwesomeIcon icon={faTrash} /> حذف
-                      </button>
-                    </div>
+                    {activeTab === 'my' && resource.status === 'pending' && (
+                      <div className="resources-library-card-footer">
+                        <button 
+                          className="resources-library-edit-btn"
+                          onClick={() => openEditModal(resource)}
+                        >
+                          <FontAwesomeIcon icon={faEdit} /> تعديل
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               ) : (
                 <div className="resources-library-empty-state">
                   <FontAwesomeIcon icon={faFolderOpen} size="3x" />
-                  <p>لا توجد موارد متاحة حاليًا</p>
+                  <p>
+                    {activeTab === 'all' 
+                      ? 'لا توجد موارد متاحة حاليًا' 
+                      : 'لم تقم بنشر أي موارد بعد'}
+                  </p>
                   <button 
                     className="resources-library-add-resource-btn"
                     onClick={openAddModal}
