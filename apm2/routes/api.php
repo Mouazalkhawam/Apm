@@ -235,6 +235,7 @@ Route::middleware('auth:api')->group(function () {
       Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
 
       Route::get('/user/resources', [ResourceController::class, 'getUserResources']);
+     Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
 
 
 });
