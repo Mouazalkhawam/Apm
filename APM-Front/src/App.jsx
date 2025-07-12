@@ -30,6 +30,7 @@ import StudentsPage from './pages/StudentsPage';
 import AcademicPeriods from './pages/AcademicPeriods';
 import HonorboardCoordinator from './pages/HonorboardCoordinator';
 import ProposalsCoordinator from './pages/ProposalsCoordinator';
+import ResourcesLibraryCoordinator from './pages/ResourcesLibraryCoordinator';
 
 function App() {
   return (
@@ -244,6 +245,14 @@ function App() {
                  element={
                   <ProtectedRoute>
                     <ProposalsCoordinator />
+                            </ProtectedRoute>
+                          } 
+               />
+                 <Route 
+                 path="/resources-librar-coordinator" 
+                 element={
+                  <ProtectedRoute>
+                    <ResourcesLibraryCoordinator />
                             </ProtectedRoute>
                           } 
                />
