@@ -120,7 +120,8 @@ Route::middleware('auth:api')->group(function () {
         Route::put('/read-all', [NotificationController::class, 'markAllAsRead']);
         Route::get('/unread-count', [NotificationController::class, 'unreadCount']);
     });
-
+    Route::get('resources/pending', [ResourceController::class, 'getPendingResources']);
+    Route::get('resources/approved', [ResourceController::class, 'getApprovedResources']);
     Route::get('/resources', [ResourceController::class, 'index']);
     Route::get('/resources/{id}', [ResourceController::class, 'show']);
     
@@ -223,19 +224,20 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/resources', [ResourceController::class, 'index']);
     Route::get('/resources/{id}', [ResourceController::class, 'show']);
       // إنشاء مورد جديد (مشرف أو منسق فقط - الصلاحية داخل الكونترولر)
-      Route::post('/resources', [ResourceController::class, 'store']);
-        
-      // تحديث المورد (المنشئ أو المنسق - الصلاحية داخل الكونترولر)
-      Route::put('/resources/{id}', [ResourceController::class, 'update']);
-      
-      // حذف المورد (المنسق فقط - الصلاحية داخل الكونترولر)
-      Route::delete('/resources/{id}', [ResourceController::class, 'destroy']);
-      
+    Route::post('/resources', [ResourceController::class, 'store']);
+    
+    // تحديث المورد (المنشئ أو المنسق - الصلاحية داخل الكونترولر)
+    Route::put('/resources/{id}', [ResourceController::class, 'update']);
+    
+    // حذف المورد (المنسق فقط - الصلاحية داخل الكونترولر)
+    Route::delete('/resources/{id}', [ResourceController::class, 'destroy']);
+    
       // تحديث حالة المورد (المنسق فقط - الصلاحية داخل الكونترولر)
-      Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
+    Route::patch('/resources/{id}/status', [ResourceController::class, 'updateStatus']);
+    
 
-      Route::get('/user/resources', [ResourceController::class, 'getUserResources']);
-     Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
+    Route::get('/user/resources', [ResourceController::class, 'getUserResources']);
+    Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
 
 
 });

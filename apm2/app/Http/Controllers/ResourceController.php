@@ -267,4 +267,83 @@ class ResourceController extends Controller
         ], 500);
     }
 }
+
+/**
+ * جلب الموارد المعلقة للمراجعة (للمنسقين فقط)
+ */
+public function getPendingResources(Request $request)
+{
+    // التحقق من صلاحية المنسق
+    if (Auth::user()->role !== 'coordinator') {
+        return response()->json(['message' => 'غير مصرح'], 403);
+    }
+
+    try {
+        $query = Resource::with(['creator'])
+            ->where('status', 'pending')
+            ->orderBy('created_at', 'desc');
+
+        // نظام البحث
+        if ($request->has('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+
+        // التصفية حسب النوع
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        $resources = $query->paginate(15);
+
+        return response()->json([
+            'success' => true,
+            'data' => $resources
+        ]);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب الموارد المعلقة',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
+/**
+ * جلب الموارد المعتمدة
+ */
+public function getApprovedResources(Request $request)
+{
+    try {
+        $query = Resource::with(['creator', 'reviewer'])
+            ->where('status', 'approved')
+            ->orderBy('created_at', 'desc');
+
+        // نظام البحث
+        if ($request->has('search')) {
+            $query->where(function($q) use ($request) {
+                $q->where('title', 'LIKE', "%{$request->search}%")
+                  ->orWhere('description', 'LIKE', "%{$request->search}%");
+            });
+        }
+
+        // التصفية حسب النوع
+        if ($request->has('type')) {
+            $query->where('type', $request->type);
+        }
+
+        // للطلاب والمشرفين والمنسقين
+        return $query->paginate(15);
+
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'حدث خطأ أثناء جلب الموارد المعتمدة',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
 }

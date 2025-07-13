@@ -3,8 +3,9 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faPlus, faEdit, faTrash, faLink, 
   faFilePdf, faTimes, faCloudUploadAlt,
-  faFolderOpen, faSpinner, faExclamationCircle,faUsers ,faCalendarCheck ,faFileAlt ,
-  faCheckCircle, faSearch, faProjectDiagram, faEnvelope,faTachometerAlt ,faComments ,faBars 
+  faFolderOpen, faSpinner, faExclamationCircle, faUsers, faCalendarCheck, faFileAlt,
+  faCheckCircle, faSearch, faProjectDiagram, faEnvelope, faTachometerAlt, faComments, faBars,
+  faCheck, faBan, faClock
 } from '@fortawesome/free-solid-svg-icons';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
@@ -18,11 +19,13 @@ const ResourcesLibraryCoordinator = () => {
   // Refs
   const sidebarRef = useRef(null);
   const overlayRef = useRef(null);
-  const mainContentRef = useRef(null);
   
   // States
-  const [resources, setResources] = useState([]);
+  const [approvedResources, setApprovedResources] = useState([]);
+  const [pendingResources, setPendingResources] = useState([]);
+  const [activeTab, setActiveTab] = useState('approved');
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('إضافة مورد جديد');
   const [currentResource, setCurrentResource] = useState({
     title: '',
@@ -31,111 +34,114 @@ const ResourcesLibraryCoordinator = () => {
     link: '',
     file: null
   });
+  const [resourceToApprove, setResourceToApprove] = useState(null);
+  const [approvalNotes, setApprovalNotes] = useState('');
   const [fileName, setFileName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [filteredResources, setFilteredResources] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [uploadProgress, setUploadProgress] = useState(0);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [contentEffectClass, setContentEffectClass] = useState('');
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   const [coordinatorInfo, setCoordinatorInfo] = useState({
     name: '',
     image: ''
   });
 
-  // Fetch resources from API
-  useEffect(() => {
-    const fetchResources = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          throw new Error('لم يتم العثور على رمز الوصول. يرجى تسجيل الدخول مرة أخرى.');
-        }
-
-        // Fetch coordinator info
-        const userResponse = await fetch('http://127.0.0.1:8000/api/user', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!userResponse.ok) {
-          throw new Error('فشل في جلب بيانات المستخدم');
-        }
-
-        const userData = await userResponse.json();
-        setCoordinatorInfo({
-          name: userData.name,
-          image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
-        });
-
-        // Fetch resources
-        const response = await fetch('http://127.0.0.1:8000/api/resources', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error('فشل في جلب البيانات من الخادم');
-        }
-
-        const data = await response.json();
-        setResources(data.data);
-        setFilteredResources(data.data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  // Fetch data from API
+  const fetchResources = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('لم يتم العثور على رمز الوصول. يرجى تسجيل الدخول مرة أخرى.');
       }
-    };
 
+      // Fetch coordinator info
+      const userResponse = await fetch('http://127.0.0.1:8000/api/user', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (!userResponse.ok) {
+        throw new Error('فشل في جلب بيانات المستخدم');
+      }
+
+      const userData = await userResponse.json();
+      setCoordinatorInfo({
+        name: userData.name,
+        image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+      });
+
+      // Fetch approved and pending resources in parallel
+      const [approvedResponse, pendingResponse] = await Promise.all([
+        fetch('http://127.0.0.1:8000/api/resources/approved', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }),
+        fetch('http://127.0.0.1:8000/api/resources/pending', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        })
+      ]);
+
+      if (!approvedResponse.ok) {
+        throw new Error('فشل في جلب الموارد المعتمدة');
+      }
+
+      if (!pendingResponse.ok) {
+        throw new Error('فشل في جلب الموارد المعلقة');
+      }
+
+      const approvedData = await approvedResponse.json();
+      const pendingData = await pendingResponse.json();
+
+      // Handle both array and paginated responses
+      const getResourcesArray = (data) => {
+        if (Array.isArray(data)) return data;
+        if (Array.isArray(data.data)) return data.data;
+        if (Array.isArray(data.data?.data)) return data.data.data;
+        return [];
+      };
+
+      setApprovedResources(getResourcesArray(approvedData));
+      setPendingResources(getResourcesArray(pendingData));
+
+    } catch (err) {
+      setError(err.message);
+      setApprovedResources([]);
+      setPendingResources([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchResources();
   }, []);
 
-  // Handle search
-  useEffect(() => {
-    if (searchTerm.trim() === '') {
-      setFilteredResources(resources);
-    } else {
-      const filtered = resources.filter(resource =>
-        resource.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        resource.description.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredResources(filtered);
-    }
-  }, [searchTerm, resources]);
+  // Filter resources based on search term
+  const filteredApprovedResources = approvedResources.filter(resource =>
+    resource?.title?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    resource?.description?.toLowerCase()?.includes(searchTerm.toLowerCase())
+  );
 
-  // Handle window resize
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 769;
-      setIsMobile(mobile);
-      
-      if (mobile && contentEffectClass === 'content-effect') {
-        setContentEffectClass('');
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [contentEffectClass]);
+  const filteredPendingResources = pendingResources.filter(resource =>
+    resource?.title?.toLowerCase()?.includes(searchTerm.toLowerCase()) ||
+    resource?.description?.toLowerCase()?.includes(searchTerm.toLowerCase())
+  );
 
   // Toggle sidebar collapse
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
-  };
-
-  // Toggle content effect
-  const toggleContentEffect = () => {
-    if (!isMobile) {
-      setContentEffectClass(prev => prev === 'content-effect' ? '' : 'content-effect');
-    }
   };
 
   // Mobile sidebar handlers
@@ -182,17 +188,31 @@ const ResourcesLibraryCoordinator = () => {
     setIsModalOpen(true);
   };
 
+  // Open approval modal
+  const openApprovalModal = (resource) => {
+    setResourceToApprove(resource);
+    setApprovalNotes('');
+    setError(null);
+    setSuccessMessage('');
+    setIsApprovalModalOpen(true);
+  };
+
   // Close modal
   const closeModal = () => {
     setIsModalOpen(false);
     setUploadProgress(0);
   };
 
+  // Close approval modal
+  const closeApprovalModal = () => {
+    setIsApprovalModalOpen(false);
+  };
+
   // Handle file input change
   const handleFileChange = (e) => {
     if (e.target.files.length > 0) {
       const file = e.target.files[0];
-      if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      if (file.size > 5 * 1024 * 1024) {
         setError('حجم الملف يجب أن يكون أقل من 5MB');
         return;
       }
@@ -218,7 +238,6 @@ const ResourcesLibraryCoordinator = () => {
     setSuccessMessage('');
     setUploadProgress(0);
 
-    // Basic validation
     if (!currentResource.title || !currentResource.type) {
       setError('العنوان ونوع المورد مطلوبان');
       return;
@@ -244,7 +263,7 @@ const ResourcesLibraryCoordinator = () => {
 
       if (currentResource.id) {
         url = `http://127.0.0.1:8000/api/resources/${currentResource.id}`;
-        method = 'PUT';
+        method = 'POST';
       }
 
       const xhr = new XMLHttpRequest();
@@ -261,17 +280,8 @@ const ResourcesLibraryCoordinator = () => {
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           const response = JSON.parse(xhr.responseText);
-          if (currentResource.id) {
-            // Update existing resource
-            setResources(resources.map(resource => 
-              resource.resourceId === currentResource.id ? response : resource
-            ));
-            setSuccessMessage('تم تحديث المورد بنجاح');
-          } else {
-            // Add new resource
-            setResources([response, ...resources]);
-            setSuccessMessage('تم إضافة المورد بنجاح');
-          }
+          fetchResources(); // Refresh data
+          setSuccessMessage(currentResource.id ? 'تم تحديث المورد بنجاح' : 'تم إضافة المورد بنجاح');
           setTimeout(() => {
             closeModal();
           }, 1500);
@@ -286,6 +296,41 @@ const ResourcesLibraryCoordinator = () => {
       };
 
       xhr.send(formData);
+
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  // Handle resource approval/rejection
+  const handleResourceApproval = async (status) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      if (!token) {
+        throw new Error('انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.');
+      }
+
+      const response = await fetch(`http://127.0.0.1:8000/api/resources/${resourceToApprove.resourceId}/status`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: status,
+          notes: approvalNotes
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('فشل في تحديث حالة المورد');
+      }
+
+      await fetchResources(); // Refresh data
+      setSuccessMessage(`تم ${status === 'approved' ? 'الموافقة على' : 'رفض'} المورد بنجاح`);
+      setTimeout(() => {
+        closeApprovalModal();
+      }, 1500);
 
     } catch (err) {
       setError(err.message);
@@ -315,7 +360,7 @@ const ResourcesLibraryCoordinator = () => {
         throw new Error('فشل في حذف المورد');
       }
 
-      setResources(resources.filter(resource => resource.resourceId !== resourceId));
+      await fetchResources(); // Refresh data
       setSuccessMessage('تم حذف المورد بنجاح');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
@@ -337,6 +382,20 @@ const ResourcesLibraryCoordinator = () => {
     }
   };
 
+  // Get status display text and class
+  const getStatusInfo = (status) => {
+    switch (status) {
+      case 'approved':
+        return { text: 'معتمد', class: 'resources-library-resource-status-approved' };
+      case 'pending':
+        return { text: 'بانتظار الموافقة', class: 'resources-library-resource-status-pending' };
+      case 'rejected':
+        return { text: 'مرفوض', class: 'resources-library-resource-status-rejected' };
+      default:
+        return { text: status, class: '' };
+    }
+  };
+
   if (loading) {
     return (
       <div className="dashboard-loading">
@@ -346,7 +405,7 @@ const ResourcesLibraryCoordinator = () => {
     );
   }
 
-  if (error) {
+  if (error && !approvedResources.length && !pendingResources.length) {
     return (
       <div className="dashboard-error">
         <FontAwesomeIcon icon={faExclamationCircle} className="error-icon" />
@@ -373,7 +432,6 @@ const ResourcesLibraryCoordinator = () => {
         }}
         collapsed={sidebarCollapsed}
         onToggleCollapse={toggleSidebar}
-        onToggleEffect={toggleContentEffect}
         navItems={[
           { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
           { icon: faProjectDiagram, text: "المشاريع", path: "/projects" },
@@ -387,8 +445,8 @@ const ResourcesLibraryCoordinator = () => {
       {/* Overlay for mobile sidebar */}
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
-    {/* Main Content Area */}
-      <div className={`main-container ${!isMobile ? contentEffectClass : ''}`} ref={mainContentRef}>
+      {/* Main Content Area */}
+      <div className="main-container">
         <div className="supervisor-dashboard">
           {/* Top Navigation */}
           <div className='nav-top-dash'>
@@ -445,6 +503,27 @@ const ResourcesLibraryCoordinator = () => {
               </button>
             </div>
             
+            {/* Tabs */}
+            <div className="resources-library-tabs">
+              <button 
+                className={`resources-library-tab ${activeTab === 'approved' ? 'active' : ''}`}
+                onClick={() => setActiveTab('approved')}
+              >
+                الموارد المعتمدة
+              </button>
+              <button 
+                className={`resources-library-tab ${activeTab === 'pending' ? 'active' : ''}`}
+                onClick={() => setActiveTab('pending')}
+              >
+                الموارد المعلقة
+                {pendingResources.length > 0 && (
+                  <span className="resources-library-pending-count">
+                    {pendingResources.length}
+                  </span>
+                )}
+              </button>
+            </div>
+            
             {/* Search Section */}
             <section className="resources-library-search-section">
               <div className="resources-library-search-container">
@@ -458,78 +537,154 @@ const ResourcesLibraryCoordinator = () => {
                 />
               </div>
               <div className="resources-library-search-results-info">
-                {filteredResources.length} مورد متاح
+                {activeTab === 'approved' 
+                  ? `${filteredApprovedResources.length} مورد معتمد` 
+                  : `${filteredPendingResources.length} مورد معلق`}
               </div>
             </section>
             
             {/* Resources Grid */}
             <div className="resources-library-resources-grid">
-              {filteredResources.length > 0 ? (
-                filteredResources.map(resource => (
-                  <div 
-                    key={resource.resourceId} 
-                    className="resources-library-resource-card"
-                  >
-                    <div className="resources-library-card-header">
-                      <h3 className="resources-library-resource-title">{resource.title}</h3>
-                      <span className={`resources-library-resource-type ${getTypeInfo(resource.type).class}`}>
-                        {getTypeInfo(resource.type).text}
-                      </span>
-                    </div>
-                    <div className="resources-library-card-body">
-                      <p className="resources-library-resource-description">
-                        {resource.description}
-                      </p>
-                      {resource.link && (
-                        <a 
-                          href={resource.link} 
-                          className="resources-library-resource-link"
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                        >
-                          <FontAwesomeIcon icon={faLink} /> {resource.link}
-                        </a>
-                      )}
-                      {resource.filePath && (
-                        <div className="resources-library-resource-file">
-                          <FontAwesomeIcon icon={faFilePdf} /> 
+              {activeTab === 'approved' ? (
+                filteredApprovedResources.length > 0 ? (
+                  filteredApprovedResources.map(resource => (
+                    <div 
+                      key={resource.resourceId} 
+                      className="resources-library-resource-card"
+                    >
+                      <div className="resources-library-card-header">
+                        <h3 className="resources-library-resource-title">{resource.title}</h3>
+                        <div className="resources-library-resource-meta">
+                          <span className={`resources-library-resource-type ${getTypeInfo(resource.type).class}`}>
+                            {getTypeInfo(resource.type).text}
+                          </span>
+                          <span className={`resources-library-resource-status ${getStatusInfo(resource.status).class}`}>
+                            {getStatusInfo(resource.status).text}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="resources-library-card-body">
+                        <p className="resources-library-resource-description">
+                          {resource.description}
+                        </p>
+                        {resource.link && (
                           <a 
-                            href={`http://127.0.0.1:8000/storage/${resource.filePath}`}
-                            target="_blank"
+                            href={resource.link} 
+                            className="resources-library-resource-link"
+                            target="_blank" 
                             rel="noopener noreferrer"
                           >
-                            {resource.filePath.split('/').pop()}
+                            <FontAwesomeIcon icon={faLink} /> {resource.link}
                           </a>
-                        </div>
-                      )}
+                        )}
+                        {resource.filePath && (
+                          <div className="resources-library-resource-file">
+                            <FontAwesomeIcon icon={faFilePdf} /> 
+                            <a 
+                              href={`http://127.0.0.1:8000/storage/${resource.filePath}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {resource.filePath.split('/').pop()}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div className="resources-library-card-footer">
+                        <button 
+                          className="resources-library-edit-btn"
+                          onClick={() => openEditModal(resource)}
+                        >
+                          <FontAwesomeIcon icon={faEdit} /> تعديل
+                        </button>
+                        <button 
+                          className="resources-library-delete-btn"
+                          onClick={() => handleDelete(resource.resourceId)}
+                        >
+                          <FontAwesomeIcon icon={faTrash} /> حذف
+                        </button>
+                      </div>
                     </div>
-                    <div className="resources-library-card-footer">
-                      <button 
-                        className="resources-library-edit-btn"
-                        onClick={() => openEditModal(resource)}
-                      >
-                        <FontAwesomeIcon icon={faEdit} /> تعديل
-                      </button>
-                      <button 
-                        className="resources-library-delete-btn"
-                        onClick={() => handleDelete(resource.resourceId)}
-                      >
-                        <FontAwesomeIcon icon={faTrash} /> حذف
-                      </button>
-                    </div>
+                  ))
+                ) : (
+                  <div className="resources-library-empty-state">
+                    <FontAwesomeIcon icon={faFolderOpen} size="3x" />
+                    <p>لا توجد موارد معتمدة حاليًا</p>
+                    <button 
+                      className="resources-library-add-resource-btn"
+                      onClick={openAddModal}
+                    >
+                      <FontAwesomeIcon icon={faPlus} /> إضافة مورد جديد
+                    </button>
                   </div>
-                ))
+                )
               ) : (
-                <div className="resources-library-empty-state">
-                  <FontAwesomeIcon icon={faFolderOpen} size="3x" />
-                  <p>لا توجد موارد متاحة حاليًا</p>
-                  <button 
-                    className="resources-library-add-resource-btn"
-                    onClick={openAddModal}
-                  >
-                    <FontAwesomeIcon icon={faPlus} /> إضافة مورد جديد
-                  </button>
-                </div>
+                filteredPendingResources.length > 0 ? (
+                  filteredPendingResources.map(resource => (
+                    <div 
+                      key={resource.resourceId} 
+                      className="resources-library-resource-card"
+                    >
+                      <div className="resources-library-card-header">
+                        <h3 className="resources-library-resource-title">{resource.title}</h3>
+                        <div className="resources-library-resource-meta">
+                          <span className={`resources-library-resource-type ${getTypeInfo(resource.type).class}`}>
+                            {getTypeInfo(resource.type).text}
+                          </span>
+                          <span className={`resources-library-resource-status ${getStatusInfo(resource.status).class}`}>
+                            <FontAwesomeIcon icon={faClock} /> {getStatusInfo(resource.status).text}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="resources-library-card-body">
+                        <p className="resources-library-resource-description">
+                          {resource.description}
+                        </p>
+                        {resource.link && (
+                          <a 
+                            href={resource.link} 
+                            className="resources-library-resource-link"
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <FontAwesomeIcon icon={faLink} /> {resource.link}
+                          </a>
+                        )}
+                        {resource.filePath && (
+                          <div className="resources-library-resource-file">
+                            <FontAwesomeIcon icon={faFilePdf} /> 
+                            <a 
+                              href={`http://127.0.0.1:8000/storage/${resource.filePath}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              {resource.filePath.split('/').pop()}
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                      <div className="resources-library-card-footer">
+                        <button 
+                          className="resources-library-approve-btn"
+                          onClick={() => openApprovalModal(resource)}
+                        >
+                          <FontAwesomeIcon icon={faCheck} /> مراجعة
+                        </button>
+                        <button 
+                          className="resources-library-delete-btn"
+                          onClick={() => handleDelete(resource.resourceId)}
+                        >
+                          <FontAwesomeIcon icon={faTrash} /> حذف
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="resources-library-empty-state">
+                    <FontAwesomeIcon icon={faFolderOpen} size="3x" />
+                    <p>لا توجد موارد معلقة حاليًا</p>
+                  </div>
+                )
               )}
             </div>
           </main>
@@ -712,6 +867,116 @@ const ResourcesLibraryCoordinator = () => {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+      
+      {/* Resource Approval Modal */}
+      <div 
+        className={`resources-library-modal-overlay ${isApprovalModalOpen ? 'active' : ''}`}
+        onClick={(e) => e.target === e.currentTarget && closeApprovalModal()}
+      >
+        <div className="resources-library-modal-content">
+          <div className="resources-library-modal-header">
+            <h3 className="resources-library-modal-title">مراجعة المورد</h3>
+            <button 
+              className="resources-library-close-modal-btn"
+              onClick={closeApprovalModal}
+            >
+              <FontAwesomeIcon icon={faTimes} />
+            </button>
+          </div>
+          
+          <div className="resources-library-approval-content">
+            <div className="resources-library-approval-resource-info">
+              <h4>{resourceToApprove?.title}</h4>
+              <p>{resourceToApprove?.description}</p>
+              
+              <div className="resources-library-approval-meta">
+                <span className={`resources-library-resource-type ${getTypeInfo(resourceToApprove?.type).class}`}>
+                  {getTypeInfo(resourceToApprove?.type).text}
+                </span>
+                <span className="resources-library-approval-creator">
+                  مقدم من: {resourceToApprove?.creator?.name}
+                </span>
+              </div>
+              
+              {resourceToApprove?.link && (
+                <a 
+                  href={resourceToApprove.link} 
+                  className="resources-library-resource-link"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <FontAwesomeIcon icon={faLink} /> {resourceToApprove.link}
+                </a>
+              )}
+              
+              {resourceToApprove?.filePath && (
+                <div className="resources-library-resource-file">
+                  <FontAwesomeIcon icon={faFilePdf} /> 
+                  <a 
+                    href={`http://127.0.0.1:8000/storage/${resourceToApprove.filePath}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {resourceToApprove.filePath.split('/').pop()}
+                  </a>
+                </div>
+              )}
+            </div>
+            
+            <div className="resources-library-form-group">
+              <label 
+                htmlFor="approvalNotes" 
+                className="resources-library-form-label"
+              >
+                ملاحظات (اختياري)
+              </label>
+              <textarea 
+                id="approvalNotes" 
+                className="resources-library-form-textarea"
+                value={approvalNotes}
+                onChange={(e) => setApprovalNotes(e.target.value)}
+                rows="3"
+                placeholder="أضف ملاحظاتك حول المورد..."
+              />
+            </div>
+            
+            {/* Error Message */}
+            {error && (
+              <div className="resources-library-form-error">
+                <FontAwesomeIcon icon={faExclamationCircle} />
+                <span>{error}</span>
+              </div>
+            )}
+            
+            {/* Success Message */}
+            {successMessage && (
+              <div className="resources-library-form-success">
+                <FontAwesomeIcon icon={faCheckCircle} />
+                <span>{successMessage}</span>
+              </div>
+            )}
+            
+            <div className="resources-library-approval-footer">
+              <button 
+                type="button" 
+                className="resources-library-btn-reject"
+                onClick={() => handleResourceApproval('rejected')}
+                disabled={!!successMessage}
+              >
+                <FontAwesomeIcon icon={faBan} /> رفض
+              </button>
+              <button 
+                type="button" 
+                className="resources-library-btn-approve"
+                onClick={() => handleResourceApproval('approved')}
+                disabled={!!successMessage}
+              >
+                <FontAwesomeIcon icon={faCheck} /> قبول
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
