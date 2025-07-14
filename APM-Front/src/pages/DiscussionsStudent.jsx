@@ -17,6 +17,7 @@ import ProjectHeader from '../components/Header/ProjectHeader';
 const DiscussionsStudent = () => {
   const [activeTab, setActiveTab] = useState('intermediate');
   const [intermediateDiscussions, setIntermediateDiscussions] = useState([]);
+  const [analyticalDiscussions, setAnalyticalDiscussions] = useState([]);
   const [finalDiscussions, setFinalDiscussions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -100,11 +101,17 @@ const DiscussionsStudent = () => {
       const schedules = Array.isArray(response.data.data) ? response.data.data : [];
       
       const intermediate = schedules.filter(schedule => 
-        ['مرحلية', 'تحليلية'].includes(schedule.type)
+        schedule.type === 'مرحلية'
       );
-      const final = schedules.filter(schedule => schedule.type === 'نهائية');
+      const analytical = schedules.filter(schedule => 
+        schedule.type === 'تحليلية'
+      );
+      const final = schedules.filter(schedule => 
+        schedule.type === 'نهائية'
+      );
       
       setIntermediateDiscussions(formatSchedules(intermediate));
+      setAnalyticalDiscussions(formatSchedules(analytical));
       setFinalDiscussions(formatSchedules(final));
       
     } catch (err) {
@@ -180,114 +187,167 @@ const DiscussionsStudent = () => {
           </div>
         </div>
       )}
-    <div className='container-discussion'>
-      <div className="tabs">
-        <button 
-          className={`tab-btn ${activeTab === 'intermediate' ? 'active' : ''}`}
-          onClick={() => openTab('intermediate')}
-        >
-          المناقشات المرحلية
-        </button>
-        <button 
-          className={`tab-btn ${activeTab === 'final' ? 'active' : ''}`}
-          onClick={() => openTab('final')}
-        >
-          المناقشات النهائية
-        </button>
-      </div>
       
-      <div id="intermediate" className={`tab-content ${activeTab === 'intermediate' ? 'active' : ''}`}>
-        {intermediateDiscussions.length > 0 ? (
-          intermediateDiscussions.map((discussion) => (
-            <div className="date-card" key={discussion.id}>
-              <div className="date-header">
-                <div className="date-title">{discussion.title}</div>
-                <div className="date">{discussion.date}</div>
-              </div>
-              
-              <div className="group-container">
-                {discussion.groups.map((group) => (
-                  <div className="group-card" key={group.id}>
-                    <div className="group-title">
-                      <FontAwesomeIcon icon={faUsers} />
-                      {group.name}
+      <div className='container-discussion'>
+        <div className="tabs">
+          <button 
+            className={`tab-btn ${activeTab === 'intermediate' ? 'active' : ''}`}
+            onClick={() => openTab('intermediate')}
+          >
+            المناقشات المرحلية
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'analytical' ? 'active' : ''}`}
+            onClick={() => openTab('analytical')}
+          >
+            المناقشات التحليلية
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'final' ? 'active' : ''}`}
+            onClick={() => openTab('final')}
+          >
+            المناقشات النهائية
+          </button>
+        </div>
+        
+        <div id="intermediate" className={`tab-content ${activeTab === 'intermediate' ? 'active' : ''}`}>
+          {intermediateDiscussions.length > 0 ? (
+            intermediateDiscussions.map((discussion) => (
+              <div className="date-card" key={discussion.id}>
+                <div className="date-header">
+                  <div className="date-title">{discussion.title}</div>
+                  <div className="date">{discussion.date}</div>
+                </div>
+                
+                <div className="group-container">
+                  {discussion.groups.map((group) => (
+                    <div className="group-card" key={group.id}>
+                      <div className="group-title">
+                        <FontAwesomeIcon icon={faUsers} />
+                        {group.name}
+                      </div>
+                      <div className="group-details">
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faClock} />
+                          <span>الوقت: <span className="detail-value">{group.time}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faDoorOpen} />
+                          <span>القاعة: <span className="detail-value">{group.hall}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faUserTie} />
+                          <span>المشرف: <span className="detail-value">{group.supervisor}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faStickyNote} />
+                          <span>ملاحظات: <span className="detail-value">{group.notes}</span></span>
+                        </div>
+                      </div>
                     </div>
-                    <div className="group-details">
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faClock} />
-                        <span>الوقت: <span className="detail-value">{group.time}</span></span>
-                      </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faDoorOpen} />
-                        <span>القاعة: <span className="detail-value">{group.hall}</span></span>
-                      </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faUserTie} />
-                        <span>المشرف: <span className="detail-value">{group.supervisor}</span></span>
-                      </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faStickyNote} />
-                        <span>ملاحظات: <span className="detail-value">{group.notes}</span></span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="no-data-message">
+              {loading ? 'جاري التحميل...' : 'لا توجد مناقشات مرحلية مسجلة'}
             </div>
-          ))
-        ) : (
-          <div className="no-data-message">
-            {loading ? 'جاري التحميل...' : 'لا توجد مناقشات مرحلية مسجلة'}
-          </div>
-        )}
-      </div>
-      
-      <div id="final" className={`tab-content ${activeTab === 'final' ? 'active' : ''}`}>
-        {finalDiscussions.length > 0 ? (
-          finalDiscussions.map((discussion) => (
-            <div className="date-card" key={discussion.id}>
-              <div className="date-header">
-                <div className="date-title">{discussion.title}</div>
-                <div className="date">{discussion.date}</div>
-              </div>
-              
-              <div className="group-container">
-                {discussion.groups.map((group) => (
-                  <div className="group-card" key={group.id}>
-                    <div className="group-title">
-                      <FontAwesomeIcon icon={faUsers} />
-                      {group.name}
-                    </div>
-                    <div className="group-details">
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faClock} />
-                        <span>الوقت: <span className="detail-value">{group.time}</span></span>
+          )}
+        </div>
+        
+        <div id="analytical" className={`tab-content ${activeTab === 'analytical' ? 'active' : ''}`}>
+          {analyticalDiscussions.length > 0 ? (
+            analyticalDiscussions.map((discussion) => (
+              <div className="date-card" key={discussion.id}>
+                <div className="date-header">
+                  <div className="date-title">{discussion.title}</div>
+                  <div className="date">{discussion.date}</div>
+                </div>
+                
+                <div className="group-container">
+                  {discussion.groups.map((group) => (
+                    <div className="group-card" key={group.id}>
+                      <div className="group-title">
+                        <FontAwesomeIcon icon={faUsers} />
+                        {group.name}
                       </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faDoorOpen} />
-                        <span>القاعة: <span className="detail-value">{group.hall}</span></span>
-                      </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faUserTie} />
-                        <span>المشرف: <span className="detail-value">{group.supervisor}</span></span>
-                      </div>
-                      <div className="detail-item">
-                        <FontAwesomeIcon icon={faStickyNote} />
-                        <span>ملاحظات: <span className="detail-value">{group.notes}</span></span>
+                      <div className="group-details">
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faClock} />
+                          <span>الوقت: <span className="detail-value">{group.time}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faDoorOpen} />
+                          <span>القاعة: <span className="detail-value">{group.hall}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faUserTie} />
+                          <span>المشرف: <span className="detail-value">{group.supervisor}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faStickyNote} />
+                          <span>ملاحظات: <span className="detail-value">{group.notes}</span></span>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
+            ))
+          ) : (
+            <div className="no-data-message">
+              {loading ? 'جاري التحميل...' : 'لا توجد مناقشات تحليلية مسجلة'}
             </div>
-          ))
-        ) : (
-          <div className="no-data-message">
-            {loading ? 'جاري التحميل...' : 'لا توجد مناقشات نهائية مسجلة'}
-          </div>
-        )}
+          )}
+        </div>
+        
+        <div id="final" className={`tab-content ${activeTab === 'final' ? 'active' : ''}`}>
+          {finalDiscussions.length > 0 ? (
+            finalDiscussions.map((discussion) => (
+              <div className="date-card" key={discussion.id}>
+                <div className="date-header">
+                  <div className="date-title">{discussion.title}</div>
+                  <div className="date">{discussion.date}</div>
+                </div>
+                
+                <div className="group-container">
+                  {discussion.groups.map((group) => (
+                    <div className="group-card" key={group.id}>
+                      <div className="group-title">
+                        <FontAwesomeIcon icon={faUsers} />
+                        {group.name}
+                      </div>
+                      <div className="group-details">
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faClock} />
+                          <span>الوقت: <span className="detail-value">{group.time}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faDoorOpen} />
+                          <span>القاعة: <span className="detail-value">{group.hall}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faUserTie} />
+                          <span>المشرف: <span className="detail-value">{group.supervisor}</span></span>
+                        </div>
+                        <div className="detail-item">
+                          <FontAwesomeIcon icon={faStickyNote} />
+                          <span>ملاحظات: <span className="detail-value">{group.notes}</span></span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="no-data-message">
+              {loading ? 'جاري التحميل...' : 'لا توجد مناقشات نهائية مسجلة'}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
     </div>
   );
 };

@@ -15,8 +15,11 @@ body {
     margin: 1rem;
 }
 .discussions-coordinator-container{
-    margin: 1rem;
+   /* margin: 1rem;*/
     overflow-y: scroll;
+    max-height: 95vh;
+    margin-top: -30px;
+    margin-bottom: 10px;
 }
 
 .container {
