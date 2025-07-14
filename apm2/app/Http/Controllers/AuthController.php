@@ -398,4 +398,30 @@ public function createSupervisor(Request $request)
     ], 201);
 }
 
+
+
+// ✅ جلب جميع المنسقين
+// ✅ جلب جميع المنسقين (متاح للجميع)
+public function getCoordinators()
+{
+    $coordinators = User::where('role', 'coordinator')
+        ->select('userId', 'name', 'email', 'phone', 'profile_picture')
+        ->get()
+        ->map(function($coordinator) {
+            return [
+                'userId' => $coordinator->userId,
+                'name' => $coordinator->name,
+                'email' => $coordinator->email,
+                'phone' => $coordinator->phone,
+                'profile_picture' => $coordinator->profile_picture 
+                    ? asset($coordinator->profile_picture)
+                    : null,
+            ];
+        });
+
+    return response()->json([
+        'success' => true,
+        'data' => $coordinators
+    ]);
+}
 }

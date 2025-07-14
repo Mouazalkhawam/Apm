@@ -42,6 +42,7 @@ Route::middleware('auth:api')->group(function () {
     Route::delete('/profile/delete', [AuthController::class, 'deleteAccount']);
     Route::post('/profile/restore/{id?}', [AuthController::class, 'restoreAccount']);
     Route::patch('/users/{id}/change-role', [AuthController::class, 'changeRole']);
+    Route::get('coordinators', [AuthController::class, 'getCoordinators']);
     Route::get('/dashboard', [DashboardController::class, 'index']); 
     Route::get('/schedules', [DiscussionScheduleController::class, 'index']);
     Route::post('/schedules', [DiscussionScheduleController::class, 'store']);
