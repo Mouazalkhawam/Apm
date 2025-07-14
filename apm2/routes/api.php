@@ -141,6 +141,7 @@ Route::middleware('auth:api')->group(function () {
 
     Route::post('/evaluations', [EvaluationController::class, 'store']);
     Route::get('/evaluations', [EvaluationController::class, 'index']);
+    Route::get('coordinator/ratings/average', [EvaluationController::class, 'getCoordinatorAverageRatings']);
 
     Route::get('/supervisor/groups', [ProjectController::class, 'getSupervisorGroups']);
     Route::prefix('supervisors/{supervisor}')->group(function () {

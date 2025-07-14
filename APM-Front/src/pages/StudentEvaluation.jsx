@@ -8,19 +8,24 @@ const StudentEvaluation = () => {
   const [activeTab, setActiveTab] = useState('students-evaluation');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedSupervisor, setSelectedSupervisor] = useState(null);
+  const [selectedCoordinator, setSelectedCoordinator] = useState(null);
   const [students, setStudents] = useState([]);
   const [supervisors, setSupervisors] = useState([]);
+  const [coordinators, setCoordinators] = useState([]);
   const [criteria, setCriteria] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [isSupervisor, setIsSupervisor] = useState(false);
+  const [isCoordinator, setIsCoordinator] = useState(false);
   
   // Loading states
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [loadingSupervisors, setLoadingSupervisors] = useState(false);
+  const [loadingCoordinators, setLoadingCoordinators] = useState(false);
   const [loadingCriteria, setLoadingCriteria] = useState(true);
   const [loadingUser, setLoadingUser] = useState(true);
   const [loadingSupervisorCheck, setLoadingSupervisorCheck] = useState(true);
+  const [loadingCoordinatorCheck, setLoadingCoordinatorCheck] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Rating states
@@ -36,6 +41,12 @@ const StudentEvaluation = () => {
     technicalSupport: 0,
     feedback: 0,
     availability: 0
+  });
+
+  const [coordinatorRatings, setCoordinatorRatings] = useState({
+    timelineManagement: 0,
+    resourceProvision: 0,
+    evaluationFollowup: 0
   });
 
   // Get data from localStorage
@@ -94,6 +105,18 @@ const StudentEvaluation = () => {
     checkSupervisorStatus();
   }, [selectedGroupId, accessToken, loadingUser]);
 
+  // Check if user is coordinator
+  useEffect(() => {
+    const checkCoordinatorStatus = async () => {
+      if (!loadingUser && currentUser) {
+        setIsCoordinator(currentUser.role === 'coordinator');
+        setLoadingCoordinatorCheck(false);
+      }
+    };
+
+    checkCoordinatorStatus();
+  }, [loadingUser, currentUser]);
+
   // Fetch evaluation criteria
   useEffect(() => {
     const fetchCriteria = async () => {
@@ -136,7 +159,7 @@ const StudentEvaluation = () => {
         if (response.data.success) {
           let studentsWithIds = response.data.data.map((student) => ({
             ...student,
-            id: student.userId.toString(), // استخدام userId بدلاً من studentId
+            id: student.userId.toString(),
             uniqueKey: `student-${student.userId}`
           }));
 
@@ -161,7 +184,7 @@ const StudentEvaluation = () => {
       }
     };
 
-    if (selectedGroupId && accessToken && !loadingUser && !loadingSupervisorCheck) {
+    if (selectedGroupId && accessToken && !loadingUser && !loadingSupervisorCheck && !loadingCoordinatorCheck) {
       fetchStudents();
     } else if (!accessToken) {
       setError('يجب تسجيل الدخول أولاً');
@@ -170,7 +193,7 @@ const StudentEvaluation = () => {
       setError('لم يتم تحديد مجموعة');
       setLoading(false);
     }
-  }, [selectedGroupId, accessToken, currentUser, loadingUser, loadingSupervisorCheck]);
+  }, [selectedGroupId, accessToken, currentUser, loadingUser, loadingSupervisorCheck, loadingCoordinatorCheck]);
 
   // Fetch supervisors when supervisor tab is active (only for students)
   useEffect(() => {
@@ -191,7 +214,7 @@ const StudentEvaluation = () => {
           if (response.data.success) {
             let supervisorsWithIds = response.data.data.map((supervisor) => ({
               ...supervisor,
-              id: supervisor.userId.toString(), // استخدام userId بدلاً من supervisorId
+              id: supervisor.userId.toString(),
               uniqueKey: `supervisor-${supervisor.userId}`
             }));
 
@@ -215,10 +238,54 @@ const StudentEvaluation = () => {
     fetchSupervisors();
   }, [activeTab, selectedGroupId, accessToken, currentUser, loadingUser, isSupervisor]);
 
+  // Fetch coordinators when coordinator tab is active (for both students and supervisors)
+  useEffect(() => {
+    const fetchCoordinators = async () => {
+      if (activeTab === 'coordinator-evaluation' && !loadingUser && !isCoordinator) {
+        setLoadingCoordinators(true);
+        try {
+          const response = await axios.get(
+            'http://127.0.0.1:8000/api/coordinators',
+            {
+              headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'Accept': 'application/json'
+              }
+            }
+          );
+
+          if (response.data.success) {
+            let coordinatorsWithIds = response.data.data.map((coordinator) => ({
+              ...coordinator,
+              id: coordinator.userId.toString(),
+              uniqueKey: `coordinator-${coordinator.userId}`
+            }));
+
+            setCoordinators(coordinatorsWithIds);
+          } else {
+            setError('لا يوجد منسقين متاحين');
+          }
+        } catch (err) {
+          if (err.response?.status === 401) {
+            setError('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+          } else {
+            setError('حدث خطأ أثناء جلب بيانات المنسقين');
+          }
+          console.error('Error fetching coordinators:', err);
+        } finally {
+          setLoadingCoordinators(false);
+        }
+      }
+    };
+
+    fetchCoordinators();
+  }, [activeTab, accessToken, currentUser, loadingUser, isCoordinator]);
+
   // Handler functions
   const handleStudentSelect = (studentId) => {
     setSelectedStudent(studentId);
     setSelectedSupervisor(null);
+    setSelectedCoordinator(null);
     setStudentRatings({
       teamwork: 0,
       deadlines: 0,
@@ -230,6 +297,7 @@ const StudentEvaluation = () => {
   const handleSupervisorSelect = (supervisorId) => {
     setSelectedSupervisor(supervisorId);
     setSelectedStudent(null);
+    setSelectedCoordinator(null);
     setSupervisorRatings({
       supervisionQuality: 0,
       technicalSupport: 0,
@@ -238,34 +306,68 @@ const StudentEvaluation = () => {
     });
   };
 
-  const handleRatingSelect = (criteria, value, isStudent) => {
-    if (isStudent) {
-      setStudentRatings(prev => ({ ...prev, [criteria]: value }));
-    } else {
-      setSupervisorRatings(prev => ({ ...prev, [criteria]: value }));
+  const handleCoordinatorSelect = (coordinatorId) => {
+    setSelectedCoordinator(coordinatorId);
+    setSelectedStudent(null);
+    setSelectedSupervisor(null);
+    setCoordinatorRatings({
+      timelineManagement: 0,
+      resourceProvision: 0,
+      evaluationFollowup: 0
+    });
+  };
+
+  const handleRatingSelect = (criteria, value, type) => {
+    switch (type) {
+      case 'student':
+        setStudentRatings(prev => ({ ...prev, [criteria]: value }));
+        break;
+      case 'supervisor':
+        setSupervisorRatings(prev => ({ ...prev, [criteria]: value }));
+        break;
+      case 'coordinator':
+        setCoordinatorRatings(prev => ({ ...prev, [criteria]: value }));
+        break;
+      default:
+        break;
     }
   };
 
-  const submitEvaluation = async (evaluatedId, ratings, isStudent) => {
+  const submitEvaluation = async (evaluatedId, ratings, type) => {
     try {
-      // تحويل ID إلى سلسلة نصية
       const evaluatedIdStr = evaluatedId.toString();
+      let criteriaRange;
       
-      const criteriaRange = isStudent ? [1, 4] : [5, 8];
-      
+      switch (type) {
+        case 'student':
+          criteriaRange = [1, 4];
+          break;
+        case 'supervisor':
+          criteriaRange = [5, 8];
+          break;
+        case 'coordinator':
+          criteriaRange = [11, 13];
+          break;
+        default:
+          throw new Error('نوع التقييم غير صحيح');
+      }
+
       for (let i = criteriaRange[0]; i <= criteriaRange[1]; i++) {
-        const criteriaKey = isStudent ? 
-          Object.keys(ratings)[i - criteriaRange[0]] : 
-          Object.keys(ratings)[i - criteriaRange[0]];
-        
+        let criteriaKey;
+        if (type === 'student') {
+          criteriaKey = Object.keys(ratings)[i - criteriaRange[0]];
+        } else if (type === 'supervisor') {
+          criteriaKey = Object.keys(ratings)[i - criteriaRange[0]];
+        } else {
+          criteriaKey = Object.keys(ratings)[i - criteriaRange[0]];
+        }
+
         const submission = {
-          evaluated_user_id: evaluatedIdStr, // استخدام النص مباشرة
+          evaluated_user_id: evaluatedIdStr,
           group_id: selectedGroupId.toString(),
           criteria_id: i,
           rate: ratings[criteriaKey]
         };
-
-        console.log('Submitting evaluation:', submission);
 
         await axios.post('http://127.0.0.1:8000/api/evaluations', submission, {
           headers: {
@@ -298,7 +400,7 @@ const StudentEvaluation = () => {
         return;
       }
 
-      await submitEvaluation(selectedStudent, studentRatings, true);
+      await submitEvaluation(selectedStudent, studentRatings, 'student');
       alert('تم إرسال تقييم الطالب بنجاح. شكرًا لك!');
       setStudentRatings({
         teamwork: 0,
@@ -332,7 +434,7 @@ const StudentEvaluation = () => {
         return;
       }
 
-      await submitEvaluation(selectedSupervisor, supervisorRatings, false);
+      await submitEvaluation(selectedSupervisor, supervisorRatings, 'supervisor');
       alert('تم إرسال تقييم المشرف بنجاح. شكرًا لك!');
       setSupervisorRatings({
         supervisionQuality: 0,
@@ -351,13 +453,46 @@ const StudentEvaluation = () => {
     }
   };
 
+  const handleCoordinatorSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    
+    try {
+      if (!selectedCoordinator) {
+        alert('يرجى اختيار منسق لتقييمه');
+        return;
+      }
+
+      if (Object.values(coordinatorRatings).some(rating => rating === 0)) {
+        alert('يرجى تقييم جميع المعايير');
+        return;
+      }
+
+      await submitEvaluation(selectedCoordinator, coordinatorRatings, 'coordinator');
+      alert('تم إرسال تقييم المنسق بنجاح. شكرًا لك!');
+      setCoordinatorRatings({
+        timelineManagement: 0,
+        resourceProvision: 0,
+        evaluationFollowup: 0
+      });
+      setSelectedCoordinator(null);
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 
+                      err.response?.data?.errors?.join(', ') || 
+                      err.message;
+      alert(`حدث خطأ أثناء إرسال التقييم: ${errorMsg}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   // Loading state
-  if (loading || loadingCriteria || loadingUser || loadingSupervisorCheck) {
+  if (loading || loadingCriteria || loadingUser || loadingSupervisorCheck || loadingCoordinatorCheck) {
     return (
       <div className="evaluation-system">
         <ProjectHeader 
           title="نظام التقييم"
-          description="قم بتقييم زملائك والمشرفين في المجموعة"
+          description="قم بتقييم زملائك والمشرفين والمنسقين في المشروع"
           teamMembers={students.length}
         />
         <div className="loading-container">
@@ -374,7 +509,7 @@ const StudentEvaluation = () => {
       <div className="evaluation-system">
         <ProjectHeader 
           title="نظام التقييم"
-          description="قم بتقييم زملائك والمشرفين في المجموعة"
+          description="قم بتقييم زملائك والمشرفين والمنسقين في المشروع"
           teamMembers={students.length}
         />
         <div className="error-container">
@@ -398,7 +533,7 @@ const StudentEvaluation = () => {
     <div className="evaluation-system">
       <ProjectHeader 
         title="نظام التقييم"
-        description="قم بتقييم زملائك والمشرفين في المجموعة"
+        description="قم بتقييم زملائك والمشرفين والمنسقين في المشروع"
         teamMembers={students.length}
       />
 
@@ -417,6 +552,15 @@ const StudentEvaluation = () => {
               onClick={() => setActiveTab('supervisor-evaluation')}
             >
               تقييم المشرفين
+            </button>
+          )}
+
+          {!isCoordinator && (
+            <button 
+              className={`tab-btn ${activeTab === 'coordinator-evaluation' ? 'active' : ''}`}
+              onClick={() => setActiveTab('coordinator-evaluation')}
+            >
+              تقييم المنسقين
             </button>
           )}
         </div>
@@ -483,7 +627,7 @@ const StudentEvaluation = () => {
                               <div 
                                 key={`student-${criteriaId}-${value}`}
                                 className={`rating-option ${studentRatings[criteriaKey] >= value ? 'selected' : ''}`}
-                                onClick={() => handleRatingSelect(criteriaKey, value, true)}
+                                onClick={() => handleRatingSelect(criteriaKey, value, 'student')}
                               >
                                 {value}
                               </div>
@@ -577,7 +721,103 @@ const StudentEvaluation = () => {
                                     <div 
                                       key={`supervisor-${criteriaId}-${value}`}
                                       className={`rating-option ${supervisorRatings[criteriaKey] >= value ? 'selected' : ''}`}
-                                      onClick={() => handleRatingSelect(criteriaKey, value, false)}
+                                      onClick={() => handleRatingSelect(criteriaKey, value, 'supervisor')}
+                                    >
+                                      {value}
+                                    </div>
+                                  ))}
+                                </div>
+                                <span>من 5</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+
+                        <button 
+                          type="submit" 
+                          className="btn submit-btn"
+                          disabled={isSubmitting}
+                        >
+                          {isSubmitting ? 'جاري الإرسال...' : 'إرسال التقييم'}
+                        </button>
+                      </form>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Coordinators Evaluation Tab */}
+        {!isCoordinator && (
+          <div className={`tab-content ${activeTab === 'coordinator-evaluation' ? 'active' : ''}`}>
+            <h2 className="section-title">تقييم سير للمشروع</h2>
+            
+            {loadingCoordinators ? (
+              <div className="loading-container">
+                <div className="spinner"></div>
+                <p>جاري تحميل بيانات المنسقين...</p>
+              </div>
+            ) : (
+              <>
+                <div className="evaluation-list">
+                  {coordinators.length > 0 ? (
+                    coordinators.map((coordinator) => (
+                      <div 
+                        className={`evaluation-card ${selectedCoordinator === coordinator.id ? 'selected' : ''}`} 
+                        key={coordinator.uniqueKey}
+                      >
+                        <div className="user-info">
+                          <div className="user-name">{coordinator.name}</div>
+                          <div className="user-details">
+                            منسق المشروع
+                          </div>
+                        </div>
+                        <button 
+                          className={`btn ${selectedCoordinator === coordinator.id ? 'active' : ''}`}
+                          onClick={() => handleCoordinatorSelect(coordinator.id)}
+                        >
+                          {selectedCoordinator === coordinator.id ? 'تم التحديد' : 'تقييم'}
+                        </button>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="no-data">لا يوجد منسقين متاحين للتقييم</p>
+                  )}
+                </div>
+
+                {selectedCoordinator && (
+                  <div className="evaluation-form">
+                    <div className="form-container">
+                      <h3 className="form-title">
+                        تقييم المنسق: {coordinators.find(c => c.id === selectedCoordinator)?.name}
+                      </h3>
+                      
+                      <form onSubmit={handleCoordinatorSubmit}>
+                        {[11, 12, 13].map((criteriaId) => {
+                          const criteriaData = criteria.find(c => c.criteria_id === criteriaId);
+                          const criteriaKey = [
+                            'timelineManagement',
+                            'resourceProvision',
+                            'evaluationFollowup'
+                          ][criteriaId - 11];
+
+                          return (
+                            <div className="evaluation-item" key={`coordinator-criteria-${criteriaId}`}>
+                              <label className="evaluation-label">
+                                {criteriaData?.title || `المعيار ${criteriaId}`}
+                                <span className="criteria-description">
+                                  ({criteriaData?.description || 'لا يوجد وصف'})
+                                </span>
+                              </label>
+                              <div className="rating-container">
+                                <div className="rating-options">
+                                  {[1, 2, 3, 4, 5].map((value) => (
+                                    <div 
+                                      key={`coordinator-${criteriaId}-${value}`}
+                                      className={`rating-option ${coordinatorRatings[criteriaKey] >= value ? 'selected' : ''}`}
+                                      onClick={() => handleRatingSelect(criteriaKey, value, 'coordinator')}
                                     >
                                       {value}
                                     </div>
