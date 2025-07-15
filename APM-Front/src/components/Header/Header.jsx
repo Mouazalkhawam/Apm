@@ -54,10 +54,6 @@ const Header = ({
             'Accept': 'application/json',
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
-          },
-          params: {
-            socket_id: (channel) => channel.socket_id,
-            channel_name: (channel) => channel.name
           }
         },
         authorizer: (channel, options) => ({
@@ -80,6 +76,19 @@ const Header = ({
             });
           }
         })
+      });
+
+      // إضافة logs لمراقبة حالة الاتصال
+      echoInstance.connector.pusher.connection.bind('state_change', (states) => {
+        console.log('Pusher connection state changed:', states.current);
+      });
+
+      echoInstance.connector.pusher.connection.bind('connected', () => {
+        console.log('Successfully connected to Pusher!');
+      });
+
+      echoInstance.connector.pusher.connection.bind('disconnected', () => {
+        console.log('Disconnected from Pusher!');
       });
 
       setEcho(echoInstance);
@@ -275,18 +284,19 @@ const Header = ({
       console.error('Error marking notification as read:', err);
     }
   };
+
   const handleAcceptMembership = async () => {
     const token = localStorage.getItem('access_token');
   
-    if (!token || !selectedNotification?.extra_data?.group_id) {
-      console.error('❌ Missing group_id in notification extra_data');
+    if (!token || !selectedNotification?.data?.project_id) {
+      console.error('❌ Missing project_id in notification data');
       return;
     }
   
     try {
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/projects/approve`, {
         user_id: localStorage.getItem('user_id'),
-        group_id: selectedNotification.extra_data.group_id
+        project_id: selectedNotification.data.project_id
       }, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -523,35 +533,26 @@ const Header = ({
     fetchNotifications();
   }, []);
 
-  // الاشتراك في قنوات Pusher للرسائل الجديدة
+  // الاشتراك في قنوات Pusher
   useEffect(() => {
     if (!echo) return;
   
     const userId = localStorage.getItem('user_id');
     if (!userId) return;
   
-    const channel = echo.private(`App.Models.User.${userId}`);
+    // 1. قناة الرسائل
+    const messageChannel = echo.private(`App.Models.User.${userId}`);
   
-    channel.listen('.App\\Events\\NewMessageSent', (data) => {
-      console.log('Received new message data:', data);
+    messageChannel.listen('.App\\Events\\NewMessageSent', (data) => {
+      console.log('📩 Received new message:', data);
       
-      // البيانات تأتي مباشرة ككائن الرسالة وليس ضمن خاصية message
-      const messageData = data;
-      
-      if (!messageData.sender || !messageData.sender.userId) {
-        console.error('Invalid message structure:', messageData);
-        return;
-      }
-      
-      // تحديث قائمة المحادثات وعدد الرسائل غير المقروءة
       fetchConversations();
       fetchUnreadCount();
       
-      // إذا كانت المحادثة المفتوحة هي مع المرسل
-      if (selectedConversation?.id === messageData.sender.userId) {
+      if (selectedConversation?.id === data.sender.userId) {
         const newMessage = {
-          id: messageData.message_id,
-          text: messageData.content,
+          id: data.message_id,
+          text: data.content,
           time: 'الآن',
           sent: false,
           is_read: false
@@ -560,14 +561,39 @@ const Header = ({
         setSelectedConversation(prev => ({
           ...prev,
           messages: [...prev.messages, newMessage],
-          lastMessage: messageData.content,
+          lastMessage: data.content,
           time: 'الآن'
         }));
       }
     });
-  
+
+    // 2. قناة الإشعارات
+    const notificationChannel = echo.channel(`notifications.${userId}`);
+    
+    notificationChannel.listen('.notification-event', (data) => {
+      console.log('🔔 Received new notification:', data);
+      
+      setNotifications(prev => [
+        {
+          id: data.id,
+          type: data.type,
+          message: data.message,
+          data: data.data,
+          read_at: data.read_at,
+          created_at: data.created_at
+        },
+        ...prev
+      ]);
+    });
+
+    // معالجة الأخطاء
+    messageChannel.error((err) => console.error('Message channel error:', err));
+    notificationChannel.error((err) => console.error('Notification channel error:', err));
+
     return () => {
-      channel.stopListening('.App\\Events\\NewMessageSent');
+      messageChannel.stopListening('.App\\Events\\NewMessageSent');
+      notificationChannel.stopListening('.notification-event');
+      echo.leave(`notifications.${userId}`);
     };
   }, [echo, selectedConversation]);
 
