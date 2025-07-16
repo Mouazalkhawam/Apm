@@ -87,5 +87,28 @@ class Student extends Model
         $this->attributes['experience'] = $value ? (string)$value : null;
     }
 
-    // Removed determineMediaType() as it's no longer needed
+    public function evaluations()
+    {
+        return $this->hasMany(Evaluation::class, 'studentId');
+    }
+
+    public function groupEvaluations()
+    {
+        return $this->hasManyThrough(
+            Evaluation::class,
+            GroupStudent::class,
+            'studentId', // Foreign key on group_student table
+            'groupId',    // Foreign key on evaluations table
+            'studentId',  // Local key on students table
+            'groupid'     // Local key on group_student table
+        );
+    }
+
+    public function currentGroup()
+    {
+        return $this->groups()
+            ->wherePivot('status', 'approved')
+            ->latest('group_student.updated_at')
+            ->first();
+    }
 }

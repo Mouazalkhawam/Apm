@@ -6,6 +6,7 @@ use App\Http\Controllers\API\NotificationController;
 use App\Http\Controllers\API\ProjectController;
 use App\Http\Controllers\ProjectProposalController;
 use App\Http\Controllers\StudentProfileController;
+use App\Http\Controllers\ProjectEvaluationController;
 use App\Http\Controllers\API\ProjectStageController;
 use App\Http\Controllers\API\TaskController;
 use App\Http\Controllers\API\AcademicPeriodController;
@@ -242,5 +243,8 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/user/resources', [ResourceController::class, 'getUserResources']);
     Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
 
-
+    Route::prefix('project-evaluations')->group(function () {
+        Route::post('/', [ProjectEvaluationController::class, 'storeEvaluation']);
+        Route::post('/groups/{group}/final-grades', [ProjectEvaluationController::class, 'calculateFinalGrades']);
+    });
 });

@@ -30,4 +30,11 @@ class GroupStudent extends Pivot
     {
         return $this->belongsTo(Group::class, 'groupid', 'groupid');
     }
+
+    public function isMember($studentId)
+{
+    return $this->groupStudents()
+        ->where('studentId', $studentId)
+        ->exists();
+}
 }
