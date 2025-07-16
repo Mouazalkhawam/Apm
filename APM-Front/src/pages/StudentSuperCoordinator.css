@@ -1,4 +1,4 @@
-body {
+/*body {
     font-family: 'Tajawal', sans-serif;
     background-color: #f9fafb;
     margin: 0;
@@ -6,7 +6,7 @@ body {
     direction: rtl;
 }
 
-/* Header Styles */
+
 .headerstd {
     background-color: #ffffff;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
@@ -86,14 +86,14 @@ body {
     color: #374151;
 }
 
-/* Main Content Styles */
+
 .main-container {
     max-width: 1200px;
     margin: 0 auto;
     padding: 2rem 1rem;
 }
 
-/* Stats Cards */
+
 .stats-grid {
     display: grid;
     grid-template-columns: repeat(1, 1fr);
@@ -208,7 +208,7 @@ body {
     color: #ef4444;
 }
 
-/* Tables Section */
+
 .section-container {
     background-color: white;
     border-radius: 0.5rem;
@@ -240,7 +240,7 @@ body {
     color: #1d4ed8;
 }
 
-/* Tables */
+
 .table-container {
     overflow-x: auto;
 }
@@ -327,7 +327,6 @@ td {
     border-radius: 50%;
 }
 
-/* For supervisor tables */
 .status-badge {
     padding: 0.25rem 0.75rem;
     border-radius: 9999px;
@@ -380,8 +379,6 @@ td {
 .action-notify:hover {
     color: #d97706;
 }
-
-/* Miscellaneous */
 .cardd-hover {
     transition: all 0.3s;
 }
@@ -460,4 +457,4 @@ td {
 .inactive-status {
     background-color: #fee2e2;
     color: #dc2626;
-}
+}*/
