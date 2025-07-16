@@ -2,26 +2,23 @@ import React, { useState, useEffect } from 'react';
 import './StudentProjectManagement.css';
 import ProjectHeader from '../components/Header/ProjectHeader';
 import axios from 'axios';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 const StudentProjectManagement = () => {
-  // States
-  const [projectData, setProjectData] = useState({
-    title: "",
-    description: "",
-    stages: []
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const token = localStorage.getItem('access_token');
+  const groupId = localStorage.getItem('selectedGroupId');
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLeader, setIsLeader] = useState(false);
   const [isSupervisor, setIsSupervisor] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
   const [showForms, setShowForms] = useState({});
   const [showModal, setShowModal] = useState(false);
   const [currentSubmissionTask, setCurrentSubmissionTask] = useState(null);
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [submissionFiles, setSubmissionFiles] = useState([]);
   const [newTasks, setNewTasks] = useState({});
-  const [groupStudents, setGroupStudents] = useState([]);
   const [githubRepo, setGithubRepo] = useState('');
   const [githubCommitUrl, setGithubCommitUrl] = useState('');
   const [commitDescription, setCommitDescription] = useState('');
@@ -29,7 +26,6 @@ const StudentProjectManagement = () => {
   const [currentTaskToGrade, setCurrentTaskToGrade] = useState(null);
   const [grade, setGrade] = useState('');
   const [feedback, setFeedback] = useState('');
-  const [gradingStatus, setGradingStatus] = useState({});
   const [showAddStageModal, setShowAddStageModal] = useState(false);
   const [newStage, setNewStage] = useState({
     title: '',
@@ -42,148 +38,354 @@ const StudentProjectManagement = () => {
   const [currentStageToSubmit, setCurrentStageToSubmit] = useState(null);
   const [stageSubmissionNotes, setStageSubmissionNotes] = useState('');
   const [stageSubmissionFiles, setStageSubmissionFiles] = useState([]);
-  const [stageSubmissions, setStageSubmissions] = useState({});
   const [showStageGradeModal, setShowStageGradeModal] = useState(false);
   const [currentStageToGrade, setCurrentStageToGrade] = useState(null);
   const [stageGrade, setStageGrade] = useState('');
   const [stageFeedback, setStageFeedback] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
-  // Fetch data on component mount
-  useEffect(() => {
-    const fetchData = async () => {
+  // Fetch current user
+  const { data: userData } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: async () => {
+      const res = await axios.get('http://127.0.0.1:8000/api/user', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      setCurrentUser(res.data);
+      return res.data;
+    }
+  });
+
+  // Check if supervisor
+  const { data: supervisorStatus } = useQuery({
+    queryKey: ['isSupervisor', groupId],
+    queryFn: async () => {
       try {
-        const token = localStorage.getItem('access_token');
-        const groupId = localStorage.getItem('selectedGroupId');
-        
-        if (!groupId) throw new Error('Group ID not found');
+        const res = await axios.get(
+          `http://127.0.0.1:8000/api/groups/${groupId}/is-supervisor`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setIsSupervisor(res.data.is_supervisor);
+        return res.data.is_supervisor;
+      } catch (error) {
+        setIsSupervisor(false);
+        return false;
+      }
+    },
+    enabled: !!groupId
+  });
 
-        // Fetch current user
-        const userRes = await axios.get('http://127.0.0.1:8000/api/user', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        setCurrentUser(userRes.data);
+  // Check if leader (only if not supervisor)
+  const { data: leaderStatus } = useQuery({
+    queryKey: ['isLeader', groupId],
+    queryFn: async () => {
+      try {
+        const res = await axios.get(
+          `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
+          { headers: { 'Authorization': `Bearer ${token}` } }
+        );
+        setIsLeader(res.data.is_leader);
+        return res.data.is_leader;
+      } catch (error) {
+        setIsLeader(false);
+        return false;
+      }
+    },
+    enabled: !!groupId && !isSupervisor
+  });
 
-        // Check if supervisor first (since supervisors don't need leader check)
-        try {
-          const supervisorRes = await axios.get(
-            `http://127.0.0.1:8000/api/groups/${groupId}/is-supervisor`,
+  // Fetch group students
+  const { data: groupStudents = [] } = useQuery({
+    queryKey: ['groupStudents', groupId],
+    queryFn: async () => {
+      const res = await axios.get(
+        `http://127.0.0.1:8000/api/groups/${groupId}/students`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      return res.data.data || [];
+    },
+    enabled: !!groupId
+  });
+
+  // Fetch project stages with tasks
+  const { data: projectData, isLoading, isError, error, refetch: refetchProject } = useQuery({
+    queryKey: ['projectStages', groupId],
+    queryFn: async () => {
+      const stagesRes = await axios.get(
+        `http://127.0.0.1:8000/api/group-stages/${groupId}`,
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+
+      if (!stagesRes.data?.data) return { title: "", description: "", stages: [] };
+
+      const stagesWithTasks = await Promise.all(
+        stagesRes.data.data.map(async (stage) => {
+          const tasksRes = await axios.get(
+            `http://127.0.0.1:8000/api/stages/${stage.id}/tasks`,
             { headers: { 'Authorization': `Bearer ${token}` } }
           );
-          setIsSupervisor(supervisorRes.data.is_supervisor);
-        } catch (supervisorError) {
-          setIsSupervisor(false);
-        }
 
-        // Only check for leader if not a supervisor
-        if (!isSupervisor) {
-          try {
-            const leaderRes = await axios.get(
-              `http://127.0.0.1:8000/api/groups/${groupId}/is-leader`,
-              { headers: { 'Authorization': `Bearer ${token}` } }
-            );
-            setIsLeader(leaderRes.data.is_leader);
-          } catch (leaderError) {
-            setIsLeader(false);
-          }
-        }
-
-        // Fetch group students
-        const studentsRes = await axios.get(
-          `http://127.0.0.1:8000/api/groups/${groupId}/students`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-        setGroupStudents(studentsRes.data.data || []);
-
-        // Fetch stages
-        const stagesRes = await axios.get(
-          `http://127.0.0.1:8000/api/group-stages/${groupId}`,
-          { headers: { 'Authorization': `Bearer ${token}` } }
-        );
-
-        if (stagesRes.data?.data) {
-          const stagesWithTasksAndSubmissions = await Promise.all(
-            stagesRes.data.data.map(async (stage) => {
-              // Fetch tasks for this stage
-              const tasksRes = await axios.get(
-                `http://127.0.0.1:8000/api/stages/${stage.id}/tasks`,
-                { headers: { 'Authorization': `Bearer ${token}` } }
-              );  
-
-              // Fetch stage submission status
-              let stageSubmission = null;
-              try {
-                const submissionRes = await axios.get(
-                  `http://127.0.0.1:8000/api/stages/${stage.id}/submission`,
-                  { headers: { 'Authorization': `Bearer ${token}` } }
-                );
-                if (submissionRes.data.data) {
-                  stageSubmission = submissionRes.data.data;
+          const tasksWithGradingStatus = await Promise.all(
+            tasksRes.data.map(async task => {
+              let gradingStatus = {};
+              if (task.status === 'completed') {
+                try {
+                  const gradingRes = await axios.get(
+                    `http://127.0.0.1:8000/api/tasks/${task.id}/grading-status`,
+                    { headers: { 'Authorization': `Bearer ${token}` } }
+                  );
+                  gradingStatus = gradingRes.data;
+                } catch (err) {
+                  console.error('Error fetching grading status:', err);
                 }
-              } catch (submissionError) {
-                console.log('No submission found for stage', stage.id);
               }
 
-              // Store submission status
-              setStageSubmissions(prev => ({
-                ...prev,
-                [stage.id]: stageSubmission
-              }));
-
-              // Fetch grading status for each completed task
-              const tasksWithGradingStatus = await Promise.all(
-                tasksRes.data.map(async task => {
-                  let gradingStatus = {};
-                  if (task.status === 'completed') {
-                    try {
-                      const gradingRes = await axios.get(
-                        `http://127.0.0.1:8000/api/tasks/${task.id}/grading-status`,
-                        { headers: { 'Authorization': `Bearer ${token}` } }
-                      );
-                      gradingStatus = gradingRes.data;
-                    } catch (err) {
-                      console.error('Error fetching grading status:', err);
-                    }
-                  }
-
-                  return {
-                    id: task.id,
-                    title: task.title,
-                    description: task.description,
-                    responsible: task.assignee?.user?.name || 'غير محدد',
-                    responsibleId: task.assigned_to,
-                    deadline: task.due_date,
-                    status: task.status,
-                    priority: task.priority,
-                    grade: gradingStatus.grade,
-                    feedback: gradingStatus.feedback,
-                    attachments: []
-                  };
-                })
-              );
-
               return {
-                id: stage.id,
-                name: stage.title,
-                deadline: stage.due_date,
-                description: stage.description,
-                tasks: tasksWithGradingStatus
+                id: task.id,
+                title: task.title,
+                description: task.description,
+                responsible: task.assignee?.user?.name || 'غير محدد',
+                responsibleId: task.assigned_to,
+                deadline: task.due_date,
+                status: task.status,
+                priority: task.priority,
+                grade: gradingStatus.grade,
+                feedback: gradingStatus.feedback,
+                attachments: []
               };
             })
           );
 
-          setProjectData(prev => ({ ...prev, stages: stagesWithTasksAndSubmissions }));
-        }
-      } catch (err) {
-        setError(err.message || 'Failed to fetch data');
-        console.error('Error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
+          return {
+            id: stage.id,
+            name: stage.title,
+            deadline: stage.due_date,
+            description: stage.description,
+            tasks: tasksWithGradingStatus
+          };
+        })
+      );
 
-    fetchData();
-  }, [isSupervisor, successMessage]); // Add successMessage as dependency to refresh when submission is successful
+      return {
+        title: "",
+        description: "",
+        stages: stagesWithTasks
+      };
+    },
+    enabled: !!groupId
+  });
+
+  // Fetch stage submissions
+  const { data: stageSubmissions = {} } = useQuery({
+    queryKey: ['stageSubmissions', groupId],
+    queryFn: async () => {
+      if (!projectData?.stages) return {};
+      
+      const submissions = {};
+      await Promise.all(
+        projectData.stages.map(async stage => {
+          try {
+            const submissionRes = await axios.get(
+              `http://127.0.0.1:8000/api/stages/${stage.id}/submission`,
+              { headers: { 'Authorization': `Bearer ${token}` } }
+            );
+            if (submissionRes.data.data) {
+              submissions[stage.id] = submissionRes.data.data;
+            }
+          } catch (error) {
+            console.log('No submission found for stage', stage.id);
+          }
+        })
+      );
+      return submissions;
+    },
+    enabled: !!projectData?.stages
+  });
+
+  // Mutations
+  const addTaskMutation = useMutation({
+    mutationFn: async ({ stageId, taskData }) => {
+      const res = await axios.post(
+        'http://127.0.0.1:8000/api/tasks',
+        {
+          project_stage_id: stageId,
+          title: taskData.title,
+          description: taskData.description || '',
+          assigned_to: parseInt(taskData.responsibleId),
+          due_date: taskData.deadline,
+          priority: taskData.priority || 'medium'
+        },
+        { headers: { 'Authorization': `Bearer ${token}` } }
+      );
+      return res.data;
+    },
+    onSuccess: (data, { stageId }) => {
+      queryClient.invalidateQueries(['projectStages', groupId]);
+      setNewTasks(prev => ({ ...prev, [stageId]: {} }));
+      setShowForms(prev => ({ ...prev, [stageId]: false }));
+      setSuccessMessage('تم إضافة المهمة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error:', error);
+      alert('حدث خطأ أثناء إضافة المهمة: ' + (error.response?.data?.message || error.message));
+    }
+  });
+
+  const submitTaskMutation = useMutation({
+    mutationFn: async ({ taskId, formData }) => {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/tasks/${taskId}/submit`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projectStages', groupId]);
+      setShowModal(false);
+      setCurrentSubmissionTask(null);
+      setSubmissionNotes('');
+      setSubmissionFiles([]);
+      setGithubRepo('');
+      setGithubCommitUrl('');
+      setCommitDescription('');
+      setSuccessMessage('تم تسليم المهمة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error submitting task:', error);
+      alert('حدث خطأ أثناء تسليم المهمة: ' + (error.response?.data?.message || error.message));
+    }
+  });
+
+  const gradeTaskMutation = useMutation({
+    mutationFn: async ({ taskId, gradeData }) => {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/tasks/${taskId}/grade`,
+        gradeData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projectStages', groupId]);
+      setShowGradeModal(false);
+      setCurrentTaskToGrade(null);
+      setGrade('');
+      setFeedback('');
+      setSuccessMessage('تم تقييم المهمة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error grading task:', error);
+      alert('حدث خطأ أثناء تقييم المهمة: ' + (error.response?.data?.message || error.message));
+    }
+  });
+
+  const addStageMutation = useMutation({
+    mutationFn: async (stageData) => {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/groups/${groupId}/stages`,
+        {
+          group_id: groupId,
+          title: stageData.title,
+          description: stageData.description || '',
+          due_date: stageData.due_date
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['projectStages', groupId]);
+      setNewStage({
+        title: '',
+        description: '',
+        due_date: ''
+      });
+      setShowAddStageModal(false);
+      setSuccessMessage('تم إضافة المرحلة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error adding stage:', error);
+      alert('حدث خطأ أثناء إضافة المرحلة: ' + (error.response?.data?.message || error.message));
+    }
+  });
+
+  const submitStageMutation = useMutation({
+    mutationFn: async ({ stageId, formData }) => {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/project-stages/${stageId}/submit`,
+        formData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['stageSubmissions', groupId]);
+      setShowStageSubmissionModal(false);
+      setCurrentStageToSubmit(null);
+      setStageSubmissionNotes('');
+      setStageSubmissionFiles([]);
+      setSuccessMessage('تم تسليم المرحلة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error submitting stage:', error);
+      alert('حدث خطأ أثناء تسليم المرحلة: ' + (error.response?.data?.message || error.message));
+    }
+  });
+
+  const gradeStageMutation = useMutation({
+    mutationFn: async ({ stageId, gradeData }) => {
+      const response = await axios.post(
+        `http://127.0.0.1:8000/api/stages/${stageId}/evaluate`,
+        gradeData,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+      return response.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(['stageSubmissions', groupId]);
+      setShowStageGradeModal(false);
+      setCurrentStageToGrade(null);
+      setStageGrade('');
+      setStageFeedback('');
+      setSuccessMessage('تم تقييم المرحلة بنجاح');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    },
+    onError: (error) => {
+      console.error('Error grading stage:', error);
+      alert('حدث خطأ أثناء تقييم المرحلة: ' + (error.response?.data?.message || error.message));
+    }
+  });
 
   // Helper functions
   const isTaskAssignedToCurrentUser = (task) => {
@@ -192,7 +394,6 @@ const StudentProjectManagement = () => {
 
   const toggleForm = (stageId) => {
     setShowForms(prev => ({ ...prev, [stageId]: !prev[stageId] }));
-    // Initialize new task object for this stage if it doesn't exist
     if (!newTasks[stageId]) {
       setNewTasks(prev => ({ ...prev, [stageId]: {} }));
     }
@@ -220,347 +421,81 @@ const StudentProjectManagement = () => {
     }));
   };
 
-  const addNewTask = async (stageId) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const newTaskData = newTasks[stageId];
-
-      if (!newTaskData?.title || !newTaskData?.responsibleId) {
-        return alert('الرجاء إدخال عنوان المهمة واختيار المسؤول');
-      }
-
-      const taskPayload = {
-        project_stage_id: stageId,
-        title: newTaskData.title,
-        description: newTaskData.description || '',
-        assigned_to: parseInt(newTaskData.responsibleId),
-        due_date: newTaskData.deadline,
-        priority: newTaskData.priority || 'medium'
-      };
-
-      const res = await axios.post(
-        'http://127.0.0.1:8000/api/tasks',
-        taskPayload,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-
-      if (res.data) {
-        // Find the selected student
-        const selectedStudent = groupStudents.find(s => s.studentId === parseInt(newTaskData.responsibleId));
-
-        setProjectData(prev => ({
-          ...prev,
-          stages: prev.stages.map(s => s.id === stageId ? {
-            ...s,
-            tasks: [...s.tasks, {
-              id: res.data.id,
-              title: res.data.title,
-              description: res.data.description,
-              responsible: selectedStudent?.user?.name || 'غير محدد',
-              responsibleId: res.data.assigned_to,
-              deadline: res.data.due_date,
-              status: res.data.status,
-              priority: res.data.priority,
-              attachments: []
-            }]
-          } : s)
-        }));
-
-        setNewTasks(prev => ({ ...prev, [stageId]: {} }));
-        setShowForms(prev => ({ ...prev, [stageId]: false }));
-        alert('تم إضافة المهمة بنجاح');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('حدث خطأ أثناء إضافة المهمة: ' + (error.response?.data?.message || error.message));
+  const addNewTask = (stageId) => {
+    const newTaskData = newTasks[stageId];
+    if (!newTaskData?.title || !newTaskData?.responsibleId) {
+      return alert('الرجاء إدخال عنوان المهمة واختيار المسؤول');
     }
+    addTaskMutation.mutate({ stageId, taskData: newTaskData });
   };
 
-  const submitTaskToAPI = async () => {
-    try {
-      if (!currentSubmissionTask) return;
+  const submitTaskToAPI = () => {
+    if (!currentSubmissionTask) return;
 
-      const token = localStorage.getItem('access_token');
-      const formData = new FormData();
+    const formData = new FormData();
+    formData.append('content', submissionNotes);
+    formData.append('github_repo', githubRepo);
+    formData.append('github_commit_url', githubCommitUrl);
+    formData.append('commit_description', commitDescription);
+    submissionFiles.forEach(file => {
+      formData.append('attachment', file);
+    });
 
-      // Add required fields
-      formData.append('content', submissionNotes);
-      formData.append('github_repo', githubRepo);
-      formData.append('github_commit_url', githubCommitUrl);
-      formData.append('commit_description', commitDescription);
-
-      // Add files if any
-      submissionFiles.forEach(file => {
-        formData.append('attachment', file);
-      });
-
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/tasks/${currentSubmissionTask}/submit`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        // Update local state
-        const updatedStages = projectData.stages.map(stage => ({
-          ...stage,
-          tasks: stage.tasks.map(task => task.id === currentSubmissionTask ? {
-            ...task,
-            status: 'completed',
-            attachments: [
-              ...task.attachments,
-              ...submissionFiles.map(file => ({
-                name: file.name,
-                url: URL.createObjectURL(file),
-                type: file.type.startsWith('image/') ? 'image' : 'file'
-              }))
-            ]
-          } : task)
-        }));
-
-        setProjectData(prev => ({ ...prev, stages: updatedStages }));
-        
-        // Reset modal
-        setShowModal(false);
-        setCurrentSubmissionTask(null);
-        setSubmissionNotes('');
-        setSubmissionFiles([]);
-        setGithubRepo('');
-        setGithubCommitUrl('');
-        setCommitDescription('');
-        
-        setSuccessMessage('تم تسليم المهمة بنجاح');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error submitting task:', error);
-      alert('حدث خطأ أثناء تسليم المهمة: ' + (error.response?.data?.message || error.message));
-    }
+    submitTaskMutation.mutate({ 
+      taskId: currentSubmissionTask, 
+      formData 
+    });
   };
 
-  const submitStageToAPI = async () => {
-    try {
-      if (!currentStageToSubmit) return;
+  const submitStageToAPI = () => {
+    if (!currentStageToSubmit) return;
 
-      const token = localStorage.getItem('access_token');
-      const formData = new FormData();
+    const formData = new FormData();
+    formData.append('notes', stageSubmissionNotes);
+    stageSubmissionFiles.forEach(file => {
+      formData.append('attachments[]', file);
+    });
 
-      // Add required fields
-      formData.append('notes', stageSubmissionNotes);
-
-      // Add files if any
-      stageSubmissionFiles.forEach(file => {
-        formData.append('attachments[]', file);
-      });
-
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/project-stages/${currentStageToSubmit}/submit`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        // Update stage submission status
-        setStageSubmissions(prev => ({
-          ...prev,
-          [currentStageToSubmit]: response.data.data
-        }));
-        
-        // Reset modal
-        setShowStageSubmissionModal(false);
-        setCurrentStageToSubmit(null);
-        setStageSubmissionNotes('');
-        setStageSubmissionFiles([]);
-        
-        setSuccessMessage('تم تسليم المرحلة بنجاح');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error submitting stage:', error);
-      alert('حدث خطأ أثناء تسليم المرحلة: ' + (error.response?.data?.message || error.message));
-    }
+    submitStageMutation.mutate({ 
+      stageId: currentStageToSubmit, 
+      formData 
+    });
   };
 
-  const evaluateStage = async () => {
-    try {
-      if (!currentStageToGrade || !stageGrade) {
-        return alert('الرجاء إدخال العلامة');
-      }
-
-      const token = localStorage.getItem('access_token');
-      
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/stages/${currentStageToGrade}/evaluate`,
-        {
-          grade: parseInt(stageGrade),
-          feedback: stageFeedback || '',
-          status: 'reviewed'
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        // Update stage submission status
-        setStageSubmissions(prev => ({
-          ...prev,
-          [currentStageToGrade]: response.data.data
-        }));
-        
-        // Reset modal
-        setShowStageGradeModal(false);
-        setCurrentStageToGrade(null);
-        setStageGrade('');
-        setStageFeedback('');
-        
-        setSuccessMessage('تم تقييم المرحلة بنجاح');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error grading stage:', error);
-      alert('حدث خطأ أثناء تقييم المرحلة: ' + (error.response?.data?.message || error.message));
+  const evaluateStage = () => {
+    if (!currentStageToGrade || !stageGrade) {
+      return alert('الرجاء إدخال العلامة');
     }
+
+    gradeStageMutation.mutate({
+      stageId: currentStageToGrade,
+      gradeData: {
+        grade: parseInt(stageGrade),
+        feedback: stageFeedback || '',
+        status: 'reviewed'
+      }
+    });
   };
 
-  const checkTaskGradingStatus = async (taskId) => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const response = await axios.get(
-        `http://127.0.0.1:8000/api/tasks/${taskId}/grading-status`,
-        { headers: { 'Authorization': `Bearer ${token}` } }
-      );
-      
-      return response.data;
-    } catch (error) {
-      console.error('Error checking grading status:', error);
-      return {
-        success: false,
-        is_graded: false,
-        grade: null,
-        feedback: null
-      };
+  const handleGradeTask = () => {
+    if (!currentTaskToGrade || !grade) {
+      return alert('الرجاء إدخال العلامة');
     }
+
+    gradeTaskMutation.mutate({
+      taskId: currentTaskToGrade,
+      gradeData: {
+        grade: parseInt(grade),
+        feedback: feedback || ''
+      }
+    });
   };
 
-  const handleGradeTask = async () => {
-    try {
-      if (!currentTaskToGrade || !grade) {
-        return alert('الرجاء إدخال العلامة');
-      }
-
-      const token = localStorage.getItem('access_token');
-      
-      const response = await axios.post(
-        `http://127.0.0.1:8000/api/tasks/${currentTaskToGrade}/grade`,
-        {
-          grade: parseInt(grade),
-          feedback: feedback || ''
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data.success) {
-        // Update local state
-        const updatedStages = projectData.stages.map(stage => ({
-          ...stage,
-          tasks: stage.tasks.map(task => task.id === currentTaskToGrade ? {
-            ...task,
-            grade: response.data.grade,
-            feedback: response.data.feedback
-          } : task)
-        }));
-
-        setProjectData(prev => ({ ...prev, stages: updatedStages }));
-        
-        // Reset modal
-        setShowGradeModal(false);
-        setCurrentTaskToGrade(null);
-        setGrade('');
-        setFeedback('');
-        
-        setSuccessMessage('تم تقييم المهمة بنجاح');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error grading task:', error);
-      alert('حدث خطأ أثناء تقييم المهمة: ' + (error.response?.data?.message || error.message));
+  const handleAddStage = () => {
+    if (!newStage.title || !newStage.due_date) {
+      return alert('الرجاء إدخال عنوان المرحلة وتاريخ التسليم');
     }
-  };
-
-  const handleAddStage = async () => {
-    try {
-      const token = localStorage.getItem('access_token');
-      const groupId = localStorage.getItem('selectedGroupId');
-
-      if (!newStage.title || !newStage.due_date) {
-        return alert('الرجاء إدخال عنوان المرحلة وتاريخ التسليم');
-      }
-
-      const response = await axios.post(  
-        `http://127.0.0.1:8000/api/groups/${groupId}/stages`,
-        {
-          group_id: groupId,
-          title: newStage.title,
-          description: newStage.description || '',
-          due_date: newStage.due_date
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      if (response.data) {
-        // Add the new stage to the project data
-        setProjectData(prev => ({
-          ...prev,
-          stages: [
-            ...prev.stages,
-            {
-              id: response.data.id,
-              name: response.data.title,
-              deadline: response.data.due_date,
-              description: response.data.description,
-              tasks: []
-            }
-          ]
-        }));
-
-        // Reset the form and close modal
-        setNewStage({
-          title: '',
-          description: '',
-          due_date: ''
-        });
-        setShowAddStageModal(false);
-        setSuccessMessage('تم إضافة المرحلة بنجاح');
-        setTimeout(() => setSuccessMessage(''), 3000);
-      }
-    } catch (error) {
-      console.error('Error adding stage:', error);
-      alert('حدث خطأ أثناء إضافة المرحلة: ' + (error.response?.data?.message || error.message));
-    }
+    addStageMutation.mutate(newStage);
   };
 
   const showTaskDetails = (task) => {
@@ -734,12 +669,23 @@ const StudentProjectManagement = () => {
           <button 
             className="action-btn-management grade-btn" 
             onClick={async () => {
-              // Check grading status before showing modal
-              const gradingStatus = await checkTaskGradingStatus(task.id);
-              setCurrentTaskToGrade(task.id);
-              setGrade(gradingStatus.grade || '');
-              setFeedback(gradingStatus.feedback || '');
-              setShowGradeModal(true);
+              try {
+                const token = localStorage.getItem('access_token');
+                const gradingRes = await axios.get(
+                  `http://127.0.0.1:8000/api/tasks/${task.id}/grading-status`,
+                  { headers: { 'Authorization': `Bearer ${token}` } }
+                );
+                setCurrentTaskToGrade(task.id);
+                setGrade(gradingRes.data.grade || '');
+                setFeedback(gradingRes.data.feedback || '');
+                setShowGradeModal(true);
+              } catch (err) {
+                console.error('Error checking grading status:', err);
+                setCurrentTaskToGrade(task.id);
+                setGrade('');
+                setFeedback('');
+                setShowGradeModal(true);
+              }
             }}
           >
             <span className="action-icon">⭐</span>
@@ -777,17 +723,24 @@ const StudentProjectManagement = () => {
     );
   };
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="container-tasks">
       <ProjectHeader title="إدارة المشروع" description="جاري تحميل البيانات..." />
       <div className="loading-spinner">جاري تحميل بيانات المشروع...</div>
     </div>
   );
 
-  if (error) return (
+  if (isError) return (
     <div className="container-tasks">
       <ProjectHeader title="إدارة المشروع" description="حدث خطأ أثناء تحميل البيانات" />
-      <div className="error-message">{error}</div>
+      <div className="error-message">{error.message}</div>
+    </div>
+  );
+
+  if (!projectData) return (
+    <div className="container-tasks">
+      <ProjectHeader title="إدارة المشروع" description="لا يوجد بيانات للمشروع" />
+      <div className="error-message">لا توجد بيانات متاحة للمشروع</div>
     </div>
   );
 
@@ -810,7 +763,6 @@ const StudentProjectManagement = () => {
           </button>
         </div>
       )}
-    
 
       {successMessage && (
         <div className="success-message">
@@ -1018,8 +970,6 @@ const StudentProjectManagement = () => {
         )}
       </div>
 
-      {/* Add Stage Button for Supervisor */}
-      
       {/* Submission Modal */}
       <div className={`modal-overlay-tasks ${showModal ? 'show' : ''}`}>
         <div className="modal-content-tasks">

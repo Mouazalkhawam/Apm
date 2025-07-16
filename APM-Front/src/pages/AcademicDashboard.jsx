@@ -1,4 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useQuery, useMutation, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -16,6 +18,19 @@ import Chart from 'chart.js/auto';
 import axios from 'axios';
 import './AcademicDashboard.css';
 
+// إنشاء QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 دقائق
+      cacheTime: 15 * 60 * 1000, // 15 دقيقة
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// تهيئة axios
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000',
   timeout: 10000,
@@ -25,6 +40,7 @@ const apiClient = axios.create({
   }
 });
 
+// إضافة interceptor للتحقق من الصلاحية
 apiClient.interceptors.request.use(config => {
   const token = localStorage.getItem('access_token');
   if (token) {
@@ -46,10 +62,12 @@ apiClient.interceptors.response.use(
   }
 );
 
+// مكون Sidebar مع forwardRef
 const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
 ));
 
+// المكون الرئيسي للوحة التحكم
 const AcademicDashboard = () => {
   const sidebarRef = useRef(null);
   const overlayRef = useRef(null);
@@ -60,70 +78,52 @@ const AcademicDashboard = () => {
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
-  const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    graduationProjects: 0,
-    semesterProjects: 0,
-    pendingTasks: 0,
-    newDiscussions: 0
-  });
-  
-  const [latestProjects, setLatestProjects] = useState([]);
-  const [projectsLoading, setProjectsLoading] = useState(true);
-  const [projectsError, setProjectsError] = useState(null);
-  const [projectsProgress, setProjectsProgress] = useState([]);
-  const [chartData, setChartData] = useState(null);
 
-  const fetchCurrentMonthDiscussions = async () => {
-    try {
-      const response = await apiClient.get('/api/discussions/current-month-count');
-      if (response.data && response.data.success) {
-        return response.data.data.count;
-      }
-      throw new Error('Failed to fetch discussions count');
-    } catch (error) {
-      console.error('Error fetching discussions count:', error);
-      return 0;
+  // استعلامات React Query
+  const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: async () => {
+      const [gradResponse, semesterResponse, discussionsResponse] = await Promise.all([
+        apiClient.get('/api/projects/current-graduation'),
+        apiClient.get('/api/projects/current-semester'),
+        apiClient.get('/api/discussions/current-month-count')
+      ]);
+      
+      return {
+        graduationProjects: gradResponse.data.count || 0,
+        semesterProjects: semesterResponse.data.count || 0,
+        pendingTasks: 0, // يمكن استبدالها بطلب API حقيقي
+        newDiscussions: discussionsResponse.data.data?.count || 0
+      };
     }
-  };
+  });
 
-  const fetchLatestProjects = async () => {
-    try {
-      setProjectsLoading(true);
-      setProjectsError(null);
-      
+  const { data: latestProjects, isLoading: projectsLoading, error: projectsError, refetch: refetchProjects } = useQuery({
+    queryKey: ['latestProjects'],
+    queryFn: async () => {
       const response = await apiClient.get('/api/projects/latest');
-      
       if (!response.data || !response.data.success) {
         throw new Error('Failed to fetch latest projects');
       }
-      
-      setLatestProjects(response.data.data);
-    } catch (error) {
-      setProjectsError(error.message || 'حدث خطأ أثناء جلب أحدث المشاريع');
-      console.error('Error fetching latest projects:', error);
-    } finally {
-      setProjectsLoading(false);
+      return response.data.data;
     }
-  };
+  });
 
-  const fetchProjectsProgress = async () => {
-    try {
+  const { data: projectsProgress, isLoading: progressLoading, error: progressError } = useQuery({
+    queryKey: ['projectsProgress'],
+    queryFn: async () => {
       const response = await apiClient.get('/api/projects/current-semester-with-progress');
-      
       if (!response.data || !response.data.success) {
         throw new Error('Failed to fetch projects progress');
       }
-      
-      setProjectsProgress(response.data.data.projects);
-      prepareChartData(response.data.data.projects);
-    } catch (error) {
-      console.error('Error fetching projects progress:', error);
+      return response.data.data.projects;
     }
-  };
+  });
+
+  // إعداد بيانات الرسم البياني
+  const [chartData, setChartData] = useState(null);
 
   const prepareChartData = (projects) => {
-    // نأخذ أول 5 مشاريع للعرض في الرسم البياني
     const displayedProjects = projects.slice(0, 5);
     
     const labels = displayedProjects.map(project => project.title);
@@ -133,7 +133,7 @@ const AcademicDashboard = () => {
       } else if (activeTimeRange === 'هذا الشهر') {
         return project.progress.monthly.planned;
       } else {
-        return 100; // التقدم المخطط الكلي هو 100%
+        return 100;
       }
     });
     
@@ -154,11 +154,11 @@ const AcademicDashboard = () => {
     });
   };
 
+  // تأثيرات الرسم البياني
   useEffect(() => {
     if (chartRef.current && chartData) {
       const ctx = chartRef.current.getContext('2d');
       
-      // تدمير الرسم البياني القديم إذا كان موجوداً
       if (ctx.chart) {
         ctx.chart.destroy();
       }
@@ -217,54 +217,17 @@ const AcademicDashboard = () => {
         }
       });
       
-      // حفظ المرجع للرسم البياني الجديد
       ctx.chart = newChart;
     }
   }, [chartData]);
 
   useEffect(() => {
-    if (projectsProgress.length > 0) {
+    if (projectsProgress && projectsProgress.length > 0) {
       prepareChartData(projectsProgress);
     }
-  }, [activeTimeRange]);
+  }, [projectsProgress, activeTimeRange]);
 
-  useEffect(() => {
-    const fetchStats = async () => {
-      setLoading(true);
-      try {
-        const gradResponse = await apiClient.get('/api/projects/current-graduation');
-        const gradCount = gradResponse.data.count;
-        
-        const semesterResponse = await apiClient.get('/api/projects/current-semester');
-        const semesterCount = semesterResponse.data.count;
-        
-        const tasksCount = 0;
-        
-        const discussionsCount = await fetchCurrentMonthDiscussions();
-        
-        setStats({
-          graduationProjects: gradCount,
-          semesterProjects: semesterCount,
-          pendingTasks: tasksCount,
-          newDiscussions: discussionsCount
-        });
-        
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        if (error.response?.status === 401) {
-          localStorage.removeItem('access_token');
-          window.location.href = '/login';
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchStats();
-    fetchLatestProjects();
-    fetchProjectsProgress();
-  }, []);
-
+  // تأثيرات responsive
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 769;
@@ -279,6 +242,7 @@ const AcademicDashboard = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, [contentEffectClass]);
 
+  // دوال التحكم في القائمة الجانبية
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
   };
@@ -328,11 +292,27 @@ const AcademicDashboard = () => {
         onToggleEffect={toggleContentEffect}
         navItems={[
           { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
-          { icon: faProjectDiagram, text: "المشاريع", badge: stats.graduationProjects + stats.semesterProjects, path: "/projects" },
+          { 
+            icon: faProjectDiagram, 
+            text: "المشاريع", 
+            badge: stats ? (stats.graduationProjects + stats.semesterProjects) : 0, 
+            path: "/projects" 
+          },
           { icon: faUsers, text: "الطلاب", path:"/students" },
-          { icon: faCalendarCheck, text: "المهام", badge: stats.pendingTasks, alert: true, path: "/tasks" },
+          { 
+            icon: faCalendarCheck, 
+            text: "المهام", 
+            badge: stats?.pendingTasks || 0, 
+            alert: true, 
+            path: "/tasks" 
+          },
           { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { icon: faComments, text: "المناقشات", badge: stats.newDiscussions, path: "/discussions" }
+          { 
+            icon: faComments, 
+            text: "المناقشات", 
+            badge: stats?.newDiscussions || 0, 
+            path: "/discussions" 
+          }
         ]}
       />
       
@@ -363,10 +343,19 @@ const AcademicDashboard = () => {
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             
-            {loading ? (
+            {statsLoading || !stats ? (
               <div className="loading-stats">
                 <FontAwesomeIcon icon={faSyncAlt} spin />
                 جاري تحميل الإحصائيات...
+              </div>
+            ) : statsError ? (
+              <div className="error-message">
+                <FontAwesomeIcon icon={faExclamationTriangle} />
+                فشل في تحميل الإحصائيات
+                <button onClick={() => queryClient.refetchQueries(['dashboardStats'])} className="retry-btn">
+                  <FontAwesomeIcon icon={faSyncAlt} />
+                  إعادة المحاولة
+                </button>
               </div>
             ) : (
               <div className="stats-grid">
@@ -439,13 +428,18 @@ const AcademicDashboard = () => {
                   </select>
                 </div>
                 <div className="chart-container">
-                  {projectsProgress.length > 0 ? (
-                    <canvas id="progressChart" ref={chartRef}></canvas>
-                  ) : (
+                  {progressLoading || !projectsProgress ? (
                     <div className="chart-loading">
                       <FontAwesomeIcon icon={faSyncAlt} spin />
                       جاري تحميل بيانات التقدم...
                     </div>
+                  ) : progressError ? (
+                    <div className="chart-error">
+                      <FontAwesomeIcon icon={faExclamationTriangle} />
+                      فشل في تحميل بيانات التقدم
+                    </div>
+                  ) : (
+                    <canvas id="progressChart" ref={chartRef}></canvas>
                   )}
                 </div>
               </div>
@@ -464,9 +458,9 @@ const AcademicDashboard = () => {
                 ) : projectsError ? (
                   <div className="projects-error">
                     <FontAwesomeIcon icon={faExclamationTriangle} />
-                    {projectsError}
+                    فشل في تحميل المشاريع
                     <button 
-                      onClick={fetchLatestProjects}
+                      onClick={() => refetchProjects()}
                       className="retry-btn"
                     >
                       <FontAwesomeIcon icon={faSyncAlt} />
@@ -512,4 +506,12 @@ const AcademicDashboard = () => {
   );
 };
 
-export default AcademicDashboard;
+// تغليف التطبيق بـ QueryClientProvider
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AcademicDashboard />
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>
+);
+
+export default App;
