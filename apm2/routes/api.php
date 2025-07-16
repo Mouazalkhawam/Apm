@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Broadcast;
 use OpenAI\Laravel\Facades\OpenAI;
 use Illuminate\Support\Facades\Http;
+Route::middleware('throttle:60,1')->group(function () {
 // مسارات عامة بدون حماية
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -247,4 +248,5 @@ Route::middleware('auth:api')->group(function () {
         Route::post('/', [ProjectEvaluationController::class, 'storeEvaluation']);
         Route::post('/groups/{group}/final-grades', [ProjectEvaluationController::class, 'calculateFinalGrades']);
     });
+});
 });
