@@ -245,8 +245,17 @@ Route::middleware('auth:api')->group(function () {
     Route::get('/coordinator/proposals/pending', [ProjectProposalController::class, 'getAllProposalsExceptApproved']);
 
     Route::prefix('project-evaluations')->group(function () {
+        // حفظ التقييم الجديد
         Route::post('/', [ProjectEvaluationController::class, 'storeEvaluation']);
-        Route::post('/groups/{group}/final-grades', [ProjectEvaluationController::class, 'calculateFinalGrades']);
+        
+        // الحصول على تقييمات مجموعة معينة
+        Route::get('/groups/{groupId}/evaluations', [ProjectEvaluationController::class, 'getGroupEvaluations']);
+        
+        // الحصول على العلامات النهائية للمجموعة وطلابها
+        Route::get('/groups/{groupId}/final-grades', [ProjectEvaluationController::class, 'getFinalGrades']);
+        
+        // تحديث جميع العلامات الفردية للطلاب في المجموعة
+        Route::put('/groups/{groupId}/update-grades', [ProjectEvaluationController::class, 'updateFinalGrades']);
     });
 });
 });
