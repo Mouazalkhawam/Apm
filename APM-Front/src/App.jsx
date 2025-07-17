@@ -32,6 +32,8 @@ import HonorboardCoordinator from './pages/HonorboardCoordinator';
 import ProposalsCoordinator from './pages/ProposalsCoordinator';
 import ResourcesLibraryCoordinator from './pages/ResourcesLibraryCoordinator';
 import StudentSuperCoordinator from './pages/StudentSuperCoordinator';
+import EvaluationCoordinator from './pages/EvaluationCoordinator';
+import ReportCoordinator from './pages/ReportCoordinator';
 
 function App() {
   return (
@@ -265,6 +267,23 @@ function App() {
                             </ProtectedRoute>
                           } 
                />
+                  <Route 
+                 path="/evaluation-coordinator" 
+                 element={
+                  <ProtectedRoute>
+                    <EvaluationCoordinator />
+                            </ProtectedRoute>
+                          } 
+               />
+                 <Route 
+                 path="/report-coordinator" 
+                 element={
+                  <ProtectedRoute>
+                    <ReportCoordinator />
+                            </ProtectedRoute>
+                          } 
+               />
+
             <Route path="/" element={<Navigate to="/login" />} />
           </Routes>
     

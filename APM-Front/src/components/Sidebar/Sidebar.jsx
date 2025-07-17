@@ -3,8 +3,8 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faGraduationCap, faChevronRight, faChevronLeft, 
   faTachometerAlt, faProjectDiagram, faUsers, faCalendarCheck,
-  faFileAlt, faComments, faCog, faSignOutAlt,
-  faUserPlus, faChalkboardTeacher, faTrophy
+  faFileAlt, faComments, faCog, faSignOutAlt,faLightbulb,faClipboardCheck,faBook,
+  faUserPlus, faChalkboardTeacher, faTrophy,faCalendarAlt
 } from '@fortawesome/free-solid-svg-icons';
 import "./Sidebar.css";
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -124,15 +124,17 @@ const Sidebar = React.forwardRef(({
     } else if (userData?.role === 'coordinator') {
       setNavItems([
         { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
-        { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
-        { icon: faComments, text: " المقترحات الجديدة", path: "/proposals-coordinator" },
+        { icon: faProjectDiagram, text: "المشاريع", path: "/coordinator-project" },
+        { icon: faLightbulb, text: " المقترحات الجديدة", path: "/proposals-coordinator" },
         { icon: faUsers, text: "الطلاب", path: "/students" },
         { icon: faUserPlus, text: "إضافة مشرف", path: "/add-supervisor" },
         { icon: faUsers, text: "المشرفون", path: "/Supervisor-Management-Coordinator" },
-        { icon: faChalkboardTeacher, text: "إدارة الفصول", path: "/academic-periods" },
+        { icon: faCalendarAlt, text: "إدارة الفصول", path: "/academic-periods" },
         { icon: faTrophy, text: "لوحة الشرف", path: "/honorboard-coordinator" },
         { icon: faComments, text: "المناقشات",  path: "/discussions-coordinator" },
-        { icon: faComments, text: "إدارة مكتبة الموارد", path: "/resources-librar-coordinator" }
+        { icon: faClipboardCheck, text: "التقييم",  path: "/evaluation-coordinator" },
+        { icon: faBook, text: "إدارة مكتبة الموارد", path: "/resources-librar-coordinator" },
+        { icon: faBook, text: "تقارير الرضا  ", path: "/report-coordinator" }
       ]);
     }
   }, [userData]);
