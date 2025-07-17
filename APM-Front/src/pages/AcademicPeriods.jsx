@@ -21,29 +21,43 @@ const AcademicPeriods = () => {
     image: '',
     role: ''
   });
+  const [academicPeriods, setAcademicPeriods] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // جلب بيانات المستخدم
+  // Fetch user data and academic periods
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchData = async () => {
       try {
         const token = localStorage.getItem('access_token');
-        const response = await axios.get('http://localhost:8000/api/user', {
+        
+        // Fetch user data
+        const userResponse = await axios.get('http://localhost:8000/api/user', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
-        const userData = response.data;
+        const userData = userResponse.data;
         setUserInfo({
           name: userData.name,
           image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg',
           role: userData.role
         });
+
+        // Fetch academic periods
+        const periodsResponse = await axios.get('http://localhost:8000/api/academic-periods', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        setAcademicPeriods(periodsResponse.data.data);
+        setLoading(false);
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching data:', error);
+        setLoading(false);
       }
     };
 
-    fetchUserData();
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -53,8 +67,8 @@ const AcademicPeriods = () => {
         longhand: ["الأحد", "الإثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"]
       },
       months: {
-        shorthand: ["محرم", "صفر", "ربيع أول", "ربيع ثاني", "جمادى أول", "جمادى ثاني", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"],
-        longhand: ["محرم", "صفر", "ربيع الأول", "ربيع الثاني", "جمادى الأولى", "جمادى الآخرة", "رجب", "شعبان", "رمضان", "شوال", "ذو القعدة", "ذو الحجة"]
+        shorthand: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"],
+        longhand: ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"]
       },
       firstDayOfWeek: 6
     };
@@ -63,7 +77,6 @@ const AcademicPeriods = () => {
     const config = {
       locale: arabicLocale,
       dateFormat: "Y-m-d",
-      hijri: true,
       allowInput: true
     };
 
@@ -100,55 +113,95 @@ const AcademicPeriods = () => {
       }));
     }
   };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('access_token');
     const api = axios.create({
       baseURL: 'http://localhost:8000/api',
       headers: {
-        Authorization: `Bearer ${token}`
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     });
-
+  
     const periods = [
       {
-        name: 'first_semester',
+        name: 'الفصل الأول ' + new Date().getFullYear(),
         type: 'first_semester',
         start_date: formData.firstTerm.start,
         end_date: formData.firstTerm.end
       },
       {
-        name: 'second_semester',
+        name: 'الفصل الثاني ' + new Date().getFullYear(),
         type: 'second_semester',
         start_date: formData.secondTerm.start,
         end_date: formData.secondTerm.end
       }
     ];
-
+  
     if (formData.summerTerm.start && formData.summerTerm.end) {
       periods.push({
-        name: 'summer',
+        name: 'الفصل الصيفي ' + new Date().getFullYear(),
         type: 'summer',
         start_date: formData.summerTerm.start,
         end_date: formData.summerTerm.end
       });
     }
-
+  
     try {
-      await Promise.all(periods.map(p => api.post('/academic-periods', p)));
-
+      // إرسال البيانات مع التعامل مع الأخطاء المفصلة
+      const responses = await Promise.all(
+        periods.map(p => api.post('/academic-periods', p).catch(error => {
+          // إذا كان هناك خطأ، نعيده كقيمة مرفوضة مع التفاصيل
+          return Promise.reject({
+            period: p,
+            error: error.response?.data || error.message
+          });
+        }))
+      );
+  
+      // إذا نجحت جميع الطلبات
+      const response = await api.get('/academic-periods');
+      setAcademicPeriods(response.data.data);
+  
       setShowSuccess(true);
       setShowPreview(true);
       setTimeout(() => {
         setShowSuccess(false);
       }, 3000);
     } catch (error) {
-      console.error(error);
-      alert(error.response?.data?.message || 'حدث خطأ أثناء الحفظ');
+      console.error('تفاصيل الخطأ:', error);
+      
+      let errorMessage = 'حدث خطأ أثناء الحفظ';
+      
+      if (error.period && error.error) {
+        // خطأ مفصل لطلب معين
+        const periodName = error.period.type === 'first_semester' ? 'الفصل الأول' :
+                          error.period.type === 'second_semester' ? 'الفصل الثاني' : 'الفصل الصيفي';
+        
+        errorMessage = `خطأ في ${periodName}: `;
+        
+        if (error.error.errors) {
+          // أخطاء التحقق من الصحة من Laravel
+          Object.entries(error.error.errors).forEach(([field, messages]) => {
+            errorMessage += `${messages.join(', ')} `;
+          });
+        } else if (error.error.message) {
+          errorMessage += error.error.message;
+        }
+      } else if (error.response?.data?.errors) {
+        // أخطاء التحقق من الصحة
+        Object.entries(error.response.data.errors).forEach(([field, messages]) => {
+          errorMessage += `${field}: ${messages.join(', ')} `;
+        });
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+  
+      alert(errorMessage);
     }
   };
-
   const handleReset = () => {
     setFormData({
       academicYear: '',
@@ -158,18 +211,33 @@ const AcademicPeriods = () => {
     });
   };
 
-  const formatHijriDate = (dateString) => {
-    if (!dateString) return '';
+  const formatGregorianDate = (dateString) => {
+    if (!dateString) return 'غير محدد';
+    
     const date = new Date(dateString);
-    const options = { year: 'numeric', month: 'long', day: 'numeric', calendar: 'islamic' };
-    return new Intl.DateTimeFormat('ar-SA-u-ca-islamic', options).format(date);
+    const options = { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric', 
+      weekday: 'long'
+    };
+    
+    const formattedDate = new Intl.DateTimeFormat('ar-EG', options).format(date);
+    return formattedDate.replace(/،/g, '، ');
   };
 
   const calculateDays = (startDate, endDate) => {
     if (!startDate || !endDate) return 0;
     const start = new Date(startDate);
     const end = new Date(endDate);
-    return Math.ceil((end - start) / (1000 * 60 * 60 * 24)) + 1;
+    const diffTime = Math.abs(end - start);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  };
+
+  const getCurrentAcademicYear = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    return `${year}/${year + 1}`;
   };
 
   return (
@@ -196,8 +264,8 @@ const AcademicPeriods = () => {
                       <span className="term-badge">أساسي</span>
                     </div>
 
-                    <div className="grid grid-cols-2">
-                      <div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="date-input-group">
                         <label htmlFor="firstTermStart">تاريخ البداية</label>
                         <input
                           type="text"
@@ -210,7 +278,7 @@ const AcademicPeriods = () => {
                           required
                         />
                       </div>
-                      <div>
+                      <div className="date-input-group">
                         <label htmlFor="firstTermEnd">تاريخ النهاية</label>
                         <input
                           type="text"
@@ -235,8 +303,8 @@ const AcademicPeriods = () => {
                       <span className="term-badge">أساسي</span>
                     </div>
 
-                    <div className="grid grid-cols-2">
-                      <div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="date-input-group">
                         <label htmlFor="secondTermStart">تاريخ البداية</label>
                         <input
                           type="text"
@@ -249,7 +317,7 @@ const AcademicPeriods = () => {
                           required
                         />
                       </div>
-                      <div>
+                      <div className="date-input-group">
                         <label htmlFor="secondTermEnd">تاريخ النهاية</label>
                         <input
                           type="text"
@@ -271,11 +339,11 @@ const AcademicPeriods = () => {
                       <h3 className="term-title">
                         <i className="fas fa-sun"></i> الفصل الصيفي
                       </h3>
-                      <span className="term-badge">أساسي</span>
+                      <span className="term-badge">اختياري</span>
                     </div>
 
-                    <div id="summerTermFields" className="grid grid-cols-2">
-                      <div>
+                    <div id="summerTermFields" className="grid grid-cols-2 gap-4">
+                      <div className="date-input-group">
                         <label htmlFor="summerTermStart">تاريخ البداية</label>
                         <input
                           type="text"
@@ -287,7 +355,7 @@ const AcademicPeriods = () => {
                           onChange={handleInputChange}
                         />
                       </div>
-                      <div>
+                      <div className="date-input-group">
                         <label htmlFor="summerTermEnd">تاريخ النهاية</label>
                         <input
                           type="text"
@@ -318,19 +386,68 @@ const AcademicPeriods = () => {
                     </button>
                   </div>
                 </form>
+
+                {/* Display existing academic periods */}
+                <div className="existing-periods">
+                  <h3 className="existing-periods-title">الفصول الأكاديمية الحالية</h3>
+                  {loading ? (
+                    <p>جاري تحميل البيانات...</p>
+                  ) : (
+                    <div className="table-container">
+                      <table className="academic-calendar-table">
+                        <thead>
+                          <tr>
+                            <th>اسم الفصل</th>
+                            <th>النوع</th>
+                            <th>تاريخ البداية</th>
+                            <th>تاريخ النهاية</th>
+                            <th>الحالة</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {academicPeriods.map(period => (
+                            <tr key={period.id}>
+                              <td>{period.name}</td>
+                              <td>
+                                {period.type === 'first_semester' && 'الفصل الأول'}
+                                {period.type === 'second_semester' && 'الفصل الثاني'}
+                                {period.type === 'summer' && 'الفصل الصيفي'}
+                              </td>
+                              <td>{formatGregorianDate(period.start_date)}</td>
+                              <td>{formatGregorianDate(period.end_date)}</td>
+                              <td>
+                                {period.is_current ? (
+                                  <span className="current-badge">حالي</span>
+                                ) : (
+                                  <span className="not-current-badge">غير حالي</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div id="calendarPreview" className="preview-container">
                 <div className="preview-header">
                   <h2>عرض التقويم الأكاديمي</h2>
+                  <button 
+                    className="print-btn"
+                    onClick={() => window.print()}
+                  >
+                    <i className="fas fa-print"></i> طباعة التقويم
+                  </button>
                 </div>
                 <div className="preview-content">
                   <h3 id="previewYear" className="preview-title">
-                    العام الجامعي: {formData.academicYear}
+                    العام الأكاديمي: {getCurrentAcademicYear()}
                   </h3>
 
                   <div className="table-container">
-                    <table>
+                    <table className="academic-calendar-table">
                       <thead>
                         <tr>
                           <th>الفصل الدراسي</th>
@@ -341,22 +458,22 @@ const AcademicPeriods = () => {
                       </thead>
                       <tbody id="previewContent">
                         <tr>
-                          <td>الفصل الأول</td>
-                          <td>{formatHijriDate(formData.firstTerm.start)}</td>
-                          <td>{formatHijriDate(formData.firstTerm.end)}</td>
+                          <td>الفصل الدراسي الأول</td>
+                          <td>{formatGregorianDate(formData.firstTerm.start)}</td>
+                          <td>{formatGregorianDate(formData.firstTerm.end)}</td>
                           <td>{calculateDays(formData.firstTerm.start, formData.firstTerm.end)} يوم</td>
                         </tr>
                         <tr>
-                          <td>الفصل الثاني</td>
-                          <td>{formatHijriDate(formData.secondTerm.start)}</td>
-                          <td>{formatHijriDate(formData.secondTerm.end)}</td>
+                          <td>الفصل الدراسي الثاني</td>
+                          <td>{formatGregorianDate(formData.secondTerm.start)}</td>
+                          <td>{formatGregorianDate(formData.secondTerm.end)}</td>
                           <td>{calculateDays(formData.secondTerm.start, formData.secondTerm.end)} يوم</td>
                         </tr>
                         {formData.summerTerm.start && (
                           <tr>
                             <td>الفصل الصيفي</td>
-                            <td>{formatHijriDate(formData.summerTerm.start)}</td>
-                            <td>{formatHijriDate(formData.summerTerm.end)}</td>
+                            <td>{formatGregorianDate(formData.summerTerm.start)}</td>
+                            <td>{formatGregorianDate(formData.summerTerm.end)}</td>
                             <td>{calculateDays(formData.summerTerm.start, formData.summerTerm.end)} يوم</td>
                           </tr>
                         )}
@@ -364,13 +481,28 @@ const AcademicPeriods = () => {
                     </table>
                   </div>
 
-                  <button
-                    id="backToForm"
-                    className="btn btn-back"
-                    onClick={() => setShowPreview(false)}
-                  >
-                    <i className="fas fa-edit"></i> تعديل التواريخ
-                  </button>
+                  <div className="preview-summary">
+                    <h4>ملخص العام الأكاديمي:</h4>
+                    <ul>
+                      <li>عدد الفصول: {formData.summerTerm.start ? '3' : '2'}</li>
+                      <li>إجمالي أيام الدراسة: {
+                        calculateDays(formData.firstTerm.start, formData.firstTerm.end) +
+                        calculateDays(formData.secondTerm.start, formData.secondTerm.end) +
+                        (formData.summerTerm.start ? calculateDays(formData.summerTerm.start, formData.summerTerm.end) : 0)
+                      } يوم</li>
+                      <li>تاريخ الإنشاء: {formatGregorianDate(new Date().toISOString())}</li>
+                    </ul>
+                  </div>
+
+                  <div className="preview-actions">
+                    <button
+                      id="backToForm"
+                      className="btn btn-back"
+                      onClick={() => setShowPreview(false)}
+                    >
+                      <i className="fas fa-edit"></i> تعديل التواريخ
+                    </button>
+                  </div>
                 </div>
               </div>
             )}

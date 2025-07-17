@@ -192,6 +192,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/evaluations', [EvaluationController::class, 'store']);
     Route::get('/evaluations', [EvaluationController::class, 'index']);
     Route::get('/evaluation-criteria', [EvaluationController::class, 'getCriteria']);
+    Route::get('/evaluations/coordinator-report', [EvaluationController::class, 'generateCoordinatorSatisfactionReport']);
 
     Route::get('/supervisor/projects', [ProjectController::class, 'getSupervisorProjects']);
     Route::get('/supervisors/students-names', [ProjectController::class, 'getSupervisorsWithStudentsNames']);
