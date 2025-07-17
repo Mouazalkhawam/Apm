@@ -219,17 +219,7 @@ const CoordinatorsProject = () => {
                   role: "مستخدم",
                   image: userInfo.image
                 }}
-                collapsed={sidebarCollapsed}
-                onToggleCollapse={toggleSidebar}
-                onToggleEffect={toggleContentEffect}
-                navItems={[
-                  { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
-                  { icon: faProjectDiagram, text: "المشاريع", active: true, badge: activeProjectsCount, path: "/projects" },
-                  { icon: faUsers, text: "الطلاب", path:"/students" },
-                  { icon: faCalendarCheck, text: "المهام", badge: pendingTasksCount, alert: true, path: "/tasks" },
-                  { icon: faFileAlt, text: "التقارير", path: "/reports" },
-                  { icon: faComments, text: "جدولة الاجتماعات", badge: 3, path: "/meetings" }
-                ]}
+        
             />
             
             <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>

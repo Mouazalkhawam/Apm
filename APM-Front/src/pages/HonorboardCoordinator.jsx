@@ -9,7 +9,7 @@ import {
 import axios from 'axios';
 
 // Set base URL for API requests
-const API_BASE_URL = 'http://localhost:8000'; // تأكد أن هذا مطابق لمسار Laravel
+const API_BASE_URL = 'http://localhost:8000';
 
 const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
@@ -25,6 +25,11 @@ const HonorboardCoordinator = () => {
     projectNote: '',
     projectId: ''
   });
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    image: '',
+    role: ''
+  });
   const sidebarRef = useRef(null);
 
   // Get auth token consistently
@@ -32,6 +37,31 @@ const HonorboardCoordinator = () => {
     return localStorage.getItem('access_token');
   };
 
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = getAuthToken();
+        const response = await axios.get(`${API_BASE_URL}/api/user`, {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const userData = response.data;
+        setUserInfo({
+          name: userData.name,
+          image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg',
+          role: userData.role
+        });
+      } catch (err) {
+        console.error('Error fetching user data:', err);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
+  // Fetch projects data
   useEffect(() => {
     const fetchAvailableProjects = async () => {
       try {
@@ -137,7 +167,7 @@ const HonorboardCoordinator = () => {
     try {
       const token = getAuthToken();
       const response = await axios.post(
-        `${API_BASE_URL}/api/honor-board`, // استخدام المسار الكامل مع API_BASE_URL
+        `${API_BASE_URL}/api/honor-board`,
         {
           project_id: parseInt(projectId),
           notes: projectNote
@@ -189,7 +219,7 @@ const HonorboardCoordinator = () => {
     try {
       const token = getAuthToken();
       const response = await axios.delete(
-        `${API_BASE_URL}/api/honor-board/${id}`, // استخدام المسار الكامل مع API_BASE_URL
+        `${API_BASE_URL}/api/honor-board/${id}`,
         {
           headers: {
             Authorization: `Bearer ${token}`
@@ -208,11 +238,23 @@ const HonorboardCoordinator = () => {
   };
 
   return (
-      <div className="dashboard-container-dash-sup">
-      <Sidebar />
+    <div className="dashboard-container-dash-sup">
+      <SidebarWithRef 
+        ref={sidebarRef}
+        user={{
+          name: userInfo.name || "مستخدم",
+          role: userInfo.role || "مستخدم",
+          image: userInfo.image
+        }}
+      />
       <div className="main-container">
-                <div className='supervisor-dashboard'>
-        <TopNav />
+        <div className='supervisor-dashboard'>
+          <TopNav 
+            user={{
+              name: userInfo.name || "مستخدم",
+              image: userInfo.image
+            }}
+          />
 
           <div className="container-honor">
             <div className="dashboard-honor">

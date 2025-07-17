@@ -16,6 +16,35 @@ const AcademicPeriods = () => {
   });
   const [showSuccess, setShowSuccess] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    image: '',
+    role: ''
+  });
+
+  // جلب بيانات المستخدم
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get('http://localhost:8000/api/user', {
+          headers: {
+            Authorization: `Bearer ${token}`
+          }
+        });
+        const userData = response.data;
+        setUserInfo({
+          name: userData.name,
+          image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg',
+          role: userData.role
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   useEffect(() => {
     const arabicLocale = {
@@ -144,209 +173,210 @@ const AcademicPeriods = () => {
   };
 
   return (
-       <div className="dashboard-container-dash-sup">
-      <Sidebar />
+    <div className="dashboard-container-dash-sup">
+      <Sidebar user={userInfo} />
       <div className="main-container">
-                <div className='supervisor-dashboard'>
-        <TopNav />
-    <div className="containerr">
-      {!showPreview ? (
-        <div className="form-containerr">
-          <div className="form-header">
-            <h2>إعداد التقويم الأكاديمي</h2>
-          </div>
-
-          <form id="academicCalendarForm" className="form-content" onSubmit={handleSubmit}>
-      {/* الفصل الدراسي الأول */}
-            <div id="firstTermSection" className="term-section first-term">
-              <div className="term-header">
-                <h3 className="term-title">
-                  <i className="fas fa-book-open"></i> الفصل الدراسي الأول
-                </h3>
-                <span className="term-badge">أساسي</span>
-              </div>
-
-              <div className="grid grid-cols-2">
-                <div>
-                  <label htmlFor="firstTermStart">تاريخ البداية</label>
-                  <input
-                    type="text"
-                    id="firstTermStart"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="firstTerm.start"
-                    value={formData.firstTerm.start}
-                    onChange={handleInputChange}
-                    required
-                  />
+        <div className='supervisor-dashboard'>
+          <TopNav user={userInfo} />
+          
+          <div className="containerr">
+            {!showPreview ? (
+              <div className="form-containerr">
+                <div className="form-header">
+                  <h2>إعداد التقويم الأكاديمي</h2>
                 </div>
-                <div>
-                  <label htmlFor="firstTermEnd">تاريخ النهاية</label>
-                  <input
-                    type="text"
-                    id="firstTermEnd"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="firstTerm.end"
-                    value={formData.firstTerm.end}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
 
-            {/* الفصل الدراسي الثاني */}
-            <div id="secondTermSection" className="term-section second-term">
-              <div className="term-header">
-                <h3 className="term-title">
-                  <i className="fas fa-book"></i> الفصل الدراسي الثاني
-                </h3>
-                <span className="term-badge">أساسي</span>
-              </div>
+                <form id="academicCalendarForm" className="form-content" onSubmit={handleSubmit}>
+                  {/* الفصل الدراسي الأول */}
+                  <div id="firstTermSection" className="term-section first-term">
+                    <div className="term-header">
+                      <h3 className="term-title">
+                        <i className="fas fa-book-open"></i> الفصل الدراسي الأول
+                      </h3>
+                      <span className="term-badge">أساسي</span>
+                    </div>
 
-              <div className="grid grid-cols-2">
-                <div>
-                  <label htmlFor="secondTermStart">تاريخ البداية</label>
-                  <input
-                    type="text"
-                    id="secondTermStart"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="secondTerm.start"
-                    value={formData.secondTerm.start}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="secondTermEnd">تاريخ النهاية</label>
-                  <input
-                    type="text"
-                    id="secondTermEnd"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="secondTerm.end"
-                    value={formData.secondTerm.end}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+                    <div className="grid grid-cols-2">
+                      <div>
+                        <label htmlFor="firstTermStart">تاريخ البداية</label>
+                        <input
+                          type="text"
+                          id="firstTermStart"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="firstTerm.start"
+                          value={formData.firstTerm.start}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="firstTermEnd">تاريخ النهاية</label>
+                        <input
+                          type="text"
+                          id="firstTermEnd"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="firstTerm.end"
+                          value={formData.firstTerm.end}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-            {/* الفصل الصيفي */}
-            <div id="summerTermSection" className="term-section summer-term">
-              <div className="term-header">
-                <h3 className="term-title">
-                  <i className="fas fa-sun"></i> الفصل الصيفي
-                </h3>
-                <span className="term-badge">أساسي</span>
-              </div>
+                  {/* الفصل الدراسي الثاني */}
+                  <div id="secondTermSection" className="term-section second-term">
+                    <div className="term-header">
+                      <h3 className="term-title">
+                        <i className="fas fa-book"></i> الفصل الدراسي الثاني
+                      </h3>
+                      <span className="term-badge">أساسي</span>
+                    </div>
 
-              <div id="summerTermFields" className="grid grid-cols-2">
-                <div>
-                  <label htmlFor="summerTermStart">تاريخ البداية</label>
-                  <input
-                    type="text"
-                    id="summerTermStart"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="summerTerm.start"
-                    value={formData.summerTerm.start}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label htmlFor="summerTermEnd">تاريخ النهاية</label>
-                  <input
-                    type="text"
-                    id="summerTermEnd"
-                    className="flatpickr-input"
-                    placeholder="اختر التاريخ"
-                    name="summerTerm.end"
-                    value={formData.summerTerm.end}
-                    onChange={handleInputChange}
-                  />
-                </div>
-              </div>
-            </div>
+                    <div className="grid grid-cols-2">
+                      <div>
+                        <label htmlFor="secondTermStart">تاريخ البداية</label>
+                        <input
+                          type="text"
+                          id="secondTermStart"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="secondTerm.start"
+                          value={formData.secondTerm.start}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="secondTermEnd">تاريخ النهاية</label>
+                        <input
+                          type="text"
+                          id="secondTermEnd"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="secondTerm.end"
+                          value={formData.secondTerm.end}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+                  </div>
 
-            {showSuccess && (
-              <div id="successMessage" className="message success-message">
-                <strong>تم الحفظ بنجاح!</strong>
-                <span>تم حفظ التواريخ بنجاح في النظام.</span>
+                  {/* الفصل الصيفي */}
+                  <div id="summerTermSection" className="term-section summer-term">
+                    <div className="term-header">
+                      <h3 className="term-title">
+                        <i className="fas fa-sun"></i> الفصل الصيفي
+                      </h3>
+                      <span className="term-badge">أساسي</span>
+                    </div>
+
+                    <div id="summerTermFields" className="grid grid-cols-2">
+                      <div>
+                        <label htmlFor="summerTermStart">تاريخ البداية</label>
+                        <input
+                          type="text"
+                          id="summerTermStart"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="summerTerm.start"
+                          value={formData.summerTerm.start}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="summerTermEnd">تاريخ النهاية</label>
+                        <input
+                          type="text"
+                          id="summerTermEnd"
+                          className="flatpickr-input"
+                          placeholder="اختر التاريخ"
+                          name="summerTerm.end"
+                          value={formData.summerTerm.end}
+                          onChange={handleInputChange}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {showSuccess && (
+                    <div id="successMessage" className="message success-message">
+                      <strong>تم الحفظ بنجاح!</strong>
+                      <span>تم حفظ التواريخ بنجاح في النظام.</span>
+                    </div>
+                  )}
+
+                  <div className="btn-container">
+                    <button type="button" className="btn btn-reset" onClick={handleReset}>
+                      <i className="fas fa-undo"></i> إعادة تعيين
+                    </button>
+                    <button type="submit" className="btn btn-submit">
+                      <i className="fas fa-save"></i> حفظ التقويم
+                    </button>
+                  </div>
+                </form>
+              </div>
+            ) : (
+              <div id="calendarPreview" className="preview-container">
+                <div className="preview-header">
+                  <h2>عرض التقويم الأكاديمي</h2>
+                </div>
+                <div className="preview-content">
+                  <h3 id="previewYear" className="preview-title">
+                    العام الجامعي: {formData.academicYear}
+                  </h3>
+
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>الفصل الدراسي</th>
+                          <th>تاريخ البداية</th>
+                          <th>تاريخ النهاية</th>
+                          <th>المدة (أيام)</th>
+                        </tr>
+                      </thead>
+                      <tbody id="previewContent">
+                        <tr>
+                          <td>الفصل الأول</td>
+                          <td>{formatHijriDate(formData.firstTerm.start)}</td>
+                          <td>{formatHijriDate(formData.firstTerm.end)}</td>
+                          <td>{calculateDays(formData.firstTerm.start, formData.firstTerm.end)} يوم</td>
+                        </tr>
+                        <tr>
+                          <td>الفصل الثاني</td>
+                          <td>{formatHijriDate(formData.secondTerm.start)}</td>
+                          <td>{formatHijriDate(formData.secondTerm.end)}</td>
+                          <td>{calculateDays(formData.secondTerm.start, formData.secondTerm.end)} يوم</td>
+                        </tr>
+                        {formData.summerTerm.start && (
+                          <tr>
+                            <td>الفصل الصيفي</td>
+                            <td>{formatHijriDate(formData.summerTerm.start)}</td>
+                            <td>{formatHijriDate(formData.summerTerm.end)}</td>
+                            <td>{calculateDays(formData.summerTerm.start, formData.summerTerm.end)} يوم</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <button
+                    id="backToForm"
+                    className="btn btn-back"
+                    onClick={() => setShowPreview(false)}
+                  >
+                    <i className="fas fa-edit"></i> تعديل التواريخ
+                  </button>
+                </div>
               </div>
             )}
-
-            <div className="btn-container">
-              <button type="button" className="btn btn-reset" onClick={handleReset}>
-                <i className="fas fa-undo"></i> إعادة تعيين
-              </button>
-              <button type="submit" className="btn btn-submit">
-                <i className="fas fa-save"></i> حفظ التقويم
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : (
-        <div id="calendarPreview" className="preview-container">
-          <div className="preview-header">
-            <h2>عرض التقويم الأكاديمي</h2>
-          </div>
-          <div className="preview-content">
-            <h3 id="previewYear" className="preview-title">
-              العام الجامعي: {formData.academicYear}
-            </h3>
-
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>الفصل الدراسي</th>
-                    <th>تاريخ البداية</th>
-                    <th>تاريخ النهاية</th>
-                    <th>المدة (أيام)</th>
-                  </tr>
-                </thead>
-                <tbody id="previewContent">
-                  <tr>
-                    <td>الفصل الأول</td>
-                    <td>{formatHijriDate(formData.firstTerm.start)}</td>
-                    <td>{formatHijriDate(formData.firstTerm.end)}</td>
-                    <td>{calculateDays(formData.firstTerm.start, formData.firstTerm.end)} يوم</td>
-                  </tr>
-                  <tr>
-                    <td>الفصل الثاني</td>
-                    <td>{formatHijriDate(formData.secondTerm.start)}</td>
-                    <td>{formatHijriDate(formData.secondTerm.end)}</td>
-                    <td>{calculateDays(formData.secondTerm.start, formData.secondTerm.end)} يوم</td>
-                  </tr>
-                  {formData.summerTerm.start && (
-                    <tr>
-                      <td>الفصل الصيفي</td>
-                      <td>{formatHijriDate(formData.summerTerm.start)}</td>
-                      <td>{formatHijriDate(formData.summerTerm.end)}</td>
-                      <td>{calculateDays(formData.summerTerm.start, formData.summerTerm.end)} يوم</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <button
-              id="backToForm"
-              className="btn btn-back"
-              onClick={() => setShowPreview(false)}
-            >
-              <i className="fas fa-edit"></i> تعديل التواريخ
-            </button>
           </div>
         </div>
-      )}
-    </div>
-    </div>
-    </div>
+      </div>
     </div>
   );
 };

@@ -78,7 +78,10 @@ const AcademicDashboard = () => {
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [activeTimeRange, setActiveTimeRange] = useState('هذا الأسبوع');
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
-
+ const [userInfo, setUserInfo] = useState({
+        name: '',
+        image: ''
+    });
   // استعلامات React Query
   const { data: stats, isLoading: statsLoading, error: statsError } = useQuery({
     queryKey: ['dashboardStats'],
@@ -277,54 +280,42 @@ const AcademicDashboard = () => {
     
     return statusMap[status] || status;
   };
+useEffect(() => {
+    const fetchUserData = async () => {
+        try {
+            const response = await apiClient.get('/api/user');
+            setUserInfo({
+                name: response.data.name,
+                image: response.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+            });
+        } catch (error) {
+            console.error('Failed to fetch user data:', error);
+        }
+    };
 
+    fetchUserData();
+}, []);
   return (
     <div className="dashboard-container-dash">
-      <SidebarWithRef 
-        ref={sidebarRef}
-        user={{
-          name: "د.عفاف",
-          role: "منسق المشاريع",
-          image: "https://randomuser.me/api/portraits/women/44.jpg"
-        }}
-        collapsed={sidebarCollapsed}
-        onToggleCollapse={toggleSidebar}
-        onToggleEffect={toggleContentEffect}
-        navItems={[
-          { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
-          { 
-            icon: faProjectDiagram, 
-            text: "المشاريع", 
-            badge: stats ? (stats.graduationProjects + stats.semesterProjects) : 0, 
-            path: "/projects" 
-          },
-          { icon: faUsers, text: "الطلاب", path:"/students" },
-          { 
-            icon: faCalendarCheck, 
-            text: "المهام", 
-            badge: stats?.pendingTasks || 0, 
-            alert: true, 
-            path: "/tasks" 
-          },
-          { icon: faFileAlt, text: "التقارير", path: "/reports" },
-          { 
-            icon: faComments, 
-            text: "المناقشات", 
-            badge: stats?.newDiscussions || 0, 
-            path: "/discussions" 
-          }
-        ]}
-      />
+        <SidebarWithRef 
+                ref={sidebarRef}
+                user={{
+                  name: userInfo.name || "مستخدم",
+                  role: "مستخدم",
+                  image: userInfo.image
+                }}
+        
+            />
       
       <div id="overlay" className="overlay" ref={overlayRef} onClick={closeMobileSidebar}></div>
       
       <div className={`main-content-cord-dash ${!isMobile ? contentEffectClass : ''}`} ref={mainContentRef}>
         <div className='nav-top-dash'>
           <TopNav 
-            user={{
-              name: "د.عفاف",
-              image: "https://randomuser.me/api/portraits/women/44.jpg"
-            }}
+             user={{
+                            name: userInfo.name || "مستخدم",
+                            image: userInfo.image
+                        }}
             notifications={{
               bell: 3,
               envelope: 7

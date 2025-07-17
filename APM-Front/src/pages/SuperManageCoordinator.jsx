@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import './SuperManageCoordinator.css';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUser } from '@fortawesome/free-solid-svg-icons';
@@ -42,6 +42,31 @@ apiClient.interceptors.request.use(config => {
 
 // المكون الرئيسي
 const SuperManageCoordinator = () => {
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    image: '',
+    role: ''
+  });
+
+  // جلب بيانات المستخدم
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await apiClient.get('/api/user');
+        const userData = response.data;
+        setUserInfo({
+          name: userData.name,
+          image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg',
+          role: userData.role
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
+
   const { data: supervisors, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['supervisorsWithStudents'],
     queryFn: async () => {
@@ -59,10 +84,10 @@ const SuperManageCoordinator = () => {
 
   return (
     <div className="dashboard-container-dash-sup">
-      <Sidebar />
+      <Sidebar user={userInfo} />
       <div className="main-container">
         <div className='supervisor-dashboard'>
-          <TopNav />
+          <TopNav user={userInfo} />
 
           <section className="supervisors-section">
             <div className="form-title">

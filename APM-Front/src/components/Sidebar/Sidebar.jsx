@@ -7,7 +7,7 @@ import {
   faUserPlus, faChalkboardTeacher, faTrophy
 } from '@fortawesome/free-solid-svg-icons';
 import "./Sidebar.css";
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
 const Sidebar = React.forwardRef(({ 
@@ -23,6 +23,7 @@ const Sidebar = React.forwardRef(({
   }, ref) => {
   
   const navigate = useNavigate();
+  const location = useLocation();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -65,7 +66,7 @@ const Sidebar = React.forwardRef(({
         // تحديد عناصر القائمة بناءً على الدور
         if (userData.role === 'supervisor') {
           setNavItems([
-            { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/supervisors-dashboard" },
+            { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
             { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
             { icon: faUsers, text: "الطلاب", path: "/students" },
             { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
@@ -74,7 +75,7 @@ const Sidebar = React.forwardRef(({
           ]);
         } else if (userData.role === 'coordinator') {
           setNavItems([
-            { icon: faTachometerAlt, text: "اللوحة الرئيسية", active: true, path: "/dashboard" },
+            { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
             { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
             { icon: faUsers, text: "الطلاب", path: "/students" },
             { icon: faUserPlus, text: "إضافة مشرف", path: "/add-supervisor" },
@@ -114,6 +115,12 @@ const Sidebar = React.forwardRef(({
       window.removeEventListener('resize', handleResize);
     };
   }, [collapsed, onToggleCollapse]);
+
+  // دالة للتحقق إذا كان المسار الحالي يتطابق مع مسار العنصر
+  const isActive = (path) => {
+    return location.pathname === path || 
+           location.pathname.startsWith(path + '/');
+  };
 
   const handleNavigation = (path) => {
     navigate(path);
@@ -231,7 +238,7 @@ const Sidebar = React.forwardRef(({
             {navItems.map((item, index) => (
               <div 
                 key={index} 
-                className={`nav-link ${item.active ? 'active' : ''}`}
+                className={`nav-link ${isActive(item.path) ? 'active' : ''}`}
                 onClick={() => handleNavigation(item.path)}
               >
                 <FontAwesomeIcon icon={item.icon} className="nav-icon" />
@@ -252,7 +259,7 @@ const Sidebar = React.forwardRef(({
           {shouldShowContent && (
             <div className="sidebar-settings">
               <div 
-                className="nav-link"
+                className={`nav-link ${isActive('/settings') ? 'active' : ''}`}
                 onClick={handleSettingsClick}
               >
                 <FontAwesomeIcon icon={faCog} className="nav-icon" />

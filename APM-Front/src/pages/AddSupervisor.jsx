@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './AddSupervisor.css';
 import Sidebar from '../components/Sidebar/Sidebar';
 import TopNav from '../components/TopNav/TopNav';
@@ -27,6 +27,10 @@ const AddSupervisor = () => {
   });
 
   const [loading, setLoading] = useState(false);
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    image: ''
+  });
   const navigate = useNavigate();
 
   // إنشاء نسخة مخصصة من axios مع الإعدادات الأساسية
@@ -49,6 +53,23 @@ const AddSupervisor = () => {
   }, error => {
     return Promise.reject(error);
   });
+
+  // جلب بيانات المستخدم عند تحميل المكون
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await api.get('/user');
+        setUserInfo({
+          name: response.data.name,
+          image: response.data.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg'
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -164,7 +185,6 @@ const AddSupervisor = () => {
           width: '0%',
           color: '#e74c3c'
         });
-        
       }
     } catch (error) {
       console.error('Error creating supervisor:', error);
@@ -186,10 +206,10 @@ const AddSupervisor = () => {
 
   return (
     <div className="dashboard-container-dash-sup">
-      <Sidebar />
+      <Sidebar user={userInfo} />
       <div className="main-container">
         <div className='supervisor-dashboard'>
-          <TopNav />
+          <TopNav user={userInfo} />
 
           <div className="container-add-sup">
             {message.show && (

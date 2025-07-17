@@ -32,11 +32,38 @@ const DiscussionsCoordinator = () => {
     saving: false,
     discussions: false
   });
+  const [userInfo, setUserInfo] = useState({
+    name: '',
+    image: '',
+    role: ''
+  });
 
   // Sidebar functions
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen);
   const closeMobileSidebar = () => setMobileSidebarOpen(false);
   const toggleSidebar = () => setSidebarCollapsed(!sidebarCollapsed);
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get('http://localhost:8000/api/user', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const userData = response.data;
+        setUserInfo({
+          name: userData.name,
+          image: userData.profile_picture || 'https://randomuser.me/api/portraits/women/44.jpg',
+          role: userData.role
+        });
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   // Fetch data functions
   const fetchDiscussionTypes = async () => {
@@ -84,7 +111,6 @@ const DiscussionsCoordinator = () => {
           title: project.title || 'بدون عنوان'
         }));
         setSemesterGroups(formattedGroups);
-        console.log('Semester Groups:', formattedGroups);
       }
 
       if (graduationRes.data.success) {
@@ -94,7 +120,6 @@ const DiscussionsCoordinator = () => {
           title: project.title || 'بدون عنوان'
         }));
         setGraduationGroups(formattedGroups);
-        console.log('Graduation Groups:', formattedGroups);
       }
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -106,73 +131,69 @@ const DiscussionsCoordinator = () => {
     }
   };
 
-const fetchPreviousDiscussions = async () => {
-  try {
-    setLoading(prev => ({ ...prev, discussions: true }));
-    const token = localStorage.getItem('access_token');
-    const response = await axios.get('http://localhost:8000/api/schedules', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+  const fetchPreviousDiscussions = async () => {
+    try {
+      setLoading(prev => ({ ...prev, discussions: true }));
+      const token = localStorage.getItem('access_token');
+      const response = await axios.get('http://localhost:8000/api/schedules', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
 
-    if (response.data.success) {
-      const rawData = response.data.data;
+      if (response.data.success) {
+        const rawData = response.data.data;
 
-      // 🟢 تجميع المناقشات حسب النوع والتاريخ
-      const grouped = {};
+        const grouped = {};
 
-      rawData.forEach(item => {
-        const type = item.schedule_info?.type;
-        const date = item.schedule_info?.date;
-        const projectType = item.project_info?.project_type;
+        rawData.forEach(item => {
+          const type = item.schedule_info?.type;
+          const date = item.schedule_info?.date;
+          const projectType = item.project_info?.project_type;
 
-        const key = `${projectType}_${type}_${date}`;
-        if (!grouped[key]) {
-          grouped[key] = {
-            id: item.schedule_info?.id, // أول ID نصادفه
-            type,
-            date,
+          const key = `${projectType}_${type}_${date}`;
+          if (!grouped[key]) {
+            grouped[key] = {
+              id: item.schedule_info?.id,
+              type,
+              date,
+              hall: item.schedule_info?.location,
+              groups: []
+            };
+          }
+
+          grouped[key].groups.push({
+            id: item.group_info?.group_id,
+            name: item.group_info?.group_name,
+            title: item.project_info?.title || 'بدون عنوان',
+            time: item.schedule_info?.time,
             hall: item.schedule_info?.location,
-            groups: []
-          };
-        }
-
-        grouped[key].groups.push({
-          id: item.group_info?.group_id,
-          name: item.group_info?.group_name,
-          title: item.project_info?.title || 'بدون عنوان',
-          time: item.schedule_info?.time,
-          hall: item.schedule_info?.location,
-          notes: item.schedule_info?.notes || '',
-          type
+            notes: item.schedule_info?.notes || '',
+            type
+          });
         });
-      });
 
-      // 🟢 فصلهم حسب النوع
-      const phase = [];
-      const graduation = [];
+        const phase = [];
+        const graduation = [];
 
-      Object.entries(grouped).forEach(([key, value]) => {
-        if (key.startsWith('semester_')) {
-          phase.push(value);
-        } else if (key.startsWith('graduation_')) {
-          graduation.push(value);
-        }
-      });
+        Object.entries(grouped).forEach(([key, value]) => {
+          if (key.startsWith('semester_')) {
+            phase.push(value);
+          } else if (key.startsWith('graduation_')) {
+            graduation.push(value);
+          }
+        });
 
-      setPhaseDiscussions(phase);
-      setGraduationDiscussions(graduation);
+        setPhaseDiscussions(phase);
+        setGraduationDiscussions(graduation);
+      }
+    } catch (error) {
+      console.error('Error fetching previous discussions:', error);
+      if (error.response?.status === 401) {
+        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+      }
+    } finally {
+      setLoading(prev => ({ ...prev, discussions: false }));
     }
-  } catch (error) {
-    console.error('Error fetching previous discussions:', error);
-    if (error.response?.status === 401) {
-      alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
-    }
-  } finally {
-    setLoading(prev => ({ ...prev, discussions: false }));
-  }
-};
-
-
+  };
 
   // Initialize data
   useEffect(() => {
@@ -284,112 +305,107 @@ const fetchPreviousDiscussions = async () => {
       setGraduationDiscussions(updateDiscussions(graduationDiscussions));
     }
   };
-const handleSaveDiscussion = async (discussionId, isPhase) => {
-  try {
-    setLoading(prev => ({ ...prev, saving: true }));
-    const discussions = isPhase ? phaseDiscussions : graduationDiscussions;
-    const discussion = discussions.find(d => d.id === discussionId);
 
-    if (!discussion) {
-      alert('المناقشة غير موجودة');
-      return;
-    }
+  const handleSaveDiscussion = async (discussionId, isPhase) => {
+    try {
+      setLoading(prev => ({ ...prev, saving: true }));
+      const discussions = isPhase ? phaseDiscussions : graduationDiscussions;
+      const discussion = discussions.find(d => d.id === discussionId);
 
-    const invalidGroups = discussion.groups.filter(group => !group.id || !group.name);
-    if (invalidGroups.length > 0) {
-      const groupNumbers = invalidGroups.map((_, index) => index + 1).join('، ');
-      throw new Error(`الرجاء اختيار مشروع للمجموعات التالية: ${groupNumbers}`);
-    }
+      if (!discussion) {
+        alert('المناقشة غير موجودة');
+        return;
+      }
 
-    const token = localStorage.getItem('access_token');
+      const invalidGroups = discussion.groups.filter(group => !group.id || !group.name);
+      if (invalidGroups.length > 0) {
+        const groupNumbers = invalidGroups.map((_, index) => index + 1).join('، ');
+        throw new Error(`الرجاء اختيار مشروع للمجموعات التالية: ${groupNumbers}`);
+      }
 
-    // 🟡 نجهز المصفوفة للإرسال دفعة واحدة
-    const discussionDataArray = discussion.groups.map(group => ({
-      date: discussion.date,
-      type: group.type,
-      group_id: group.id,
-      time: group.time,
-      location: group.hall,
-      notes: group.notes || '',
-      project_type: isPhase ? 'semester' : 'graduation'
-    }));
+      const token = localStorage.getItem('access_token');
 
-    console.log('Data being sent:', discussionDataArray);
+      const discussionDataArray = discussion.groups.map(group => ({
+        date: discussion.date,
+        type: group.type,
+        group_id: group.id,
+        time: group.time,
+        location: group.hall,
+        notes: group.notes || '',
+        project_type: isPhase ? 'semester' : 'graduation'
+      }));
 
-    let response;
-
-    if (discussionId.startsWith('phase-') || discussionId.startsWith('graduation-')) {
-      // 🟢 إرسال دفعة واحدة كمصفوفة
-      response = await axios.post('http://localhost:8000/api/schedules', discussionDataArray, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-    } else {
-      // 🔴 تحديث المناقشة (إن وُجد)
-      response = await Promise.all(
-        discussionDataArray.map((data) =>
-          axios.put(`http://localhost:8000/api/schedules/${discussionId}`, data, {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-        )
-      );
-    }
-
-    if (
-      (Array.isArray(response) && response.every(res => res.data.success)) ||
-      (response.data && response.data.success)
-    ) {
-      alert('تم حفظ المناقشة بنجاح');
+      let response;
 
       if (discussionId.startsWith('phase-') || discussionId.startsWith('graduation-')) {
-        const updatedDiscussion = {
-          ...discussion,
-          id: Array.isArray(response) ? response[0].data.data.scheduledId : response.data.data[0].scheduledId,
-          groups: discussion.groups.map((group, index) => ({
-            ...group,
-            id: Array.isArray(response)
-              ? response[index].data.data.group_id
-              : response.data.data[index].group_id,
-            name: Array.isArray(response)
-              ? response[index].data.data.group_name || group.name
-              : response.data.data[index].group_name || group.name,
-            title: Array.isArray(response)
-              ? response[index].data.data.project_title || group.title
-              : response.data.data[index].project_title || group.title
-          }))
-        };
+        response = await axios.post('http://localhost:8000/api/schedules', discussionDataArray, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+      } else {
+        response = await Promise.all(
+          discussionDataArray.map((data) =>
+            axios.put(`http://localhost:8000/api/schedules/${discussionId}`, data, {
+              headers: { 'Authorization': `Bearer ${token}` }
+            })
+          )
+        );
+      }
 
-        if (isPhase) {
-          setPhaseDiscussions(prev =>
-            prev.map(d => d.id === discussionId ? updatedDiscussion : d)
-          );
-        } else {
-          setGraduationDiscussions(prev =>
-            prev.map(d => d.id === discussionId ? updatedDiscussion : d)
-          );
+      if (
+        (Array.isArray(response) && response.every(res => res.data.success)) ||
+        (response.data && response.data.success)
+      ) {
+        alert('تم حفظ المناقشة بنجاح');
+
+        if (discussionId.startsWith('phase-') || discussionId.startsWith('graduation-')) {
+          const updatedDiscussion = {
+            ...discussion,
+            id: Array.isArray(response) ? response[0].data.data.scheduledId : response.data.data[0].scheduledId,
+            groups: discussion.groups.map((group, index) => ({
+              ...group,
+              id: Array.isArray(response)
+                ? response[index].data.data.group_id
+                : response.data.data[index].group_id,
+              name: Array.isArray(response)
+                ? response[index].data.data.group_name || group.name
+                : response.data.data[index].group_name || group.name,
+              title: Array.isArray(response)
+                ? response[index].data.data.project_title || group.title
+                : response.data.data[index].project_title || group.title
+            }))
+          };
+
+          if (isPhase) {
+            setPhaseDiscussions(prev =>
+              prev.map(d => d.id === discussionId ? updatedDiscussion : d)
+            );
+          } else {
+            setGraduationDiscussions(prev =>
+              prev.map(d => d.id === discussionId ? updatedDiscussion : d)
+            );
+          }
         }
       }
-    }
-  } catch (error) {
-    console.error('Error saving discussion:', error);
-    if (error.response?.status === 422) {
-      const errors = error.response.data.errors;
-      let errorMessage = 'خطأ في التحقق من البيانات:\n';
-      for (const key in errors) {
-        errorMessage += `${errors[key].join(', ')}\n`;
+    } catch (error) {
+      console.error('Error saving discussion:', error);
+      if (error.response?.status === 422) {
+        const errors = error.response.data.errors;
+        let errorMessage = 'خطأ في التحقق من البيانات:\n';
+        for (const key in errors) {
+          errorMessage += `${errors[key].join(', ')}\n`;
+        }
+        alert(errorMessage);
+      } else if (error.response?.status === 401) {
+        alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
+      } else if (error.message) {
+        alert(error.message);
+      } else {
+        alert('حدث خطأ أثناء حفظ المناقشة');
       }
-      alert(errorMessage);
-    } else if (error.response?.status === 401) {
-      alert('انتهت صلاحية الجلسة، يرجى تسجيل الدخول مرة أخرى');
-    } else if (error.message) {
-      alert(error.message);
-    } else {
-      alert('حدث خطأ أثناء حفظ المناقشة');
+    } finally {
+      setLoading(prev => ({ ...prev, saving: false }));
     }
-  } finally {
-    setLoading(prev => ({ ...prev, saving: false }));
-  }
-};
-
+  };
 
   const handleGroupChange = (discussionId, groupIndex, field, value, isPhase) => {
     const groups = isPhase ? semesterGroups : graduationGroups;
@@ -615,10 +631,10 @@ const handleSaveDiscussion = async (discussionId, isPhase) => {
 
   return (
     <div className="dashboard-container-dash-sup">
-      <Sidebar />
+      <Sidebar user={userInfo} />
       <div className="main-container">
         <div className='supervisor-dashboard'>
-          <TopNav />
+          <TopNav user={userInfo} />
 
           <div className="discussions-coordinator-container">
             <button className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
