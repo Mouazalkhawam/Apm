@@ -266,4 +266,131 @@ public function getCoordinatorAverageRatings(Request $request)
         'overall_average' => round($overallAverage, 2)
     ]);
 }
+
+public function generateCoordinatorSatisfactionReport(Request $request)
+{
+    // التحقق من أن المستخدم الحالي منسق
+    $coordinator = Auth::user();
+    if (!$coordinator->isCoordinator()) {
+        return response()->json(['message' => 'ليست لديك صلاحية الوصول لهذه البيانات'], 403);
+    }
+
+    // معايير التقييم الخاصة بالمنسقين (11-13)
+    $criteriaIds = [11, 12, 13]; // إدارة الجدول الزمني، توفير الموارد، التقييم والمتابعة
+
+    // حساب المتوسط لكل معيار مع تفاصيل إضافية
+    $criteriaDetails = [];
+    $totalRatings = 0;
+    $totalResponses = 0;
+
+    foreach ($criteriaIds as $criteriaId) {
+        $criterion = EvaluationCriterion::find($criteriaId);
+        
+        // الحصول على جميع التقييمات لهذا المعيار
+        $evaluations = PeerEvaluation::where('evaluated_user_id', $coordinator->userId)
+            ->where('criteria_id', $criteriaId)
+            ->with('evaluator')
+            ->get();
+
+        $average = $evaluations->avg('rate');
+        $count = $evaluations->count();
+        
+        // تحليل التوزيع التكراري للتقييمات
+        $ratingDistribution = [
+            1 => $evaluations->where('rate', 1)->count(),
+            2 => $evaluations->where('rate', 2)->count(),
+            3 => $evaluations->where('rate', 3)->count(),
+            4 => $evaluations->where('rate', 4)->count(),
+            5 => $evaluations->where('rate', 5)->count(),
+        ];
+
+        // حساب نسبة الرضا (تقييمات 4 و5 كنسبة مئوية)
+        $satisfactionPercentage = $count > 0 
+            ? round((($ratingDistribution[4] + $ratingDistribution[5]) / $count) * 100, 2)
+            : 0;
+
+        $criteriaDetails[] = [
+            'criteria_id' => $criteriaId,
+            'criteria_title' => $criterion->title,
+            'criteria_description' => $criterion->description,
+            'average_rating' => round($average, 2),
+            'total_responses' => $count,
+            'rating_distribution' => $ratingDistribution,
+            'satisfaction_percentage' => $satisfactionPercentage,
+            'satisfaction_level' => $this->getSatisfactionLevel($satisfactionPercentage),
+            'comments' => $evaluations->pluck('comment')->filter()->values()
+        ];
+
+        $totalRatings += $evaluations->sum('rate');
+        $totalResponses += $count;
+    }
+
+    // حساب المتوسط العام
+    $overallAverage = $totalResponses > 0 ? round($totalRatings / $totalResponses, 2) : 0;
+
+    // حساب نسبة الرضا العامة
+    $overallSatisfaction = $this->calculateOverallSatisfaction($criteriaDetails);
+
+    // تحضير التقرير النهائي
+    $report = [
+        'coordinator_id' => $coordinator->userId,
+        'coordinator_name' => $coordinator->name,
+        'report_date' => now()->toDateTimeString(),
+        'total_evaluations_received' => $totalResponses,
+        'overall_average_rating' => $overallAverage,
+        'overall_satisfaction_percentage' => $overallSatisfaction,
+        'overall_satisfaction_level' => $this->getSatisfactionLevel($overallSatisfaction),
+        'criteria_details' => $criteriaDetails,
+        'summary' => $this->generateSummary($overallAverage, $overallSatisfaction)
+    ];
+
+    return response()->json([
+        'success' => true,
+        'report' => $report
+    ]);
+}
+
+/**
+ * حساب مستوى الرضا بناءً على النسبة المئوية
+ */
+private function getSatisfactionLevel($percentage)
+{
+    if ($percentage >= 80) return 'ممتاز';
+    if ($percentage >= 60) return 'جيد جداً';
+    if ($percentage >= 40) return 'جيد';
+    if ($percentage >= 20) return 'مقبول';
+    return 'ضعيف';
+}
+
+/**
+ * حساب نسبة الرضا العامة من تفاصيل المعايير
+ */
+private function calculateOverallSatisfaction($criteriaDetails)
+{
+    $totalSatisfaction = 0;
+    $totalCriteria = 0;
+
+    foreach ($criteriaDetails as $criteria) {
+        $totalSatisfaction += $criteria['satisfaction_percentage'];
+        $totalCriteria++;
+    }
+
+    return $totalCriteria > 0 ? round($totalSatisfaction / $totalCriteria, 2) : 0;
+}
+
+/**
+ * توليد ملخص التقرير بناءً على النتائج
+ */
+private function generateSummary($average, $satisfaction)
+{
+    if ($average >= 4.5) {
+        return "أظهر التقرير مستوى رضا عالي جداً من المستخدمين. المتوسط العام للتقييمات هو {$average} مما يشير إلى أداء ممتاز.";
+    } elseif ($average >= 3.5) {
+        return "أظهر التقرير مستوى رضا جيد من المستخدمين. المتوسط العام للتقييمات هو {$average} مع وجود بعض المجالات للتحسين.";
+    } elseif ($average >= 2.5) {
+        return "أظهر التقرير مستوى رضا متوسط. المتوسط العام للتقييمات هو {$average} مما يشير إلى الحاجة لتحسينات في عدة مجالات.";
+    } else {
+        return "أظهر التقرير مستوى رضا منخفض. المتوسط العام للتقييمات هو {$average} مما يتطلب مراجعة شاملة للأداء.";
+    }
+}
 }
