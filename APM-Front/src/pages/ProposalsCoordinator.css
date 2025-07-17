@@ -52,7 +52,7 @@
 }
 
 .view-btn {
-    background-color: #3498db;
+    background-color: #eab307;
     color: white;
     border: none;
     padding: 8px 16px;
@@ -63,7 +63,7 @@
 }
 
 .view-btn:hover {
-    background-color: #2980b9;
+    background-color: #791770;
 }
 
 @media (max-width: 600px) {

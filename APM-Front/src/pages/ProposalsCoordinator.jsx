@@ -1,4 +1,6 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState } from 'react';
+import { useQuery, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { useNavigate } from 'react-router-dom';
 import './ProposalsCoordinator.css';
 import Sidebar from '../components/Sidebar/Sidebar';
@@ -12,70 +14,94 @@ import {
   faFileAlt,
   faComments,
   faUserCircle,
-  faSpinner
+  faSpinner,
+  faSyncAlt,
+  faExclamationTriangle
 } from '@fortawesome/free-solid-svg-icons';
 import axios from 'axios';
 
+// إنشاء QueryClient
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 دقائق
+      cacheTime: 15 * 60 * 1000, // 15 دقيقة
+      refetchOnWindowFocus: false,
+      retry: 1,
+    },
+  },
+});
+
+// تهيئة axios
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000',
+  timeout: 10000,
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+});
+
+// إضافة interceptor للتحقق من الصلاحية
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, error => {
+  return Promise.reject(error);
+});
+
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
+
+// مكون Sidebar مع forwardRef
 const SidebarWithRef = React.forwardRef((props, ref) => (
   <Sidebar ref={ref} {...props} />
 ));
 
 const ProposalsCoordinator = () => {
-  const [proposals, setProposals] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const navigate = useNavigate();
-  
   const sidebarRef = useRef(null);
   const mainContentRef = useRef(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [contentEffectClass, setContentEffectClass] = useState('');
   const [isMobile] = useState(window.innerWidth < 769);
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    const fetchProposals = async () => {
-      try {
-        const token = localStorage.getItem('access_token');
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
-
-        const response = await axios.get('http://localhost:8000/api/coordinator/proposals/pending', {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/json'
-          }
-        });
-
-        if (response.data.success) {
-          setProposals(response.data.data);
-        } else {
-          throw new Error('Failed to fetch proposals');
-        }
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  // استعلام React Query لجلب المقترحات
+  const { 
+    data: proposals, 
+    isLoading, 
+    isError, 
+    error,
+    refetch 
+  } = useQuery({
+    queryKey: ['coordinatorProposals'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/coordinator/proposals/pending');
+      if (!response.data.success) {
+        throw new Error('Failed to fetch proposals');
       }
-    };
-
-    fetchProposals();
-  }, []);
+      return response.data.data;
+    }
+  });
 
   const handleViewProposal = (proposal) => {
-    // التحقق من وجود group و id قبل الحفظ
     if (proposal.group && proposal.group.id) {
-      // حفظ group ID في localStorage
       localStorage.setItem('selectedGroupId', proposal.group.id.toString());
-      
-      // حفظ بيانات المقترح كاملة إذا لزم الأمر
       localStorage.setItem('selectedProposalData', JSON.stringify(proposal));
-      
-      // الانتقال إلى صفحة تفاصيل المقترح
       navigate('/proposal');
     } else {
       console.error('Group ID is missing in the proposal data');
-      // يمكنك إضافة تنبيه للمستخدم هنا إذا لزم الأمر
     }
   };
 
@@ -89,20 +115,13 @@ const ProposalsCoordinator = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="loading-container">
-        <FontAwesomeIcon icon={faSpinner} spin size="2x" />
-        <p>جاري تحميل المقترحات...</p>
-      </div>
-    );
-  }
-
-  if (error) {
+  if (isError) {
     return (
       <div className="error-container">
-        <p>حدث خطأ أثناء جلب البيانات: {error}</p>
-        <button className="retry-btn" onClick={() => window.location.reload()}>
+        <FontAwesomeIcon icon={faExclamationTriangle} />
+        <p>حدث خطأ أثناء جلب البيانات: {error.message}</p>
+        <button className="retry-btn" onClick={() => refetch()}>
+          <FontAwesomeIcon icon={faSyncAlt} />
           إعادة المحاولة
         </button>
       </div>
@@ -154,38 +173,42 @@ const ProposalsCoordinator = () => {
               <p className="header-subtitle-prop">عرض قائمة بمقترحات المشاريع المقدمة</p>
             </div>
             
-            <div className="projects-container-prop">
-              {proposals.length > 0 ? (
-                proposals.map(proposal => (
-                  <div key={proposal.id} className="project-card-prop">
-                    <div className="project-info">
-                      <div className="project-title-prop">{proposal.title}</div>
-                      <div className="project-meta">
-                        <span className={`status-badge ${proposal.status}`}>
-                          {proposal.status_name}
-                        </span>
-                        <span className="project-type">
-                          {proposal.project_type_name}
-                        </span>
+            {isLoading ? (
+              <div className="loading-container">
+                <FontAwesomeIcon icon={faSpinner} spin />
+                <p>جاري تحميل المقترحات...</p>
+              </div>
+            ) : (
+              <div className="projects-container-prop">
+                {proposals && proposals.length > 0 ? (
+                  proposals.map(proposal => (
+                    <div key={proposal.id} className="project-card-prop">
+                      <div className="project-info">
+                        <div className="project-title-prop">{proposal.title}</div>
+                        <div className="project-meta">
+                          <span className={`status-badge ${proposal.status}`}>
+                            {proposal.status_name}
+                          </span>
+                          <span className="project-type">
+                            {proposal.project_type_name}
+                          </span>
+                        </div>
                       </div>
+                      <button 
+                        className="view-btn"
+                        onClick={() => handleViewProposal(proposal)}
+                      >
+                        عرض المقترح
+                      </button>
                     </div>
-                    <button 
-                      className="view-btn"
-                      onClick={() => handleViewProposal(proposal)}
-                    >
-                      عرض المقترح
-                    </button>
+                  ))
+                ) : (
+                  <div className="no-proposals">
+                    <p>لا توجد مقترحات بحاجة للمراجعة حالياً</p>
                   </div>
-                ))
-              ) : (
-                <div className="no-proposals">
-                  <p>لا توجد مقترحات بحاجة للمراجعة حالياً</p>
-                  <button className="refresh-btn" onClick={() => window.location.reload()}>
-                    تحديث الصفحة
-                  </button>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -193,4 +216,12 @@ const ProposalsCoordinator = () => {
   );
 };
 
-export default ProposalsCoordinator;
+// تغليف التطبيق بـ QueryClientProvider
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <ProposalsCoordinator />
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>
+);
+
+export default App;

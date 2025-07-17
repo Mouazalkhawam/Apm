@@ -1124,12 +1124,25 @@ const TasksPage = ({ projectId }) => {
 };
 
 // مكون الإنجازات
+// مكون الإنجازات
 const AchievementsCard = ({ achievements }) => {
+  const navigate = useNavigate();
+
+  const handleHonorBoardClick = () => {
+    navigate('/honorboard');
+  };
+
   if (!achievements || achievements.length === 0) {
     return (
       <div className="card animate delay-5">
         <div className="card-header">
           <h2 className="card-title">إنجازاتي الأكاديمية</h2>
+          <button 
+            className="btn-profile btn-primary-profile btn-sm"
+            onClick={handleHonorBoardClick}
+          >
+            <i className="fas fa-medal"></i> عرض لوحة الشرف
+          </button>
         </div>
         <div className="card-body">
           <div className="no-achievements">
@@ -1145,6 +1158,12 @@ const AchievementsCard = ({ achievements }) => {
     <div className="card animate delay-5">
       <div className="card-header">
         <h2 className="card-title">إنجازاتي الأكاديمية</h2>
+        <button 
+          className="btn-profile btn-primary-profile btn-sm"
+          onClick={handleHonorBoardClick}
+        >
+          <i className="fas fa-medal"></i> عرض لوحة الشرف
+        </button>
       </div>
       <div className="card-body">
         <div className="achievements-grid">
@@ -1170,7 +1189,6 @@ const AchievementsCard = ({ achievements }) => {
     </div>
   );
 };
-
 // مكون إنشاء مشروع جديد
 const ProjectModal = ({ setShowProjectModal }) => {
   const [formData, setFormData] = useState({

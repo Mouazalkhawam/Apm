@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import './HonorBoard.css';
 import { 
   FaTrophy, FaMedal, FaUsers, FaUniversity, 
-  FaStar, FaArrowLeft, FaSpinner
+  FaArrowLeft, FaSpinner
 } from 'react-icons/fa';
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:8000'; // تأكد من تطابق هذا مع عنوان API الخاص بك
+const API_BASE_URL = 'http://localhost:8000';
 
 const HonorBoard = () => {
   const [featuredProjects, setFeaturedProjects] = useState([]);
@@ -19,7 +19,6 @@ const HonorBoard = () => {
     typesCount: 0
   });
 
-  // دالة لجلب التوكن من localStorage
   const getAuthToken = () => {
     return localStorage.getItem('access_token');
   };
@@ -33,7 +32,6 @@ const HonorBoard = () => {
           throw new Error('يجب تسجيل الدخول أولاً');
         }
 
-        // جلب المشاريع المميزة من API مع إضافة header المصادقة
         const response = await axios.get(`${API_BASE_URL}/api/honor-board`, {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -44,26 +42,21 @@ const HonorBoard = () => {
         if (response.data.success) {
           const projects = response.data.data;
           
-          // تحويل البيانات لتتناسب مع الواجهة
           const formattedProjects = projects.map(project => ({
             id: project.id,
             title: project.project?.title || 'لا يوجد عنوان',
-            type: project.type || project.project?.type || 'غير محدد',
-            description: project.project?.description || project.notes || 'لا يوجد وصف',
-            author: project.author || project.project?.author || 'مجهول',
-            rating: project.rating || 4.5, // قيمة افتراضية إذا لم توجد
+            description: project.project?.description || 'لا يوجد وصف',
+            supervisorNote: project.notes || 'لا توجد ملاحظات',
             featured_at: project.featured_at
           }));
 
-          // فصل المشاريع المميزة (الأحدث)
           const sortedProjects = formattedProjects.sort((a, b) => 
             new Date(b.featured_at) - new Date(a.featured_at)
           );
           
-          setFeaturedProjects(sortedProjects.slice(0, 3)); // أول 3 مشاريع كمشاريع مميزة
+          setFeaturedProjects(sortedProjects.slice(0, 3));
           setAllProjects(sortedProjects);
           
-          // تحديث الإحصائيات
           setStats({
             projectsCount: sortedProjects.length,
             studentsCount: new Set(sortedProjects.map(p => p.author)).size,
@@ -122,7 +115,6 @@ const HonorBoard = () => {
 
   return (
     <div className="honor-board">
-      {/* قسم البطل */}
       <section className="hero-section">
         <div className="hero-content">
           <div className="hero-icon">
@@ -132,13 +124,9 @@ const HonorBoard = () => {
           <p className="hero-description">
             هنا يتم عرض أفضل المشاريع الأكاديمية المتميزة سواء كانت فصلية أو مشاريع تخرج
           </p>
-          <div className="hero-buttons">
-            <button className="hero-btn primary-btn">تصفح المشاريع</button>
-          </div>
         </div>
       </section>
       
-      {/* قسم الإحصائيات */}
       <section className="stats-section">
         <div className="stats-container">
           <div className="stat-card-honor">
@@ -167,14 +155,12 @@ const HonorBoard = () => {
         </div>
       </section>
       
-      {/* قسم المشاريع المميزة */}
       <section className="projects-section">
         <div className="section-title-honor">
           <h2>المشاريع المتميزة</h2>
           <p>أحدث المشاريع المضافة إلى لوحة الشرف</p>
         </div>
         
-        {/* المشاريع المميزة */}
         <div className="top-projects">
           {featuredProjects.length > 0 ? (
             featuredProjects.map(project => (
@@ -188,15 +174,9 @@ const HonorBoard = () => {
                   </div>
                   <p className="project-description-honor">{project.description}</p>
                   <div className="project-footer">
-                    <div className="project-author">
-                      <div className="author-avatar">
-                        {project.author.charAt(0)}
-                      </div>
-                      <span className="author-name">{project.author}</span>
-                    </div>
-                    <div className="project-rating">
-                      <span className="rating-value">{project.rating.toFixed(1)}</span>
-                      <FaStar className="star-icon" />
+                    <div className="project-supervisor-note">
+                      <span className="note-label">ملاحظة المشرف:</span>
+                      <p className="note-content">{project.supervisorNote}</p>
                     </div>
                   </div>
                 </div>
@@ -209,7 +189,6 @@ const HonorBoard = () => {
           )}
         </div>
         
-        {/* جميع المشاريع */}
         <div className="all-projects-title">
           <h3>جميع المشاريع المتميزة</h3>
           <p>استكشف قائمة كاملة بالمشاريع المتميزة</p>
@@ -228,15 +207,9 @@ const HonorBoard = () => {
                   </div>
                   <p className="small-project-description">{project.description}</p>
                   <div className="small-project-footer">
-                    <div className="project-author">
-                      <div className="small-author-avatar">
-                        {project.author.charAt(0)}
-                      </div>
-                      <span className="small-author-name">{project.author}</span>
-                    </div>
-                    <div className="project-rating">
-                      <span className="small-rating-value">{project.rating.toFixed(1)}</span>
-                      <FaStar className="small-star-icon" />
+                    <div className="project-supervisor-note">
+                      <span className="small-note-label">ملاحظة المشرف:</span>
+                      <p className="small-note-content">{project.supervisorNote}</p>
                     </div>
                   </div>
                 </div>
@@ -248,15 +221,6 @@ const HonorBoard = () => {
             </div>
           )}
         </div>
-        
-        {allProjects.length > 0 && (
-          <div className="load-more">
-            <button className="load-more-btn">
-              <FaArrowLeft className="arrow-icon" />
-              <span>عرض المزيد من المشاريع</span>
-            </button>
-          </div>
-        )}
       </section>
     </div>
   );

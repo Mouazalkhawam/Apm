@@ -8,7 +8,36 @@
             box-sizing: border-box;
             font-family: 'Tajawal', sans-serif;
         }
-        
+        /* أنماط زر لوحة الشرف */
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.btn-profile.btn-sm {
+  padding: 6px 12px;
+  font-size: 14px;
+}
+
+.btn-profile i.fas.fa-medal {
+  margin-left: 5px;
+}
+
+/* تحسينات للعرض على الأجهزة الصغيرة */
+@media (max-width: 768px) {
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .btn-profile.btn-sm {
+    margin-top: 8px;
+    align-self: flex-end;
+  }
+}
       /*  body {
             background-color: #f5f7fa;
             color: #333;

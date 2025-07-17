@@ -227,13 +227,13 @@ select:focus, input:focus {
 }
 
 .btn-submit {
-    background-color: #2563eb;
+    background-color: #791770;
     color: white;
     border: none;
 }
 
 .btn-submit:hover {
-    background-color: #1d4ed8;
+    background-color: #791770;
 }
 
 /* Message */
@@ -329,7 +329,7 @@ td {
 
 .btn-back {
     margin-top: 24px;
-    background-color: #2563eb;
+    background-color: #791770;
     color: white;
     border: none;
     padding: 10px 24px;
@@ -343,7 +343,7 @@ td {
 }
 
 .btn-back:hover {
-    background-color: #1d4ed8;
+    background-color: #791770;
 }
 
 /* Responsive */

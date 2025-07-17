@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { 
   faGraduationCap, faChevronRight, faChevronLeft, 
@@ -8,7 +8,35 @@ import {
 } from '@fortawesome/free-solid-svg-icons';
 import "./Sidebar.css";
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
+
+const apiClient = axios.create({
+  baseURL: 'http://127.0.0.1:8000',
+  headers: {
+    'Accept': 'application/json',
+    'Content-Type': 'application/json'
+  }
+});
+
+apiClient.interceptors.request.use(config => {
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+apiClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem('access_token');
+      window.location.href = '/login';
+    }
+    return Promise.reject(error);
+  }
+);
 
 const Sidebar = React.forwardRef(({ 
     user = {
@@ -24,6 +52,7 @@ const Sidebar = React.forwardRef(({
   
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
   const [isMobile, setIsMobile] = useState(window.innerWidth < 769);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [formData, setFormData] = useState({
@@ -34,65 +63,79 @@ const Sidebar = React.forwardRef(({
     password_confirmation: '',
     profile_picture: null
   });
-  const [loading, setLoading] = useState(false);
+
+  // Fetch user data with React Query
+  const { data: userData, isLoading: userLoading } = useQuery({
+    queryKey: ['sidebarUser'],
+    queryFn: async () => {
+      const response = await apiClient.get('/api/user');
+      return response.data;
+    },
+    onSuccess: (data) => {
+      setFormData({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        password: '',
+        password_confirmation: '',
+        profile_picture: null
+      });
+    },
+    onError: (error) => {
+      console.error('Error fetching user data:', error);
+    }
+  });
+
+  // Update profile mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (formDataToSend) => {
+      const response = await apiClient.post(
+        '/api/profile/update', 
+        formDataToSend
+      );
+      return response.data;
+    },
+    onSuccess: (data) => {
+      if (data.success) {
+        alert('تم تحديث الحساب بنجاح!');
+        setShowSettingsModal(false);
+        queryClient.invalidateQueries(['sidebarUser']);
+      } else {
+        alert(data.message || 'حدث خطأ أثناء تحديث الحساب');
+      }
+    },
+    onError: (error) => {
+      console.error('Error:', error);
+      alert('حدث خطأ أثناء الاتصال بالخادم');
+    }
+  });
+
+  // Determine navigation items based on user role
   const [navItems, setNavItems] = useState([]);
 
-  // تحديد عناصر القائمة بناءً على دور المستخدم
   useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        const response = await axios.get('http://127.0.0.1:8000/api/user', {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-            'Accept': 'application/json',
-          }
-        });
-        
-        const userData = response.data;
-        setFormData({
-          name: userData.name || '',
-          email: userData.email || '',
-          phone: userData.phone || '',
-          password: '',
-          password_confirmation: '',
-          profile_picture: null
-        });
-
-        // تحديث صورة المستخدم إذا كانت متوفرة
-        if (userData.profile_picture) {
-          user.image = userData.profile_picture;
-        }
-
-        // تحديد عناصر القائمة بناءً على الدور
-        if (userData.role === 'supervisor') {
-          setNavItems([
-            { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
-            { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
-            { icon: faUsers, text: "الطلاب", path: "/students" },
-            { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
-            /* { icon: faFileAlt, text: "التقارير", path: "/reports" }, */
-            /* { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions" } */
-          ]);
-        } else if (userData.role === 'coordinator') {
-          setNavItems([
-            { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
-            { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
-            { icon: faUsers, text: "الطلاب", path: "/students" },
-            { icon: faUserPlus, text: "إضافة مشرف", path: "/add-supervisor" },
-            { icon: faUsers, text: "المشرفون", path: "/Supervisor-Management-Coordinator" },
-            { icon: faChalkboardTeacher, text: "إدارة الفصول", path: "/academic-periods" },
-            { icon: faTrophy, text: "لوحة الشرف", path: "/honorboard-coordinator" },
-            { icon: faComments, text: "المناقشات", badge: 3, path: "/discussions-coordinator" }
-          ]);
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        alert('حدث خطأ أثناء جلب بيانات المستخدم');
-      }
-    };
-
-    fetchUserData();
-  }, []);
+    if (userData?.role === 'supervisor') {
+      setNavItems([
+        { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/supervisors-dashboard" },
+        { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/supervisor-project" },
+        { icon: faUsers, text: "الطلاب", path: "/students" },
+        { icon: faCalendarCheck, text: "جدولة الاجتماعات", badge: 5, alert: true, path: "/scheduling-supervisors-meetings" },
+      ]);
+    } else if (userData?.role === 'coordinator') {
+      setNavItems([
+        { icon: faTachometerAlt, text: "اللوحة الرئيسية", path: "/dashboard" },
+        { icon: faProjectDiagram, text: "المشاريع", badge: 12, path: "/coordinator-project" },
+        { icon: faComments, text: " المقترحات الجديدة", path: "/proposals-coordinator" },
+        { icon: faUsers, text: "الطلاب", path: "/students" },
+        { icon: faUserPlus, text: "إضافة مشرف", path: "/add-supervisor" },
+        { icon: faUsers, text: "المشرفون", path: "/Supervisor-Management-Coordinator" },
+        { icon: faChalkboardTeacher, text: "إدارة الفصول", path: "/academic-periods" },
+        { icon: faTrophy, text: "لوحة الشرف", path: "/honorboard-coordinator" },
+        { icon: faComments, text: "المناقشات",  path: "/discussions-coordinator" },
+        { icon: faComments, text: "إدارة مكتبة الموارد", path: "/resources-librar-coordinator" }
+      ]);
+    }
+  }, [userData]);
 
   // Effect to handle window resize
   useEffect(() => {
@@ -100,15 +143,12 @@ const Sidebar = React.forwardRef(({
       const mobile = window.innerWidth < 769;
       setIsMobile(mobile);
       
-      // Auto-expand sidebar when switching to mobile view
       if (mobile && collapsed) {
         onToggleCollapse();
       }
     };
 
     window.addEventListener('resize', handleResize);
-    
-    // Initial check on component mount
     handleResize();
 
     return () => {
@@ -116,7 +156,7 @@ const Sidebar = React.forwardRef(({
     };
   }, [collapsed, onToggleCollapse]);
 
-  // دالة للتحقق إذا كان المسار الحالي يتطابق مع مسار العنصر
+  // Check if current path matches item path
   const isActive = (path) => {
     return location.pathname === path || 
            location.pathname.startsWith(path + '/');
@@ -124,7 +164,6 @@ const Sidebar = React.forwardRef(({
 
   const handleNavigation = (path) => {
     navigate(path);
-    // Close sidebar on mobile after navigation
     if (isMobile) {
       ref.current?.classList.remove('sidebar-open');
       document.getElementById('overlay')?.classList.remove('overlay-open');
@@ -138,7 +177,7 @@ const Sidebar = React.forwardRef(({
     }
   };
 
-  const handleSettingsClick = async () => {
+  const handleSettingsClick = () => {
     setShowSettingsModal(true);
   };
 
@@ -161,46 +200,34 @@ const Sidebar = React.forwardRef(({
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('name', formData.name);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phone', formData.phone);
-      if (formData.password) {
-        formDataToSend.append('password', formData.password);
-        formDataToSend.append('password_confirmation', formData.password_confirmation);
-      }
-      if (formData.profile_picture) {
-        formDataToSend.append('profile_picture', formData.profile_picture);
-      }
-      formDataToSend.append('_method', 'PUT');
-      
-      const response = await axios.post('http://127.0.0.1:8000/api/profile/update', formDataToSend, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
-          'Content-Type': 'multipart/form-data',
-        }
-      });
-
-      if (response.data.success) {
-        alert('تم تحديث الحساب بنجاح!');
-        setShowSettingsModal(false);
-        // Refresh the page to update user data
-        window.location.reload();
-      } else {
-        alert(response.data.message || 'حدث خطأ أثناء تحديث الحساب');
-      }
-    } catch (error) {
-      console.error('Error:', error);
-      alert('حدث خطأ أثناء الاتصال بالخادم');
+    const formDataToSend = new FormData();
+    formDataToSend.append('name', formData.name);
+    formDataToSend.append('email', formData.email);
+    formDataToSend.append('phone', formData.phone);
+    if (formData.password) {
+      formDataToSend.append('password', formData.password);
+      formDataToSend.append('password_confirmation', formData.password_confirmation);
     }
+    if (formData.profile_picture) {
+      formDataToSend.append('profile_picture', formData.profile_picture);
+    }
+    formDataToSend.append('_method', 'PUT');
+    
+    updateProfileMutation.mutate(formDataToSend);
   };
 
   // Determine if we should show collapsed content
   const shouldShowContent = !collapsed || isMobile;
+
+  // Update user info when data is loaded
+  const currentUser = userData ? {
+    name: userData.name || user.name,
+    role: userData.role || user.role,
+    image: userData.profile_picture || user.image
+  } : user;
 
   return (
     <>
@@ -225,10 +252,17 @@ const Sidebar = React.forwardRef(({
         
         {shouldShowContent && (
           <div className="sidebar-profile-dash">
-            <img src={user.image} alt="User" className="profile-image" />
+            <img 
+              src={currentUser.image} 
+              alt="User" 
+              className="profile-image" 
+              onError={(e) => {
+                e.target.src = 'https://randomuser.me/api/portraits/women/44.jpg';
+              }}
+            />
             <div className="profile-info">
-              <div className="sidebar-text profile-name-dashboard">{user.name}</div>
-              <div className="sidebar-text profile-role">{user.role}</div>
+              <div className="sidebar-text profile-name-dashboard">{currentUser.name}</div>
+              <div className="sidebar-text profile-role">{currentUser.role}</div>
             </div>
           </div>
         )}
@@ -288,7 +322,7 @@ const Sidebar = React.forwardRef(({
               <h3>تعديل معلومات الحساب</h3>
               <button onClick={handleCloseModal} className="close-modal">&times;</button>
             </div>
-            {loading ? (
+            {userLoading ? (
               <div className="loading-spinner">جاري تحميل البيانات...</div>
             ) : (
               <form onSubmit={handleSubmit} encType="multipart/form-data">
@@ -354,17 +388,37 @@ const Sidebar = React.forwardRef(({
                     onChange={handleFileChange}
                     accept="image/*"
                   />
-                  {user.image && (
+                  {currentUser.image && (
                     <div className="current-image-preview">
                       <p>الصورة الحالية:</p>
-                      <img src={user.image} alt="Current Profile" className="profile-preview" />
+                      <img 
+                        src={currentUser.image} 
+                        alt="Current Profile" 
+                        className="profile-preview"
+                        onError={(e) => {
+                          e.target.src = 'https://randomuser.me/api/portraits/women/44.jpg';
+                        }}
+                      />
                     </div>
                   )}
                 </div>
                 
                 <div className="modal-actions">
-                  <button type="button" className="cancel-btn" onClick={handleCloseModal}>إلغاء</button>
-                  <button type="submit" className="save-btn">حفظ التغييرات</button>
+                  <button 
+                    type="button" 
+                    className="cancel-btn" 
+                    onClick={handleCloseModal}
+                    disabled={updateProfileMutation.isLoading}
+                  >
+                    إلغاء
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="save-btn"
+                    disabled={updateProfileMutation.isLoading}
+                  >
+                    {updateProfileMutation.isLoading ? 'جاري الحفظ...' : 'حفظ التغييرات'}
+                  </button>
                 </div>
               </form>
             )}
