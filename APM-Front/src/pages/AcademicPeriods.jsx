@@ -113,6 +113,7 @@ const AcademicPeriods = () => {
       }));
     }
   };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const token = localStorage.getItem('access_token');
@@ -150,10 +151,8 @@ const AcademicPeriods = () => {
     }
   
     try {
-      // إرسال البيانات مع التعامل مع الأخطاء المفصلة
       const responses = await Promise.all(
         periods.map(p => api.post('/academic-periods', p).catch(error => {
-          // إذا كان هناك خطأ، نعيده كقيمة مرفوضة مع التفاصيل
           return Promise.reject({
             period: p,
             error: error.response?.data || error.message
@@ -161,7 +160,6 @@ const AcademicPeriods = () => {
         }))
       );
   
-      // إذا نجحت جميع الطلبات
       const response = await api.get('/academic-periods');
       setAcademicPeriods(response.data.data);
   
@@ -176,14 +174,12 @@ const AcademicPeriods = () => {
       let errorMessage = 'حدث خطأ أثناء الحفظ';
       
       if (error.period && error.error) {
-        // خطأ مفصل لطلب معين
         const periodName = error.period.type === 'first_semester' ? 'الفصل الأول' :
                           error.period.type === 'second_semester' ? 'الفصل الثاني' : 'الفصل الصيفي';
         
         errorMessage = `خطأ في ${periodName}: `;
         
         if (error.error.errors) {
-          // أخطاء التحقق من الصحة من Laravel
           Object.entries(error.error.errors).forEach(([field, messages]) => {
             errorMessage += `${messages.join(', ')} `;
           });
@@ -191,7 +187,6 @@ const AcademicPeriods = () => {
           errorMessage += error.error.message;
         }
       } else if (error.response?.data?.errors) {
-        // أخطاء التحقق من الصحة
         Object.entries(error.response.data.errors).forEach(([field, messages]) => {
           errorMessage += `${field}: ${messages.join(', ')} `;
         });
@@ -202,6 +197,47 @@ const AcademicPeriods = () => {
       alert(errorMessage);
     }
   };
+
+  const handleSetCurrent = async (periodId) => {
+    try {
+      const token = localStorage.getItem('access_token');
+      const response = await axios.post(
+        `http://localhost:8000/api/academic-periods/${periodId}/set-current`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+          }
+        }
+      );
+
+      // Refresh the academic periods list after setting current
+      const periodsResponse = await axios.get('http://localhost:8000/api/academic-periods', {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
+      setAcademicPeriods(periodsResponse.data.data);
+
+      // Show success message
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+      }, 3000);
+    } catch (error) {
+      console.error('Error setting current period:', error);
+      let errorMessage = 'حدث خطأ أثناء تعيين الفصل الحالي';
+      
+      if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
+      alert(errorMessage);
+    }
+  };
+
   const handleReset = () => {
     setFormData({
       academicYear: '',
@@ -402,6 +438,7 @@ const AcademicPeriods = () => {
                             <th>تاريخ البداية</th>
                             <th>تاريخ النهاية</th>
                             <th>الحالة</th>
+                            <th>إجراءات</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -420,6 +457,16 @@ const AcademicPeriods = () => {
                                   <span className="current-badge">حالي</span>
                                 ) : (
                                   <span className="not-current-badge">غير حالي</span>
+                                )}
+                              </td>
+                              <td>
+                                {!period.is_current && (
+                                  <button
+                                    className="btn-set-current"
+                                    onClick={() => handleSetCurrent(period.id)}
+                                  >
+                                    تعيين كحالي
+                                  </button>
                                 )}
                               </td>
                             </tr>
