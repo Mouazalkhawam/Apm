@@ -75,7 +75,7 @@ input, textarea, select {
 
 input:focus, textarea:focus, select:focus {
     outline: none;
-    border-color: #3498db;
+    border-color: #791770;
 }
 
 textarea {
@@ -84,7 +84,7 @@ textarea {
 }
 
 .btn {
-    background-color: #3498db;
+    background-color: #eab307;
     color: white;
     border: none;
     padding: 12px 20px;
@@ -95,7 +95,7 @@ textarea {
 }
 
 .btn:hover {
-    background-color: #2980b9;
+    background-color: #791770;
 }
 
 .projects-container {

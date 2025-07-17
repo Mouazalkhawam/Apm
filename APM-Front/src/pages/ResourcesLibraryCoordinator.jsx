@@ -396,15 +396,6 @@ const ResourcesLibraryCoordinator = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="dashboard-loading">
-        <div className="loading-spinner"></div>
-        <p>جاري تحميل البيانات...</p>
-      </div>
-    );
-  }
-
   if (error && !approvedResources.length && !pendingResources.length) {
     return (
       <div className="dashboard-error">
@@ -462,6 +453,7 @@ const ResourcesLibraryCoordinator = () => {
               searchPlaceholder="ابحث في الموارد..."
               onSearch={(term) => setSearchTerm(term)}
             />
+            <div className='container-honor'>
             <button id="mobileSidebarToggle" className="mobile-sidebar-toggle" onClick={toggleMobileSidebar}>
               <FontAwesomeIcon icon={faBars} />
             </button>
@@ -978,6 +970,7 @@ const ResourcesLibraryCoordinator = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

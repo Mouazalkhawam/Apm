@@ -16,6 +16,161 @@
     color: #1e1024;
     line-height: 1.6;
 }*/
+/* تنسيقات أزرار المنسق */
+.coordinator-actions {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.approve-proposal-btn,
+.reject-proposal-btn {
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.approve-proposal-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
+.approve-proposal-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(16, 185, 129, 0.2);
+}
+
+.reject-proposal-btn {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: white;
+}
+
+.reject-proposal-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(239, 68, 68, 0.2);
+}
+
+.approve-proposal-btn:disabled,
+.reject-proposal-btn:disabled {
+  background: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* تأثير اللمعان عند التحويم */
+.approve-proposal-btn:not(:disabled)::after,
+.reject-proposal-btn:not(:disabled)::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.approve-proposal-btn:hover:not(:disabled)::after,
+.reject-proposal-btn:hover:not(:disabled)::after {
+  transform: translateX(0);
+}
+
+/* تأثير النقر */
+.approve-proposal-btn:active:not(:disabled),
+.reject-proposal-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+/* أيقونات الأزرار */
+.approve-proposal-btn i,
+.reject-proposal-btn i {
+  font-size: 18px;
+}
+
+/* شعار حالة المقترح */
+.proposal-status-banner {
+  padding: 12px 24px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.proposal-status-banner i {
+  font-size: 20px;
+}
+
+.proposal-status-banner.approved {
+  background-color: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+}
+
+.proposal-status-banner.needs-revision {
+  background-color: #fef2f2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+/* رسالة الخطأ */
+.error-message {
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #fef2f2;
+  color: #b91c1c;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.error-message i {
+  font-size: 20px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* التكيف مع الشاشات الصغيرة */
+@media (max-width: 768px) {
+  .coordinator-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .approve-proposal-btn,
+  .reject-proposal-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
 
 .container-proposal {
     width: 100%;
