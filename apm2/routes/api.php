@@ -36,6 +36,7 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/user', [AuthController::class, 'userProfile']);
     Route::get('/users', [AuthController::class, 'getUsersByRole']);
+    Route::get('/all-users', [AuthController::class, 'getAllUsers']);
     Route::get('/students', [AuthController::class, 'getStudentsForDropdown']);
     Route::get('/supervisors', [AuthController::class, 'getSupervisorsForDropdown']);
     Route::get('/check-supervisor', [AuthController::class, 'checkSupervisor']);

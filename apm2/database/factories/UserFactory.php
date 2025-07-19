@@ -21,17 +21,14 @@ class UserFactory extends Factory
      *
      * @return array<string, mixed>
      */
-    public function definition(): array
+    public function definition()
     {
         return [
-            'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
-            'email_verified_at' => now(),
-            'password' => static::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'name' => $this->faker->name,
+            'email' => $this->faker->unique()->safeEmail,
+            'role' => 'student', // يمكن تغييرها حسب الحاجة
         ];
     }
-
     /**
      * Indicate that the model's email address should be unverified.
      */
@@ -41,4 +38,11 @@ class UserFactory extends Factory
             'email_verified_at' => null,
         ]);
     }
+
+
+    // UserFactory.php
+
+
+// StudentFactory.php (إنشاء ملف جديد إذا لم يكن موجوداً)
+
 }

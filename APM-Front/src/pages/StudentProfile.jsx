@@ -400,7 +400,11 @@ const ProfileSidebar = ({
         <button className="edit-profile-btn" onClick={() => setShowEditModal(true)}>
           <i className="fas fa-edit"></i> تعديل الملف الشخصي
         </button>
+       
       </div>
+      <button className="go-toLibr-btn" >
+         <a href="Resources-Library">مكتبة الموارد</a>
+        </button>
       <div className="profile-info-section">
         <h3 className="info-title">
           <i className="fas fa-info-circle"></i> المعلومات الشخصية

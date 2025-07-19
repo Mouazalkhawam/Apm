@@ -330,7 +330,7 @@ useEffect(() => {
         <main className="content-area">
           <div className="container-dash">
             <div className="welcome-header">
-              <h1 className="welcome-title">مرحباً د. عفاف 👋</h1>
+            
               <p className="welcome-subtitle">هذه نظرة عامة على مشاريعك وطلابك اليوم</p>
             </div>
             

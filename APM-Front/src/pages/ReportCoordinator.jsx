@@ -24,6 +24,22 @@ const ReportCoordinator = () => {
     image: '',
     role: ''
   });
+  const [reportData, setReportData] = useState({
+    coordinator_name: 'أحمد محمد',
+    report_date: new Date().toISOString(),
+    total_evaluations_received: 48,
+    overall_average_rating: 4.7,
+    overall_satisfaction_percentage: 94,
+    criteria_details: [
+      { name: 'إدارة الجدول الزمني', rating: 4.8, percentage: 96 },
+      { name: 'توفير الموارد', rating: 4.5, percentage: 90 },
+      { name: 'جودة التواصل', rating: 4.9, percentage: 98 },
+      { name: 'حل المشكلات', rating: 4.3, percentage: 86 },
+      { name: 'التقيد بالمواعيد', rating: 4.7, percentage: 94 }
+    ]
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   // Sidebar functions
   const toggleMobileSidebar = () => setMobileSidebarOpen(!mobileSidebarOpen);
@@ -39,11 +55,11 @@ const ReportCoordinator = () => {
     // Animate percentage bar
     const percentageBar = document.getElementById('percentage-bar');
     setTimeout(() => {
-      percentageBar.style.width = '94%';
+      percentageBar.style.width = `${reportData.overall_satisfaction_percentage}%`;
     }, 300);
     
     // Dynamic rating color based on score
-    const ratingScore = 4.7;
+    const ratingScore = reportData.overall_average_rating;
     const ratingCircle = document.querySelector('.rating-circle');
     
     if (ratingScore >= 4.5) {
@@ -72,7 +88,42 @@ const ReportCoordinator = () => {
       }
     };
 
+    // Fetch report data
+    const fetchReportData = async () => {
+      try {
+        setLoading(true);
+        const token = localStorage.getItem('access_token');
+        const response = await axios.get('http://127.0.0.1:8000/api/evaluations/coordinator-report', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (response.data.success) {
+          const apiData = response.data.report;
+          // Transform API data to match our structure
+          const transformedData = {
+            coordinator_name: apiData.coordinator_name,
+            report_date: apiData.report_date,
+            total_evaluations_received: apiData.total_evaluations_received,
+            overall_average_rating: apiData.overall_average_rating,
+            overall_satisfaction_percentage: apiData.overall_satisfaction_percentage,
+            criteria_details: apiData.criteria_details.map(criteria => ({
+              name: criteria.criteria_title,
+              rating: criteria.average_rating,
+              percentage: criteria.satisfaction_percentage
+            }))
+          };
+          setReportData(transformedData);
+        }
+      } catch (err) {
+        console.error('Error fetching report data:', err);
+        setError('حدث خطأ أثناء جلب بيانات التقرير');
+      } finally {
+        setLoading(false);
+      }
+    };
+
     fetchUserData();
+    fetchReportData();
   }, []);
 
   const getRatingText = (score) => {
@@ -81,14 +132,6 @@ const ReportCoordinator = () => {
     if (score >= 2.5) return 'جيد';
     return 'يحتاج تحسين';
   };
-
-  const criteriaData = [
-    { name: 'إدارة الجدول الزمني', rating: 4.8, percentage: 96 },
-    { name: 'توفير الموارد', rating: 4.5, percentage: 90 },
-    { name: 'جودة التواصل', rating: 4.9, percentage: 98 },
-    { name: 'حل المشكلات', rating: 4.3, percentage: 86 },
-    { name: 'التقيد بالمواعيد', rating: 4.7, percentage: 94 }
-  ];
 
   const renderStars = (rating) => {
     const fullStars = Math.floor(rating);
@@ -103,6 +146,44 @@ const ReportCoordinator = () => {
       </>
     );
   };
+
+  if (loading) {
+    return (
+      <div className="dashboard-container-dash-sup">
+        <div className="main-container">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            fontSize: '18px',
+            color: '#2c3e50'
+          }}>
+            جاري تحميل البيانات...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="dashboard-container-dash-sup">
+        <div className="main-container">
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            height: '100vh',
+            fontSize: '18px',
+            color: '#e74c3c'
+          }}>
+            {error}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="dashboard-container-dash-sup">
@@ -133,15 +214,15 @@ const ReportCoordinator = () => {
                     <div className="header-info">
                       <div className="header-info-item">
                         <span>اسم المنسق</span>
-                        <strong>أحمد محمد</strong>
+                        <strong>{reportData.coordinator_name}</strong>
                       </div>
                       <div className="header-info-item">
                         <span>تاريخ التقرير</span>
-                        <strong id="report-date">10 مارس 2023</strong>
+                        <strong id="report-date"></strong>
                       </div>
                       <div className="header-info-item">
                         <span>عدد التقييمات</span>
-                        <strong>48 تقييم</strong>
+                        <strong>{reportData.total_evaluations_received} تقييم</strong>
                       </div>
                     </div>
                   </div>
@@ -151,17 +232,17 @@ const ReportCoordinator = () => {
                     <h2>الرضا العام</h2>
                     <div className="overall-rating">
                       <div className="rating-circle">
-                        <div className="rating-score">4.7</div>
+                        <div className="rating-score">{reportData.overall_average_rating}</div>
                         <div className="rating-label">من 5.0</div>
                       </div>
                       <div className="rating-details">
-                        <div className="rating-text">{getRatingText(4.7)}</div>
+                        <div className="rating-text">{getRatingText(reportData.overall_average_rating)}</div>
                         <div className="rating-percentage">
                           <div className="percentage-bar" id="percentage-bar"></div>
                         </div>
                         <div className="rating-legend">
                           <span>0%</span>
-                          <span>رضا عام 94%</span>
+                          <span>رضا عام {reportData.overall_satisfaction_percentage}%</span>
                           <span>100%</span>
                         </div>
                       </div>
@@ -172,7 +253,7 @@ const ReportCoordinator = () => {
                   <div className="criteria-ratings">
                     <h2>تفاصيل التقييم حسب المعايير</h2>
                     <ul className="criteria-list">
-                      {criteriaData.map((item, index) => (
+                      {reportData.criteria_details.map((item, index) => (
                         <li key={index} className="criteria-item">
                           <div className="criteria-name">{item.name}</div>
                           <div className="criteria-rating">

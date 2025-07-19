@@ -6,7 +6,42 @@
     top: 0;
     z-index: 100;
   }
+  .notification-dropdown-topnav{
+    position: absolute;
+    top: 75px;
+    left: 500px;
+    width: 350px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: none;
+    max-height: 500px;
+    overflow-y: auto;
+  }
   
+  .notification-dropdown-topnav.show {
+    display: block;
+    animation: fadeInDown 0.3s ease forwards;
+}
+.chat-dropdown-topnav.show {
+  display: block;
+  animation: fadeInDown 0.3s ease forwards;
+}
+.chat-dropdown-topnav {
+  position: absolute;
+  top: 60px;
+  left: 550px;
+  width: 350px;
+  background-color: white;
+  border-radius: 12px;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+  z-index: 1000;
+  display: none;
+  max-height: 500px;
+  overflow: hidden;
+}
+
   .top-nav-container-dash-super {
     display: flex;
     justify-content: space-between;

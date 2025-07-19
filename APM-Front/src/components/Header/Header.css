@@ -12,6 +12,7 @@
     min-width: 100vh;
     margin: 0 20px;
     overflow: visible;
+    z-index: 100;
 }
 
 .header::before {

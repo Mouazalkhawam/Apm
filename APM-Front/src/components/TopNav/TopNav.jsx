@@ -39,6 +39,7 @@ const TopNav = ({
   const [newChatUsers, setNewChatUsers] = useState([]);
   const [newChatName, setNewChatName] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
 
   // تهيئة Echo/Pusher
   const [echo, setEcho] = useState(null);
@@ -188,7 +189,7 @@ const TopNav = ({
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
-      const response = await axios.get(`${import.meta.env.VITE_API_URL}/api/users`, {
+      const response = await axios.get(`http://127.0.0.1:8000/api/all-users`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -198,7 +199,9 @@ const TopNav = ({
         setNewChatUsers(response.data.data.map(user => ({
           id: user.userId,
           name: user.name,
-          selected: false
+          email: user.email,
+          role: user.role,
+          profile_picture: user.profile_picture || `https://ui-avatars.com/api/?name=${user.name}&background=791770&color=fff`
         })));
       }
     } catch (err) {
@@ -227,9 +230,6 @@ const TopNav = ({
     if (diffInSeconds < 31536000) return `منذ ${Math.floor(diffInSeconds / 2592000)} أشهر`;
     return `منذ ${Math.floor(diffInSeconds / 31536000)} سنوات`;
   };
-
-  // دالة تسجيل الخروج
-  
 
   // جلب الإشعارات من الخادم
   const fetchNotifications = async () => {
@@ -461,27 +461,25 @@ const TopNav = ({
     setShowNewChatModal(false);
     setNewChatName('');
     setSearchTerm('');
-    setNewChatUsers(newChatUsers.map(user => ({ ...user, selected: false })));
+    setSelectedUser(null);
   };
 
-  // اختيار/إلغاء اختيار مستخدم في مودال إنشاء محادثة
-  const toggleUserSelection = (userId) => {
-    setNewChatUsers(newChatUsers.map(user => 
-      user.id === userId ? { ...user, selected: !user.selected } : user
-    ));
+  // اختيار مستخدم من القائمة المنسدلة
+  const handleUserSelect = (user) => {
+    setSelectedUser(user);
+    setSearchTerm(user.name);
   };
 
   // إنشاء محادثة جديدة
   const handleCreateNewChat = async () => {
-    const selectedUsers = newChatUsers.filter(user => user.selected);
-    if (selectedUsers.length === 0) return;
+    if (!selectedUser) return;
 
     try {
       const token = localStorage.getItem('access_token');
       if (!token) return;
 
       const response = await axios.post(`${import.meta.env.VITE_API_URL}/messages`, {
-        receiver_id: selectedUsers[0].id,
+        receiver_id: selectedUser.id,
         content: 'بدأت المحادثة'
       }, {
         headers: {
@@ -490,15 +488,15 @@ const TopNav = ({
       });
 
       if (response.data.success) {
-        const chatName = newChatName || selectedUsers.map(user => user.name).join('، ');
+        const chatName = newChatName || selectedUser.name;
         
         const newConversation = {
-          id: selectedUsers[0].id,
+          id: selectedUser.id,
           name: chatName,
           lastMessage: 'بدأت المحادثة',
           time: 'الآن',
           unread: false,
-          avatar: `https://ui-avatars.com/api/?name=${chatName}&background=791770&color=fff`,
+          avatar: selectedUser.profile_picture,
           messages: [
             { id: response.data.data.message_id, text: 'بدأت المحادثة', time: 'الآن', sent: true }
           ]
@@ -516,7 +514,8 @@ const TopNav = ({
 
   // البحث عن مستخدمين
   const filteredUsers = newChatUsers.filter(user =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase())
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // جلب البيانات الأولية
@@ -606,7 +605,7 @@ const TopNav = ({
           </button>
           
           {/* قائمة الإشعارات */}
-          <div className={`notification-dropdown ${showNotification ? 'show' : ''}`}>
+          <div className={`notification-dropdown-topnav ${showNotification ? 'show' : ''}`}>
             <div className="notification-header">
               <div className="notification-title">الإشعارات</div>
               <div className="mark-all-read" onClick={markAllAsRead}>
@@ -676,7 +675,7 @@ const TopNav = ({
           </button>
           
           {/* قائمة الدردشة */}
-          <div className={`chat-dropdown ${showChat ? 'show' : ''}`}>
+          <div className={`chat-dropdown-topnav ${showChat ? 'show' : ''}`}>
             {activeChatTab === 'conversations' ? (
               <>
                 <div className="chat-header">
@@ -840,32 +839,51 @@ const TopNav = ({
                 </div>
                 
                 <div className="form-group">
-                  <label>بحث عن أعضاء</label>
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder="ابحث عن أعضاء"
-                  />
+                  <label>اختر مستخدم</label>
+                  <div className="user-search-dropdown">
+                    <input
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="ابحث عن مستخدم"
+                    />
+                    {searchTerm && (
+                      <div className="dropdown-list">
+                        {filteredUsers.length > 0 ? (
+                          filteredUsers.map(user => (
+                            <div 
+                              key={user.id} 
+                              className="dropdown-item"
+                              onClick={() => handleUserSelect(user)}
+                            >
+                              <div className="user-avatar">
+                                <img src={user.profile_picture} alt={user.name} />
+                              </div>
+                              <div className="user-info">
+                                <div className="user-name">{user.name}</div>
+                                <div className="user-email">{user.email}</div>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="dropdown-empty">لا توجد نتائج</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 
-                <div className="users-list">
-                  {filteredUsers.map(user => (
-                    <div 
-                      key={user.id} 
-                      className={`user-item ${user.selected ? 'selected' : ''}`}
-                      onClick={() => toggleUserSelection(user.id)}
-                    >
-                      <div className="user-avatar">
-                        <img src={`https://ui-avatars.com/api/?name=${user.name}&background=791770&color=fff`} alt={user.name} />
-                      </div>
-                      <div className="user-name">{user.name}</div>
-                      <div className="user-check">
-                        {user.selected && <FontAwesomeIcon icon="check" />}
-                      </div>
+                {selectedUser && (
+                  <div className="selected-user">
+                    <div className="user-avatar">
+                      <img src={selectedUser.profile_picture} alt={selectedUser.name} />
                     </div>
-                  ))}
-                </div>
+                    <div className="user-info">
+                      <div className="user-name">{selectedUser.name}</div>
+                      <div className="user-email">{selectedUser.email}</div>
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="modal-actions">
@@ -875,7 +893,7 @@ const TopNav = ({
                 <button 
                   className="btn btn-confirm" 
                   onClick={handleCreateNewChat}
-                  disabled={newChatUsers.filter(u => u.selected).length === 0}
+                  disabled={!selectedUser}
                 >
                   إنشاء المحادثة
                 </button>

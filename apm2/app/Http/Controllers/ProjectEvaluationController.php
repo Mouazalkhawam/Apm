@@ -76,9 +76,15 @@ class ProjectEvaluationController extends Controller
             $stage = $request->stage;
 
             if ($request->type === 'individual' && $request->student_id) {
-                if (!$group->students()->where('studentId', $request->student_id)->where('status', 'approved')->exists()) {
-                    throw new \Exception('الطالب غير معتمد في هذه المجموعة');
-                }
+                $studentExists = DB::table('group_student')
+                ->where('group_student.groupId', $group->groupid)
+                ->where('group_student.studentId', $request->student_id)
+                ->where('group_student.status', 'approved')
+                ->exists();
+            
+            if (!$studentExists) {
+                throw new \Exception('الطالب غير معتمد في هذه المجموعة');
+            }
             }
 
             // حساب العلامة الكلية للمرحلة

@@ -424,4 +424,90 @@ public function getCoordinators()
         'data' => $coordinators
     ]);
 }
+
+/**
+ * ✅ جلب جميع المستخدمين مع تفاصيلهم (للمنسق فقط)
+ * 
+ * @param Request $request يمكن إضافة تصفية حسب الدور إذا لزم الأمر
+ * @return \Illuminate\Http\JsonResponse
+ */
+public function getAllUsers(Request $request)
+{
+    // التحقق من أن المستخدم الحالي هو منسق
+    $user = Auth::user();
+    if ($user->role !== 'coordinator') {
+        return response()->json(['message' => 'غير مصرح لك بالوصول إلى قائمة المستخدمين.'], 403);
+    }
+
+    // الحصول على معامل التصفية إذا وجد
+    $role = $request->query('role');
+
+    $query = User::with(['student', 'supervisor']);
+
+    if ($role) {
+        $query->where('role', $role);
+    }
+
+    $users = $query->get()->map(function ($user) {
+        $userData = [
+            'userId' => $user->userId,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'role' => $user->role,
+            'profile_picture' => $user->profile_picture 
+                ? asset($user->profile_picture)
+                : null,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'deleted_at' => $user->deleted_at,
+            'details' => null
+        ];
+
+        // إضافة التفاصيل حسب الدور
+        switch ($user->role) {
+            case 'student':
+                if ($user->student) {
+                    $userData['details'] = [
+                        'studentId' => $user->student->studentId,
+                        'university_number' => $user->student->university_number,
+                        'major' => $user->student->major,
+                        'academic_year' => $user->student->academic_year
+                    ];
+                }
+                break;
+                
+            case 'supervisor':
+                if ($user->supervisor) {
+                    $userData['details'] = [
+                        'supervisorId' => $user->supervisor->supervisorId,
+                        'specialization' => $user->supervisor->specialization,
+                        'department' => $user->supervisor->department
+                    ];
+                }
+                break;
+                
+            case 'coordinator':
+                $userData['details'] = ['is_coordinator' => true];
+                break;
+                
+            case 'alumni':
+                if ($user->student) {
+                    $userData['details'] = [
+                        'studentId' => $user->student->studentId,
+                        'graduation_year' => optional($user->student)->graduation_year
+                    ];
+                }
+                break;
+        }
+
+        return $userData;
+    });
+
+    return response()->json([
+        'success' => true,
+        'count' => $users->count(),
+        'data' => $users
+    ]);
+}
 }
